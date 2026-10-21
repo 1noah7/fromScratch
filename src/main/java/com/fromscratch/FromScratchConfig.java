@@ -4,6 +4,8 @@ import java.awt.Color;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+import net.runelite.client.config.Range;
+import net.runelite.api.gameval.ItemID;
 
 /** Local presentation preferences; progression will be stored separately per character. */
 @ConfigGroup(FromScratchConfig.GROUP)
@@ -13,8 +15,9 @@ public interface FromScratchConfig extends Config
 
 	@ConfigItem(
 		keyName = "showFoundationHelp",
-		name = "Detailed setup tooltip",
-		description = "Show extra snapshot details in a tooltip before initialization",
+		name = "Legacy setup preference",
+		description = "Retained for configuration compatibility; bank-only setup uses short instructions",
+		hidden = true,
 		position = 0
 	)
 	default boolean showFoundationHelp()
@@ -23,14 +26,31 @@ public interface FromScratchConfig extends Config
 	}
 
 	@ConfigItem(keyName = "bankVirtualQuantities", name = "Virtual bank quantities",
-		description = "Show From Scratch bank-available quantities at bottom-right", position = 1)
+		description = "Show signed bank progress at bottom-right", position = 1)
 	default boolean bankVirtualQuantities() { return true; }
 
 	@ConfigItem(keyName = "lockedBankItems", name = "Dim locked bank items",
-		description = "Dim items with zero virtual bank quantity while keeping ordinary quantity labels visible", position = 2)
+		description = "Dim items with zero or negative From Scratch bank balance; keep ordinary quantity labels visible", position = 2)
 	default boolean lockedBankItems() { return true; }
 
 	@ConfigItem(keyName = "virtualQuantityColor", name = "Virtual quantity color",
 		description = "Color of the virtual bank quantity", position = 3)
-	default Color virtualQuantityColor() { return new Color(0xB450FF); }
+	default Color virtualQuantityColor() { return new Color(0x1DFF00); }
+
+	@ConfigItem(keyName = "lockedItemBackgroundColor", name = "Locked Item Background Color",
+		description = "Neutral tint behind locked bank counters; independent of quantity text", position = 4)
+	default Color lockedItemBackgroundColor() { return new Color(0x333333); }
+
+	@Range(min = 0, max = 100)
+	@ConfigItem(keyName = "lockedItemBackgroundOpacity", name = "Locked Item Background Opacity",
+		description = "Locked bank tint opacity as a percentage", position = 5)
+	default int lockedItemBackgroundOpacity() { return 50; }
+
+	@ConfigItem(keyName = "developmentItemTrace", name = "Development: bank diagnostics",
+		description = "Opt in to rate-limited local DEBUG bank availability diagnostics; disable after testing", position = 100)
+	default boolean developmentItemTrace() { return false; }
+
+	@ConfigItem(keyName = "developmentTraceItemId", name = "Development: traced item ID",
+		description = "Retained historical preference; bank-only diagnostics do not log individual holdings", hidden = true, position = 101)
+	default int developmentTraceItemId() { return ItemID.WOODEN_SHIELD; }
 }

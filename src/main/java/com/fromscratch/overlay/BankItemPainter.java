@@ -16,12 +16,11 @@ import net.runelite.client.ui.FontManager;
 /** Draw-only painting in client coordinates; never writes item/widget/sprite data. */
 public final class BankItemPainter
 {
-	// A dark neutral gray at about 48% opacity mutes the whole item uniformly. Matching
+	// A configurable dark neutral tint (default #333333 / 50%) mutes the whole item uniformly. Matching
 	// the dark bank background more closely avoids a bright gray tile behind the sprite;
-	// approximately 52% of the original contrast remains, including quantity glyphs.
+	// approximately 50% of original contrast remains at the default, including quantity glyphs.
 	// Do not redraw a generated item sprite: it can cover those glyphs or mismatch the
 	// client's shadow/drag appearance. This fallback needs neither sprite copies nor a cache.
-	private static final Color LOCK_TINT = new Color(80, 80, 80, 122);
 	private static final Font FONT = FontManager.getRunescapeSmallFont();
 	private BankItemPainter() { }
 
@@ -38,6 +37,11 @@ public final class BankItemPainter
 	public static int textY(Rectangle bounds, FontMetrics metrics)
 	{
 		return bounds.y + bounds.height - 2 - metrics.getDescent();
+	}
+	/** Fit exceptional long signed labels inside the slot without moving their baseline or right edge. */
+	public static double textScale(Rectangle bounds, FontMetrics metrics, String label)
+	{
+		return Math.min(1d, Math.max(1, bounds.width - 4d) / Math.max(1, metrics.stringWidth(label) + 1d));
 	}
 
 	/** Placeholders represent no physical copies available in this bank location. */
@@ -56,15 +60,30 @@ public final class BankItemPainter
 		try
 		{
 			graphics.clip(bounds);
-			if (settings.isDimLocked() && quantity == 0)
+			if (settings.isDimLocked() && quantity <= 0)
 			{
-				graphics.setColor(LOCK_TINT);
+				graphics.setColor(settings.getLockedTint());
 				graphics.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
 			}
 			if (settings.isQuantities())
 			{
 				graphics.setFont(FONT);
 				FontMetrics metrics = graphics.getFontMetrics();
+				double scale = textScale(bounds, metrics, label);
+				if (scale < 1d)
+				{
+					// Keep the existing viewport/item clip. Only unusual oversized labels allocate a child graphics.
+					Graphics2D fitted = (Graphics2D) graphics.create();
+					try
+					{
+						fitted.translate(bounds.x + bounds.width - 2, textY(bounds, metrics)); fitted.scale(scale, 1d);
+						int left = -metrics.stringWidth(label);
+						fitted.setColor(Color.BLACK); fitted.drawString(label, left + 1, 1);
+						fitted.setColor(settings.getColor()); fitted.drawString(label, left, 0);
+					}
+					finally { fitted.dispose(); }
+					return;
+				}
 				int x = textX(bounds, metrics, label);
 				int y = textY(bounds, metrics);
 				graphics.setColor(Color.BLACK);

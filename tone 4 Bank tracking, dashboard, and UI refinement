@@ -1,0 +1,125 @@
+ .gitignore                                         |  11 [32m+[m
+ ACCOUNTING.md                                      | 125 [32m+++[m[31m----[m
+ AGENTS.md                                          |  24 [32m+[m[31m-[m
+ ARCHITECTURE.md                                    | 181 [32m+++[m[31m------[m
+ CHANGELOG.md                                       |  58 [32m++[m[31m-[m
+ README.md                                          | 131 [32m+++[m[31m----[m
+ TEST_PLAN.md                                       | 271 [32m+++[m[31m-----------[m
+ build.gradle                                       |   3 [32m+[m
+ docs/ARTWORK.md                                    |  16 [32m+[m[31m-[m
+ docs/COMPATIBILITY.md                              |  32 [32m++[m
+ docs/MILESTONE_3.md                                |   2 [32m+[m
+ docs/MILESTONE_4.md                                | 103 [32m++++++[m
+ docs/MILESTONE_4_CORRECTIONS.md                    |  86 [32m+++++[m
+ docs/MILESTONE_4_FILES.md                          | 146 [32m++++++++[m
+ docs/MILESTONE_4_POLISH.md                         | 132 [32m+++++++[m
+ docs/MILESTONE_4_UI_POLISH.md                      |  86 [32m+++++[m
+ docs/history/ACCOUNTING_MULTI_CONTAINER.md         | 129 [32m+++++++[m
+ docs/history/ARCHITECTURE_MULTI_CONTAINER.md       | 180 [32m+++++++++[m
+ docs/history/MILESTONE_4_MULTI_CONTAINER.md        |  96 [32m+++++[m
+ docs/history/TEST_PLAN_MULTI_CONTAINER.md          | 295 [32m+++++++++++++++[m
+ icon.png                                           | Bin [31m2700[m -> [32m2246[m bytes
+ .../java/com/fromscratch/FromScratchConfig.java    |  30 [32m+[m[31m-[m
+ .../java/com/fromscratch/FromScratchPlugin.java    |  48 [32m+[m[31m--[m
+ .../java/com/fromscratch/bank/BankActions.java     |  15 [32m+[m
+ .../java/com/fromscratch/bank/BankAttestation.java |  51 [32m+++[m
+ src/main/java/com/fromscratch/bank/BankAudit.java  |  32 [32m++[m
+ .../java/com/fromscratch/bank/BankController.java  | 234 [32m++++++++++++[m
+ .../com/fromscratch/bank/BankCorrectionDialog.java |  39 [32m++[m
+ .../java/com/fromscratch/bank/BankCorrections.java |  22 [32m++[m
+ .../com/fromscratch/bank/BankDangerButton.java     |  25 [32m++[m
+ .../java/com/fromscratch/bank/BankDialogs.java     |  66 [32m++++[m
+ src/main/java/com/fromscratch/bank/BankEngine.java |  78 [32m++++[m
+ .../java/com/fromscratch/bank/BankHistory.java     |  20 [32m+[m
+ .../com/fromscratch/bank/BankHistoryDialog.java    |  44 [32m+++[m
+ src/main/java/com/fromscratch/bank/BankIcons.java  |  39 [32m++[m
+ src/main/java/com/fromscratch/bank/BankItems.java  |  26 [32m++[m
+ .../java/com/fromscratch/bank/BankObservation.java |  23 [32m++[m
+ .../java/com/fromscratch/bank/BankObserver.java    |  35 [32m++[m
+ src/main/java/com/fromscratch/bank/BankPanel.java  | 128 [32m+++++++[m
+ src/main/java/com/fromscratch/bank/BankRun.java    |  62 [32m++++[m
+ .../java/com/fromscratch/bank/BankSidebar.java     |  45 [32m+++[m
+ src/main/java/com/fromscratch/bank/BankSource.java |   9 [32m+[m
+ src/main/java/com/fromscratch/bank/BankTile.java   |  23 [32m++[m
+ .../java/com/fromscratch/bank/BankTimings.java     |  51 [32m+++[m
+ src/main/java/com/fromscratch/bank/BankView.java   |  23 [32m++[m
+ .../com/fromscratch/bank/RuneLiteBankSource.java   |  80 [32m++++[m
+ src/main/java/com/fromscratch/model/RunRecord.java |  28 [32m+[m[31m-[m
+ .../java/com/fromscratch/model/VirtualEconomy.java |   6 [32m+[m[31m-[m
+ .../fromscratch/observation/SnapshotSource.java    |  13 [31m-[m
+ .../com/fromscratch/overlay/BankItemPainter.java   |   9 [32m+[m[31m-[m
+ .../com/fromscratch/overlay/BankOverlayState.java  |  50 [32m++[m[31m-[m
+ .../fromscratch/overlay/VirtualBankOverlay.java    |   9 [32m+[m[31m-[m
+ .../overlay/VirtualQuantityFormatter.java          |   6 [32m+[m
+ .../fromscratch/persistence/BankRepository.java    | 224 [32m++++++++++++[m
+ .../com/fromscratch/persistence/BankRunCodec.java  |  77 [32m++++[m
+ .../fromscratch/persistence/BankStorageFiles.java  |  46 [32m+++[m
+ .../fromscratch/persistence/ItemJournalCodec.java  | 155 [32m++++++++[m
+ .../fromscratch/persistence/ItemJournalStore.java  | 107 [32m++++++[m
+ .../fromscratch/persistence/RunRecordCodec.java    |  39 [32m+[m[31m-[m
+ .../com/fromscratch/tracking/AccountingPlan.java   |  25 [32m++[m
+ .../java/com/fromscratch/tracking/Holdings.java    |  58 [32m+++[m
+ .../com/fromscratch/tracking/ItemLedgerBatch.java  |  41 [32m+++[m
+ .../com/fromscratch/tracking/ItemProgress.java     |  95 [32m+++++[m
+ .../com/fromscratch/tracking/ItemTransaction.java  |  53 [32m+++[m
+ .../fromscratch/tracking/LegacyBankDeficits.java   |  32 [32m++[m
+ .../com/fromscratch/tracking/ReturnBalance.java    |  17 [32m+[m
+ src/main/java/com/fromscratch/ui/RunDuration.java  |  16 [32m+[m
+ src/main/resources/com/fromscratch/icon.png        | Bin [31m842[m -> [32m706[m bytes
+ src/test/HISTORICAL_FIXTURES.md                    |  19 [32m+[m
+ .../com/fromscratch/bank/BankContractTest.java     |  27 [32m++[m
+ .../java/com/fromscratch/bank/BankFixtures.java    |  43 [32m+++[m
+ .../com/fromscratch/bank/BankOnlyPipelineTest.java | 105 [32m++++++[m
+ .../java/com/fromscratch/bank/BankPanelTest.java   |  31 [32m++[m
+ .../java/com/fromscratch/bank/BankPolishTest.java  |  44 [32m+++[m
+ .../com/fromscratch/bank/BankUiBenchmarkTest.java  |  29 [32m++[m
+ .../com/fromscratch/bank/BankUiPolishPassTest.java |  99 [32m+++++[m
+ .../controller/ItemTrackingControllerTest.java     | 129 [32m+++++++[m
+ .../controller/LiveItemPipelineTest.java           | 197 [32m++++++++++[m
+ .../fromscratch/controller/SetupController.java    | 130 [32m++++++[m[31m-[m
+ .../observation/BankSnapshotReader.java            |   0
+ .../fromscratch/observation/CaptureProgress.java   |   0
+ .../observation/DiagnosticRateLimit.java           |   0
+ .../observation/EmptyContainerVerifier.java        |   0
+ .../fromscratch/observation/ItemObservation.java   |  51 [32m+++[m
+ .../observation/ItemObservationCollector.java      | 189 [32m++++++++++[m
+ .../observation/ItemObservationCollectorTest.java  | 156 [32m++++++++[m
+ .../com/fromscratch/observation/ObservedItem.java  |   0
+ .../observation/PersonalContainerReader.java       |   0
+ .../observation/RuneLiteSnapshotObserver.java      |  56 [32m++[m[31m-[m
+ .../fromscratch/observation/SnapshotAssembler.java |   0
+ .../fromscratch/observation/SnapshotSource.java    |  21 [32m++[m
+ .../fromscratch/observation/WidgetReadNode.java    |   0
+ .../fromscratch/overlay/BankItemPainterTest.java   |   6 [32m+[m[31m-[m
+ .../fromscratch/overlay/BankOverlayStateTest.java  |  22 [32m+[m[31m-[m
+ .../fromscratch/overlay/LegacyOverlayFixture.java  |  23 [32m++[m
+ .../overlay/LockedTintSettingsTest.java            |  26 [32m++[m
+ .../overlay/PipelineOverlayFixture.java            |  28 [32m++[m
+ .../overlay/VirtualBankOverlayTest.java            |   4 [32m+[m[31m-[m
+ .../persistence/BankPerformanceTest.java           |  77 [32m++++[m
+ .../persistence/BankPersistenceTest.java           | 111 [32m++++++[m
+ .../persistence/ItemJournalPersistenceTest.java    | 193 [32m++++++++++[m
+ .../persistence/LegacyDeficitPersistenceTest.java  | 126 [32m+++++++[m
+ .../persistence/OwnershipPersistenceTest.java      |   2 [32m+[m[31m-[m
+ .../com/fromscratch/persistence/RunRepository.java |  66 [32m+++[m[31m-[m
+ .../fromscratch/tracking/ItemAccountingEngine.java | 406 [32m+++++++++++++++++++++[m
+ .../tracking/ItemAccountingEngineTest.java         | 199 [32m++++++++++[m
+ .../com/fromscratch/tracking/ItemReviewEdits.java  |  46 [32m+++[m
+ .../tracking/ItemTrackingDiagnostics.java          |  75 [32m++++[m
+ .../fromscratch/tracking/ItemTrackingSession.java  | 108 [32m++++++[m
+ .../tracking/ItemTrackingSessionTest.java          |  84 [32m+++++[m
+ .../tracking/LegacyBankDeficitsTest.java           |  72 [32m++++[m
+ .../com/fromscratch/tracking/TrackingFixtures.java |  55 [32m+++[m
+ .../java/com/fromscratch/ui/FromScratchPanel.java  |  98 [32m++++[m[31m-[m
+ .../com/fromscratch/ui/FromScratchSidebar.java     |   0
+ .../com/fromscratch/ui/FromScratchSidebarTest.java |   6 [32m+[m[31m-[m
+ src/test/java/com/fromscratch/ui/ItemReview.java   |  42 [32m+++[m
+ .../java/com/fromscratch/ui/ItemReviewDialog.java  | 100 [32m+++++[m
+ .../java/com/fromscratch/ui/ItemReviewTable.java   | 234 [32m++++++++++++[m
+ .../com/fromscratch/ui/ItemTrackingPanelTest.java  |  83 [32m+++++[m
+ .../com/fromscratch/ui/PreparationChecklist.java   |  26 [32m++[m
+ .../java/com/fromscratch/ui/SetupActions.java      |   5 [32m+[m
+ .../java/com/fromscratch/ui/SetupView.java         |  23 [32m+[m[31m-[m
+ .../java/com/fromscratch/ui/SnapshotPanelTest.java |  20 [32m+[m[31m-[m
+ .../fromscratch/ui/UpdateProgressEditorTest.java   | 170 [32m+++++++++[m
+ 124 files changed, 7621 insertions(+), 702 deletions(-)

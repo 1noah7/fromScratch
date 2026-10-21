@@ -23,10 +23,10 @@ public class BankOverlayStateTest
 	}
 	@Test public void projectionUsesBankQuantityInsteadOfTotal()
 	{
-		BankOverlayState state = new BankOverlayState(); state.enable(); state.update(active());
+		BankOverlayState state = new BankOverlayState(); state.enable(); com.fromscratch.overlay.LegacyOverlayFixture.update(state, active());
 		assertEquals("75", state.getProjection().label(ItemID.SHARK));
-		assertEquals(100, state.getProjection().getOwnership().total(ItemID.SHARK));
-		assertEquals(75, state.getProjection().getOwnership().at(ItemID.SHARK, VirtualLocation.BANK));
+		assertEquals(100, active().getSaved().getOwnership().total(ItemID.SHARK));
+		assertEquals(75, state.getProjection().balance(ItemID.SHARK, false));
 		assertEquals("0", state.getProjection().label(ItemID.COINS));
 	}
 	@Test public void nonActiveLoadingErrorAndLogoutClearRenderData()
@@ -34,24 +34,24 @@ public class BankOverlayStateTest
 		BankOverlayState state = new BankOverlayState(); state.enable();
 		for (SetupView.Mode mode : SetupView.Mode.values())
 		{
-			state.update(active());
-			if (mode != SetupView.Mode.ACTIVE) { state.update(new SetupView(mode, "state", active().getSaved(), null, null)); assertNull(state.getProjection()); }
+			com.fromscratch.overlay.LegacyOverlayFixture.update(state, active());
+			if (mode != SetupView.Mode.ACTIVE) { com.fromscratch.overlay.LegacyOverlayFixture.update(state, new SetupView(mode, "state", active().getSaved(), null, null)); assertNull(state.getProjection()); }
 		}
 	}
 	@Test public void disabledPluginRejectsLateCallbacksAndClearsOwnership()
 	{
-		BankOverlayState state = new BankOverlayState(); state.enable(); state.update(active()); state.disable(); state.update(active());
+		BankOverlayState state = new BankOverlayState(); state.enable(); com.fromscratch.overlay.LegacyOverlayFixture.update(state, active()); state.disable(); com.fromscratch.overlay.LegacyOverlayFixture.update(state, active());
 		assertFalse(state.isEnabled()); assertNull(state.getProjection());
 	}
-	@Test public void defaultsEnableBothFeaturesWithPurpleColor()
+	@Test public void defaultsEnableBothFeaturesWithBrightGreenColor()
 	{
 		FromScratchConfig config = new FromScratchConfig() { };
 		assertTrue(config.bankVirtualQuantities()); assertTrue(config.lockedBankItems());
-		assertEquals(new Color(180, 80, 255), config.virtualQuantityColor());
+		assertEquals(new Color(0x1DFF00), config.virtualQuantityColor());
 	}
 	@Test public void configurationChangesReplaceSettingsWithoutReloadingOwnership()
 	{
-		BankOverlayState state = new BankOverlayState(); state.enable(); state.update(active());
+		BankOverlayState state = new BankOverlayState(); state.enable(); com.fromscratch.overlay.LegacyOverlayFixture.update(state, active());
 		BankOverlayState.Projection projection = state.getProjection();
 		state.configure(new FromScratchConfig()
 		{
@@ -66,7 +66,7 @@ public class BankOverlayStateTest
 	{
 		BankOverlayState state = new BankOverlayState(); AtomicInteger adds = new AtomicInteger(); AtomicInteger removes = new AtomicInteger();
 		BankOverlayRegistration registration = new BankOverlayRegistration(adds::incrementAndGet, removes::incrementAndGet, state);
-		registration.start(); registration.start(); state.update(active()); registration.stop(); registration.stop();
+		registration.start(); registration.start(); com.fromscratch.overlay.LegacyOverlayFixture.update(state, active()); registration.stop(); registration.stop();
 		assertEquals(1, adds.get()); assertEquals(1, removes.get()); assertNull(state.getProjection());
 		registration.start(); assertEquals(2, adds.get()); assertNull(state.getProjection()); registration.stop();
 	}
@@ -78,7 +78,7 @@ public class BankOverlayStateTest
 	}
 	@Test public void closedBankAndWrongCharacterNeverReachRendering()
 	{
-		BankOverlayState state = new BankOverlayState(); state.enable(); state.update(active());
+		BankOverlayState state = new BankOverlayState(); state.enable(); com.fromscratch.overlay.LegacyOverlayFixture.update(state, active());
 		Graphics2D graphics = new BufferedImage(20, 20, BufferedImage.TYPE_INT_ARGB).createGraphics();
 		// The context throws if an inactive/closed/wrong-character pass reads widgets.
 		assertNull(overlay(state, false, SnapshotFixtures.CHARACTER_A).render(graphics));

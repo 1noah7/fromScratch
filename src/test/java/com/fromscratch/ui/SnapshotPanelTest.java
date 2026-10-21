@@ -39,7 +39,7 @@ public class SnapshotPanelTest
 		{
 			FromScratchPanel panel = new FromScratchPanel(true);
 			panel.render(new SetupView(SetupView.Mode.INITIALIZING, "Bank container unavailable; retrying", null, null, null), SetupActions.NONE);
-			assertTrue(text(panel).contains("Bank: Waiting"));
+			assertTrue(text(panel).contains("\u25cb Open your bank."));
 			assertFalse(text(panel).contains("Setup"));
 			assertNull(panel.getToolTipText());
 			assertFalse(button(panel, "Confirm Snapshot").isEnabled());
@@ -107,7 +107,7 @@ public class SnapshotPanelTest
 			assertFalse(button(panel, "Confirm Snapshot").isEnabled());
 			panel.render(new SetupView(SetupView.Mode.INITIALIZING, "Ready", null, SnapshotFixtures.snapshot(1000), UUID.randomUUID()), SetupActions.NONE);
 			assertTrue(button(panel, "Confirm Snapshot").isEnabled());
-			assertTrue(text(panel).contains("Bank: Ready"));
+			assertTrue(text(panel).contains("\u2713 Open your bank."));
 			panel.render(new SetupView(SetupView.Mode.INITIALIZING, "Bank closed", null, null, null), SetupActions.NONE);
 			assertFalse(button(panel, "Confirm Snapshot").isEnabled());
 		});
@@ -127,9 +127,9 @@ public class SnapshotPanelTest
 			assertFalse(labels.contains("Legacy inventory"));
 			assertFalse(labels.contains("Legacy equipment"));
 			assertFalse(labels.stream().anyMatch(value -> value.contains("2,000,000 GP") || value.contains("Legacy coins")));
-			assertTrue(labels.contains("Not tracked yet"));
+			assertFalse(labels.contains("Not tracked yet"));
 			assertNotNull(button(panel, "Reset From Scratch"));
-			assertEquals(4, labels.stream().filter("0 GP"::equals).count());
+			assertEquals(3, labels.stream().filter("0 GP"::equals).count());
 		});
 	}
 
@@ -158,9 +158,9 @@ public class SnapshotPanelTest
 			panel.render(new SetupView(SetupView.Mode.INITIALIZING, "Close the bank and open your normal inventory interface.",
 				null, null, null, new CaptureProgress(partial)), SetupActions.NONE);
 			List<String> labels = text(panel);
-			assertTrue(labels.contains("Bank: Ready"));
-			assertTrue(labels.contains("Inventory: Waiting"));
-			assertTrue(labels.contains("Equipment: Ready"));
+			assertTrue(labels.contains("\u2713 Open your bank."));
+			assertTrue(labels.contains("\u25cb Open your inventory."));
+			assertTrue(labels.contains("\u2713 Open your worn equipment tab."));
 			assertTrue(labels.contains("Observed bank"));
 			assertFalse(labels.contains("Observed inventory"));
 			assertFalse(labels.contains("Setup"));
@@ -175,9 +175,9 @@ public class SnapshotPanelTest
 		{
 			FromScratchPanel panel = new FromScratchPanel(true);
 			panel.render(new SetupView(SetupView.Mode.INITIALIZING, "Ready", null, SnapshotFixtures.snapshot(0), UUID.randomUUID()), SetupActions.NONE);
-			assertTrue(text(panel).contains("Bank: Ready"));
-			assertTrue(text(panel).contains("Inventory: Ready"));
-			assertTrue(text(panel).contains("Equipment: Ready"));
+			assertTrue(text(panel).contains("\u2713 Open your bank."));
+			assertTrue(text(panel).contains("\u2713 Open your inventory."));
+			assertTrue(text(panel).contains("\u2713 Open your worn equipment tab."));
 			assertTrue(button(panel, "Confirm Snapshot").isEnabled());
 		});
 	}

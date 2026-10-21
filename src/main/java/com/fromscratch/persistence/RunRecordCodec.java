@@ -23,19 +23,26 @@ import java.util.UUID;
 import javax.inject.Inject;
 
 /**
- * Explicit JSON-tree codec. Injected Gson handles JSON syntax; all domain fields
+ * Historical formats 1–4 codec, retained for verified bank-only migration. Injected Gson handles JSON syntax; all domain fields
  * pass through validation rather than reflective deserialization of immutable models.
  */
 public final class RunRecordCodec
 {
-	public static final int FORMAT_VERSION = 2;
+	public static final int FORMAT_VERSION = 4;
 	private static final String[] BALANCES = {"spendableGp", "netWorth", "totalValueGained", "itemsUnlocked"};
 	private final Gson gson;
+	final ItemJournalCodec journal;
 
 	@Inject
-	public RunRecordCodec(Gson gson) { this.gson = gson.newBuilder().serializeNulls().create(); }
+	public RunRecordCodec(Gson gson) { this.gson = gson.newBuilder().serializeNulls().create(); journal = new ItemJournalCodec(this.gson); }
 
 	public String encode(RunRecord record)
+	{
+		return encodeVersion(record, FORMAT_VERSION);
+	}
+
+	/** Reproduce the verified old canonical encoding when checking an existing format-3 journal head. */
+	String encodeVersion(RunRecord record, int version)
 	{
 		JsonObject payload = new JsonObject();
 		RunState state = record.getState();
@@ -61,6 +68,7 @@ public final class RunRecordCodec
 			ownership.add(id.toString(), encoded);
 		});
 		payload.add("ownership", ownership);
+		payload.add("itemProgress", journal.progress(record.getItemProgress(), version >= 4));
 		if (record.getSnapshot() == null)
 		{
 			payload.add("snapshot", com.google.gson.JsonNull.INSTANCE);
@@ -85,7 +93,7 @@ public final class RunRecordCodec
 		// ordering or formatting when reading a future client version.
 		String text = gson.toJson(payload);
 		JsonObject envelope = new JsonObject();
-		envelope.addProperty("formatVersion", FORMAT_VERSION);
+		envelope.addProperty("formatVersion", version);
 		envelope.addProperty("sha256", SaveIntegrity.sha256(text));
 		envelope.addProperty("payload", text);
 		return gson.toJson(envelope);
@@ -104,7 +112,7 @@ public final class RunRecordCodec
 			JsonObject envelope = gson.fromJson(text, JsonObject.class);
 			keys(envelope, "formatVersion", "sha256", "payload");
 			long version = number(envelope.get("formatVersion"));
-			if (version != 1 && version != FORMAT_VERSION)
+			if (version < 1 || version > FORMAT_VERSION)
 			{
 				throw new SaveException("This save version is not supported. Update the plugin; existing files were preserved.");
 			}
@@ -119,11 +127,12 @@ public final class RunRecordCodec
 				keys(data, "headerSchema", "characterKey", "revision", "status", "runId", "previousRunId",
 					"startedAt", "virtualEconomy", "snapshot");
 			}
-			else
+			else if (version == 2)
 			{
 				keys(data, "headerSchema", "characterKey", "revision", "status", "runId", "previousRunId",
 					"startedAt", "virtualEconomy", "snapshot", "ownership");
 			}
+			else { keys(data, "headerSchema", "characterKey", "revision", "status", "runId", "previousRunId", "startedAt", "virtualEconomy", "snapshot", "ownership", "itemProgress"); }
 			if (!expectedCharacter.equals(string(data.get("characterKey"))))
 			{
 				throw new SaveException("Save belongs to a different character. No data was changed.");
@@ -136,7 +145,7 @@ public final class RunRecordCodec
 			}
 			keys(economy.getAsJsonObject("items"));
 			VirtualOwnership ownership = VirtualOwnership.empty();
-			if (version == FORMAT_VERSION)
+			if (version >= 2)
 			{
 				Map<Integer, VirtualItemOwnership> items = new HashMap<>();
 				for (Map.Entry<String, JsonElement> entry : data.getAsJsonObject("ownership").entrySet())
@@ -173,7 +182,9 @@ public final class RunRecordCodec
 			}
 			RunState state = RunState.restore(Math.toIntExact(number(data.get("headerSchema"))), expectedCharacter,
 				uuid(data.get("runId")), RunStatus.valueOf(string(data.get("status"))), instant(data.get("startedAt")), null);
-			return new DecodedSave(new RunRecord(state, uuid(data.get("revision")), uuid(data.get("previousRunId")), snapshot, ownership), (int) version);
+			com.fromscratch.tracking.ItemProgress progress = version >= 3 ? journal.progress(data.get("itemProgress"), version >= 4)
+				: snapshot == null ? null : com.fromscratch.tracking.ItemProgress.initial(snapshot);
+			return new DecodedSave(new RunRecord(state, uuid(data.get("revision")), uuid(data.get("previousRunId")), snapshot, ownership, progress), (int) version);
 		}
 		catch (SaveException ex) { throw ex; }
 		catch (RuntimeException ex)
@@ -182,7 +193,7 @@ public final class RunRecordCodec
 		}
 	}
 
-	private static int itemId(String text)
+	static int itemId(String text)
 	{
 		if (!text.matches("0|[1-9][0-9]*")) { throw new IllegalArgumentException("Invalid item ID"); }
 		return Integer.parseInt(text);
@@ -195,7 +206,7 @@ public final class RunRecordCodec
 		DecodedSave(RunRecord record, int version) { this.record = record; this.version = version; }
 	}
 
-	private static void keys(JsonObject object, String... expected)
+	static void keys(JsonObject object, String... expected)
 	{
 		if (object == null || !object.keySet().equals(new HashSet<>(Arrays.asList(expected))))
 		{
@@ -203,7 +214,7 @@ public final class RunRecordCodec
 		}
 	}
 
-	private static String string(JsonElement value)
+	static String string(JsonElement value)
 	{
 		if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString())
 		{
@@ -212,7 +223,7 @@ public final class RunRecordCodec
 		return value.getAsString();
 	}
 
-	private static long number(JsonElement value)
+	static long number(JsonElement value)
 	{
 		if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()
 			|| !value.getAsString().matches("0|[1-9][0-9]*"))
@@ -222,7 +233,7 @@ public final class RunRecordCodec
 		return Long.parseLong(value.getAsString());
 	}
 
-	private static UUID uuid(JsonElement value)
+	static UUID uuid(JsonElement value)
 	{
 		if (value.isJsonNull()) { return null; }
 		String text = string(value);
@@ -231,7 +242,7 @@ public final class RunRecordCodec
 		return id;
 	}
 
-	private static Instant instant(JsonElement value)
+	static Instant instant(JsonElement value)
 	{
 		return value.isJsonNull() ? null : Instant.parse(string(value));
 	}

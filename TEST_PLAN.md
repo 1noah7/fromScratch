@@ -1,240 +1,91 @@
 # Test plan
 
-## Milestone 3 evidence
+M1–M4 are accepted. **M5 bank wealth and specified UI corrections await manual acceptance.** The old 417 tests remain executable, with retired controllers/readers/review code moved into test-only historical fixtures. Their old source-attribution/session-gate assertions are compatibility evidence, not the new live contract. See [fixture policy](src/test/HISTORICAL_FIXTURES.md) and [historical plan](docs/history/TEST_PLAN_MULTI_CONTAINER.md).
 
-M1/M2 passed user acceptance; the clean M3 starting commit was `9e6b757`. M3 passed functional acceptance. Its initial visual refinement had 268 passing tests but did not cover the upstream callback-list omission of a top-clipped row. The final viewport/darker-shading correction adds 16 actual overlay-pass cases and a background-contrast regression. Previous cases remain, with appearance thresholds adjusted for the requested 48% opacity. Final build evidence is recorded in docs/MILESTONE_3.md. Revised appearance, hosted CI and real-client performance remain pending.
+Run the full suite with Java 11 and the existing Wrapper:
 
-| New suite | Tests | Evidence |
+```powershell
+.\gradlew.bat clean build
+```
+
+No test needs a game account, credentials, private progression, external service or game UI automation. Tests use Filepath roots under JUnit TemporaryFolder. The production plugin JAR excludes historical fixtures. The development shadow/launcher classpath includes test fixtures but registers only the current plugin.
+
+Accepted M4 baseline: **544 passed, 0 failures/errors/skipped, 37 suites**. M5 foundation: 611 passed. Final M5 UI/quantity polish clean build: **638 passed, 0 failures/errors/skipped, 43 suites**, adding 27 targeted tests. All applicable earlier cases remain; obsolete UI/tooltip/item-label expectations match the authorized contract. Current timings/manual steps are in [the polish report](docs/MILESTONE_5_POLISH.md). Historical tests remain compatibility evidence rather than the current live UX contract.
+
+## Current bank-only acceptance coverage
+
+| Suite | Coverage |
+| --- | --- |
+| BankOnlyPipelineTest | Actual full Item[] aggregation + quiet observer ticks → live BankController → Filepath journal/checkpoint → committed BankOverlayState → actual VirtualBankOverlay/Java2D. Setup/attestation, empty bank, legacy -1/0, deposit 1/2 and withdrawal, outside-bank burn/reopen, mixed stacks, repeated/reordered events, tabs/search, unavailable/partial/PIN, delayed data/already-open bank, absent negative item, direct correction/cancel/stale/current physical check, restart/offline net changes/persisted summary, commit acknowledgment/failure/retry, identity, variants/placeholders/fillers, duplicate setup/reset, one-time migration and stale anchor |
+| BankContractTest | Immutable baseline/maps, duplicated unstackables and large stacks, null vs empty, invalid quantities, signed corrections/offset, physical upper bound, checked long edge/overflow, stable session summary, positive-type metric |
+| BankPersistenceTest | Format 5 round trip, isolation, missing/corrupt/newer state, journal integrity, CAS/idempotency, interrupted publication/recovery, complete reset archive, verified formats 1/2/3/4 migration, exact original/current/ledger bytes, preserved run/start/baseline/balances, confirmed excess reduction, no replay after anchor, corrupt old ledger/archive and required fields, old reset tombstone |
+| BankPanelTest | Actual headless Swing setup attestation, no personal waiting labels, active dashboard hides legacy/lifetime/setup claims, permanent history tiles and bottom typed-reset area, corrections with no differences, name/ID search/sort, played-elsewhere copy, navigation idempotency |
+| Existing M3 overlay/painter/state tests | Bottom-right labels, signed compact formatting, ordinary quantity/graphics preservation, top/bottom partial-row intersection and clipping, tabs/search/empty/search scroll/resize, placeholders/fillers, normal-bank-only/disabled/closed behavior, drag-bound handling, one overlay registration, configuration/color changes |
+| Retained M1–M3/legacy fixtures | Identity/lifecycle, resource/license/metadata, frozen three-container baselines/emptiness behavior and old codecs/recovery/ownership migrations; these mechanisms are no longer live setup prerequisites |
+
+## Required user-only live acceptance
+
+1. Launch the development client using `.\gradlew.bat run`; use RuneLite's [Jagex Accounts instructions](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts). Agents must not interact with RuneScape.
+2. **Existing run:** retain your data. Expect one Finish Bank Upgrade/Review Bank Anchor, with previous run date preserved. Open bank only. Confirm valid saved balances. If an excess positive balance is listed, cancel and bank missing copies or explicitly approve its reduction. Re-enable/relog after anchoring: no repeat walkthrough.
+3. **New run only when desired:** manually bank inventory and equipment, attest, open bank, Start and confirm. Empty inventory/equipment do not matter; no personal tabs are required. Never reset an existing run merely to test migration.
+4. In an anchored run with a zero-balance legacy axe, withdraw it: -1 if its bank slot/placeholder exists; otherwise find -1 in Bank Corrections. Return it: 0. Repeat without opening personal tabs or a review tool.
+5. For a previously absent logs ID, deposit 2: 2. Withdraw 1: 1. Close bank, burn the withdrawn log manually, reopen bank: still 1. Confirm no duplicate history from reopening.
+6. Test mixed stacks and rapid batches. Allow the next game-tick boundary and durable save after changes; if closed sooner, reopen for net comparison. Search/switch tabs/reorder: no economic changes.
+7. Corrections: Played Elsewhere? → Bank Corrections, search Wooden shield with no pending changes; set an allowed count/negative balance, inspect preview, confirm. Purple number updates after save. Withdraw/redeposit: correction offset persists. Cancel: no change. Change bank while the editor is open: stale save must reject; reopen it. Positive counts above physical must reject. Negative absent items stay searchable.
+8. Close/restart/disable/re-enable and open bank alone. Saved balances persist. Simulate another-client progress manually with RuneLite closed, then open bank here: automatic net update, retained On return summary, no wizard. Later bank actions do not replace that summary.
+9. Overlay regression: first/middle rows, top/bottom partial clipping, fast scrolling, searches/tabs/empty results, resize/UI scaling, placeholders/fillers, dragging/right click/tooltips. Nonpositive gray tint/purple label and original physical quantities remain readable. No paint on tabs/search/other interfaces, after closure, or disabled.
+10. Use the permanent Bank History tiles; check automatic vs correction histories, 25-row pagination and page-local filters. Reset Progress is the absolute bottom danger area and requires typed RESET. Check Bank Items Unlocked counts currently positive IDs, financial fields are explicitly deferred and original account totals/lifetime claims/setup instructions are absent when active.
+11. With a disposable synthetic/test copy only, check storage failures preserve the previous anchor/history and display an actionable error. Never corrupt the user's authoritative live save for testing.
+
+A successful build/launcher start does not prove live bank data timing, layout, FPS, item definitions, migration UX or interactions. Manual acceptance remains the final gate. No M5 or publication is authorized.
+
+## Current M4 polish acceptance
+
+Follow [MILESTONE_4_POLISH.md](docs/MILESTONE_4_POLISH.md) for native-versus-purple timing comparison, exact diagnostic phase fields, two-column tile/icon validation, all dialog/keyboard/DPI checks and live configurable shading tests. The older collapsed-history/debug-feed assertions are deliberately updated to the new requested UX; bank accounting remains unchanged.
+
+| Added suite | Tests | Evidence |
 | --- | ---: | --- |
-| VirtualOwnershipTest | 14 | Zero/sparse ownership, exact variants, stack/unstackable copies, independent locations/totals, negatives/overflow/over-allocation, immutable inputs and unchanged legacy baseline |
-| OwnershipPersistenceTest | 16 | Nonzero/maximum-long round-trip, isolation, frozen independent format-1 fixtures, active/reset migration, exact backups, preserved old checkpoints, repeated restart, interrupted migration, unsupported/corrupt/incomplete data preserved |
-| BankItemPainterTest | 29 | Compact long labels, bottom-right coordinates, moved bounds, readable quantity glyphs, uniform full-height 48% tint, subdued bank background, tall/colored items, unfaded purple pixels, unchanged positive/disabled pixels, clipping/offscreen, graphics restoration, integer/fractional scale, component/empty/filler/BLANKOBJECT/placeholder handling |
-| BankOverlayStateTest | 8 | Bank rather than total labels, inactive/error/logout/disabled guards, defaults/live configuration, one registration, bank-only hook, wrong-character/closed-bank gates |
-| VirtualBankOverlayTest | 16 | Real overlay-pass pixels with synthetic widget observations: first/full/middle/partial top and bottom rows, precise viewport/control exclusion, unshifted counters, resize, repeated scrolling, tabs/search/empty results, closure, disable/re-enable, positive balances, missing viewport, nonrectangular clip restoration and cached/offscreen definition reads |
+| BankPolishTest | 15 | Equal two-column cards, placeholders, component identity, history navigation/correction placement, RESET gate, sprite fallback/cache/failure, wrapping/resize/minimum bounds, one-boundary cached observations/null retry, monotonic sample phases, offscreen layout/text fit |
+| LockedTintSettingsTest | 6 | #333333/50% default and green text, custom live independent settings, clamping, transparent/positive behavior, full-bounds partial clipping, signed green pixels and black text shadow over coin colors |
+| BankPerformanceTest | 3 | 1,200-ID aggregation, 256 forced commits, early/late history costs, real worker/client separation, 100 FIFO transitions, read-only manual/automatic pagination through 1,240 changes |
+| BankUiBenchmarkTest | 1 | Same 1,200-ID/100-refresh workload before and after, wall/EDT CPU diagnostic output |
 
-### M3 requested coverage mapping
+The latest clean build passed **544 tests**. Synthetic timings are not a claim that native OSRS lag is fixed. No agent operated the game. Manually compare enabled/disabled native quantities and virtual values; temporarily enable sampled DEBUG timings if needed. Test start/reset cancellation without resetting the authoritative accepted run. All local schema/history/legacy snapshot safeguards remain.
 
-| Requirement | Automated evidence / manual boundary |
+## UI polish pass
+
+BankUiPolishPassTest adds 19 cases: new config defaults and custom override preservation; exact verified item IDs; centered/cached/fallback sprites; transparent purple navigation artwork; two equal Played Elsewhere columns and right-tile navigation; solid red reset normal/hover/pressed painting; visible unchecked/checked checkbox pixels, distinct hover/focus, synthetic label click and keyboard Space; default-unchecked/start attestation and missing-bank gates; unchanged setup observation and 225-pixel layout. LockedTintSettingsTest adds the twentieth new case for green signed text over gold/yellow fixtures. Existing M3 clipping, full controller/persistence/overlay and performance regressions remain passing.
+
+Follow [MILESTONE_4_UI_POLISH.md](docs/MILESTONE_4_UI_POLISH.md) for exact manual steps, saved-setting preservation, live icon/contrast/scaling checks and safe dialog cancellation. Offscreen setup/dashboard PNGs under build/reports are synthetic test artifacts, not live acceptance. There is no accounting/schema/scheduling change in this pass.
+
+## M5 regression and acceptance
+
+| Suite | Evidence |
 | --- | --- |
-| 1 Zero initial ownership | VirtualOwnershipTest.initializationLeavesAllLegacyTypesVirtuallyZero |
-| 2 Stackable records | stacksUseLongQuantitiesWithoutPhysicalBounds; maximumLongVirtualStackSurvivesSaveAndReload |
-| 3 Unstackable records | unstackableCopiesRemainAggregateQuantities |
-| 4 Distinct IDs | distinctRawVariantIdsAreNeverMerged (normal/noted whip) |
-| 5 Positive fixtures | fixture-backed projection, round-trip and positive-paint tests; no production grant path |
-| 6 No negative quantities | negative total/allocation, overflow and codec rejection tests |
-| 7 Legacy unchanged | ownershipUpdatesNeverModifyLegacySnapshotOrOriginalRun; migration baseline equality |
-| 8 Physical independence | legacy quantity plus independently replaced ownership, maximum virtual stack independent of physical stack |
-| 9 Bank vs total | bankAllocationIsIndependentOfTotalAndOtherLocations; projectionUsesBankQuantityInsteadOfTotal |
-| 10 Formatting | compactLabelsCoverThousandsMillionsAndBillions; exact zero and Long.MAX_VALUE |
-| 11 Bottom-right | textIsRightAlignedToCurrentItemBounds; custom color pixels in lower-right region |
-| 12 Original labels | ordinaryQuantityGlyphsRemainReadableThroughTint; neutralTintMutesItemsAndPreservesQuantityContrast; real client labels need manual verification |
-| 13 Bank only | onlyNormalBankItemComponentsAreEligible; onlyTheNormalBankLayerIsRegistered |
-| 14 Closed bank | closedBankAndWrongCharacterNeverReachRendering |
-| 15 Disabled plugin | disabledPluginRejectsLateCallbacksAndClearsOwnership; gated render |
-| 16 Tabs/search | ID-based projection and moved-bounds tests plus prior full-container search tests; actual tabs/empty search/locked tabs are manual |
-| 17 Scroll/clipping | VirtualBankOverlayTest partial-origin/viewport/scroll/resize cases; parentViewportClipIsPreserved; completelyOffscreenItemPaintsNothing; graphics-transform scale test; real widget lifecycle is manual |
-| 18 Placeholders | placeholdersDisplayZeroEvenWithVirtualCopiesElsewhere; eligible zero-quantity slot |
-| 19 Empty slots | emptySlotsAndFillersAreExcludedButPlaceholdersAreEligible |
-| 20 Lock/unlock appearance | zeroOwnedSpriteAreaIsDimmed; positiveBankOwnershipLeavesSpriteAreaNormal |
-| 21 Single registration | repeatedEnableDisableHasExactlyOneRegistration |
-| 22 Virtual save/reload | nonzeroVirtualAssetsRoundTripThroughRestart; maximum-long round-trip |
-| 23 Legacy persistence | activeMilestoneTwoSaveMigratesWithoutChangingRunOrLegacyData; prior repository/codec tests |
-| 24 Isolation | virtualStateCannotCrossCharacterNamespaces; previous identity and stale-callback tests |
-| 25 M2 migration | active/reset frozen format-1 fixtures, forced exact-byte backup assertion, restart/idempotence |
-| 26 Corruption | corruptOwnershipIsPreservedAndNeverReplacedWithZeros; malformed location/total tests |
-| 27 Restart Active | nonzero restart test and prior controller disable/logout/restart cases |
-| 28 No failed-load zeros | corrupt ownership, unsupported M2 currency, missing current with migration evidence and interrupted migration |
-| 29 Toggle settings | configurationChangesReplaceSettingsWithoutReloadingOwnership; bothDisabledFeaturesLeavePixelsUnchanged |
-| 30 Color | defaultsEnableBothFeaturesWithPurpleColor; customQuantityColorIsActuallyDrawnAtBottomRight |
-| 31 Hide legacy totals | Updated SnapshotPanelTest.activeDashboardHidesLegacyTotalsButKeepsRealStartTime |
-| 32 Dashboard usability | Existing six-metric/sidebar/EDT/setup/error/reset coverage retained |
+| OsrsQuantityFormatterTest | Every signed integer from 0–9,999, all requested examples, suffix boundaries/no rounding, integer millions for billions, both long bounds, negative-label right alignment |
+| WealthModelTest | Positive/negative/zero market values; unknown versus verified zero; stale quotes; fixed historical prices and unknown gains; high-water conservation through cycles, legacy returns and corrections; exact coins once; explicit expense validation; overflow and offsetting large values; note price identities, cache/read/fetch/expiry/failure behavior; event duplicate rejection; exact/compact money |
+| WealthPipelineTest | Real observer→controller→Filepath journal/checkpoint→overlay→dashboard; automatic gains/cycles/legacy returns/manual correction; price refresh with no save; rapid changes/no HTTP; financial restart/offline comparison; durable acknowledgment/failure/retry; explicit expense/stale intent; character switch; two-column monetary/purpose UI and narrow priced-subtotal layout |
+| FinancialPersistenceTest | Fixed quote/state reload, genuine synthetic format-5 migration of checkpoints/journals, exact-byte archives and unchanged run/start/P/B/initial/history, no migration replay, interrupted migration/save and retry, damaged old journal/archive, missing financial payload, idempotent event save, forged totals rejected, explicit expense amount/reason |
+| WealthPerformanceTest | 1,200 priced types, 1,296 durable valuation events, 96 subsequent forced financial commits, cached current-value CPU versus worker IO timing; dedicated cancellable pricing scheduler thread |
+| Retained M1–M4 suites | Client/storage/EDT boundaries, 1,200-ID/256-commit benchmark and 100 FIFO changes, 1,240-row read-only history, migration/recovery/isolation, setup/RESET safeguards, custom colors/tint, tabs/search/partial clipping and one overlay registration |
 
-### M3 manual acceptance — user only
+Tests use fake bulk price providers and temporary Filepath roots. They do not require RuneScape credentials, actual saves, network or game input. Cached price refresh is not a bank transaction and must not change revision/sequence/file history. High-water/quotes/totals must never appear before successful quantity+financial commit. No inventory/equipment observation or return workflow is reintroduced.
 
-Launch `.\gradlew.bat run` and follow [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts). Agents must not control RuneScape. Use the existing accepted M2 run; do not reset or delete it. Backups/migration are automatic on that designated host. See docs/MILESTONE_3.md for exact migration and rollback behavior.
+Run the full clean build; then follow [M5 manual acceptance](docs/MILESTONE_5.md): imported baseline disclosure, integer item counters, Papyrus/purpose wording, signed/current/subtotal/stale/exact values, high-water cycle/new-maximum behavior, Bank GP legacy withdrawal/return/new cash, optional confirmed statistical expense and cancel, unchanged automatic mobile return, restart/history/isolation, and live responsiveness/scroll/drag/config regression. M5 is not accepted from a build alone. M6 is unauthorized.
 
-1. Wait for Active: same run/start time, dashboard present, no original bank/inventory/equipment counts or legacy GP. No initialization dialog should be needed for the existing run.
-2. Open the normal bank manually. Check the first full row and middle rows: every occupied real item should show purple zero at bottom-right, ordinary quantity values unchanged and glyphs readable. Locked items use darker #505050 at approximately 48% opacity uniformly from top to bottom, without the old horizontal split. A subtle background tint is expected with this fallback; true sprite grayscale is not claimed. Check tall/colorful equipment and yellow/white/green quantity labels. Placeholders show zero; fillers and empty/BLANKOBJECT slots have no counter. Bank-tab/header icons and inventory/equipment/shared storage have no effect.
-3. Scroll slowly until the top row is only partly visible just below the tabs, then examine a partly visible bottom row. Both visible fragments must be tinted identically to middle rows; nothing may draw on the tabs, search area or outside the content viewport. Counters keep their normal item-relative positions and may be clipped, never shifted into view. Scroll rapidly up/down, switch normal and locked/unlocked tabs, search matching and no-match terms, resize the client and change UI scale. No stale rectangles or misalignment may remain. Test other bank layouts/plugins separately for corner conflicts.
-4. Manually drag from a full row and a clipped top row, hover, right-click and deposit/withdraw if desired. Interactions/tooltips/ordinary physical quantities must work normally; all virtual counts stay zero in M3. Supplied drag rectangles are used; when RuneLite omits a clipped-origin drag rectangle, its floating effect is temporarily omitted rather than misplaced, and returns on release. The plugin must perform no game action itself.
-5. Toggle quantities and dimming independently in From Scratch configuration, then change text color. Verify immediate changes without restart. Close/reopen the bank, including PIN UI where applicable; no overlays may remain on the closed bank.
-6. Disable/re-enable several times: exactly one overlay/nav button, no leftover effect. Relog/restart and switch characters/configuration profiles; only the verified character's Active run renders, and its original run/start time remains. No reset/new snapshot is required after migration.
-7. Report version, UI mode/scale, enabled bank plugins, observations and redacted errors. Do not edit saves or grant positive test balances. Positive live accounting is deferred; automated fixtures cover nonzero painting/storage.
+## Final M5 UI/quantity polish
 
-Stop after M3. A build, synthetic pixels or clean JVM start cannot establish real-client layout/performance behavior or Plugin Hub approval.
+MilestoneFivePolishTest adds 22 cases: exact/date-free/escaped bounded tooltips, singular/plural/missing values, all financial tile surfaces, actual tooltip size, absent ordinary status subtitles and preserved errors, centered equal-height Played Elsewhere tiles, centered red reset, compact instructions/checkbox, centered green Start states/safeguards, original start/typed-reset confirmations and cancellation, visible-card sizing and synthetic previews. OsrsQuantityFormatterTest adds 5 cases: extended thousands range through 9,999,999, uppercase K/M threshold/sign matrices, no decimals/rounding, fitted wider/extreme labels with unchanged baseline/clip/graphics, and unchanged monetary formatting.
 
-### Locked-item refinement regressions
+Expected labels now include 10000→10K, 999999→999K, 1000000→1000K, 1740000→1740K, 9999999→9999K, 10000000→10M and corresponding negatives. Tooltip preview is 258x62 logical pixels. The prior 611 tests retain accounting/price/persistence/cache/recovery/performance coverage. No financial or storage implementation change occurred in this pass. Use [the latest manual checklist](docs/MILESTONE_5_POLISH.md) for real RuneLite scaling, bank labels, hover, keyboard, dialog cancellation and responsiveness; a synthetic image is not live acceptance.
 
-The original mask skipped the first 12 pixels and filled the remainder with 57%-opaque black. Existing painter regressions prevent that split; the intermediate 30% full-item tint fixed it but did not exercise the item source. Installed 1.13.3 renderer inspection identified a separate origin-inside-clip condition before a WidgetItem enters the callback list. Painter-only tests could never detect that omission. The new VirtualBankOverlayTest invokes the real overlay pass through a synthetic widget-observation context, including top origins outside the viewport, and verifies visible intersections, both edges, control exclusion, label positions and lifecycle. It does not simulate the real game widget implementation or game input.
+## M5 final-withdrawal and presentation regressions
 
-Appearance regressions now require approximately 48% dark-neutral tint, at least half the original contrast, readable small-font yellow/green/white quantity glyphs, a bank-background color remaining close to its original, and full-color purple counters. Uniform/tall/colored sprites, moved bounds, fractional scaling, positive/disabled pixels and graphics restoration remain covered. No live screenshot or reference-image pixel matching was performed by the agent.
+The latest clean build passes **654 tests, 0 failures/errors/skips, 45 suites**, retaining the previous 638 with only superseded presentation expectations updated. Added:
 
-The item source makes one linear pass over current bank widgets, with intersection checks before painting or definition lookup. It creates no per-frame item map, sprite image/cache, IO or accounting work; placeholder lookups remain cached. Repeated synthetic scrolling and offscreen/cache tests verify those observable boundaries, not real frame rate. Compare a large bank's scrolling/input response with the effect on/off in-game. Positive balances remain fixture-only until the later engine is authorized.
+- BankOnlyPipelineTest: four controller/observer/real-local-persistence/actual-overlay cases for four-copy stackable and unstackable withdrawal, with native placeholders on/off. Verify final delta, -4/original-ID counter, zero physical placeholder copies, absent-slot correction search, unchanged tab/search/reopen observations, restart, returns 1/2/4, immutable baseline and no new gain events.
+- WealthPipelineTest: final withdrawal to a native placeholder retains negative signed market value through restart, with unchanged financial history.
+- GpFormatterTest: six cases covering all requested positive/negative examples, K/M boundaries, no decimals/rounding, every small signed integer, long limits and grouped exact tooltip detail.
+- FinalCorrectionsUiTest: five cases covering a visible readable optional GE-storage note without a new observation gate; 14-pixel Start gap/nearby attestation; centered automatic-update instructions/equal tiles; shared cached Purple partyhat 1046; all four financial tiles using integer GP with exact tooltips.
 
-## Milestone 2 evidence (historical; subsequently accepted)
-
-The requested `.\gradlew.bat clean build` passed on Java 11 / RuneLite 1.13.3: **202 passed, 0 failed, 0 errors, 0 skipped**, preserving all previous 173 and all 27 foundation tests. The user isolated the remaining live failure to empty INV/WORN. The new 29-test suite exercises real reader/verification/preview composition with synthetic containers and complete client-script-shaped widget layouts. Live acceptance and hosted CI remain pending.
-
-| Suite | Tests | Evidence |
-| --- | ---: | --- |
-| FoundationResourcesTest | 5 | Existing metadata/assets/bytecode/config coverage |
-| RunStateTest | 16 | Existing validated lifecycle header coverage |
-| FromScratchSidebarTest | 6 | Existing registration/cleanup/metrics/EDT/help coverage |
-| SnapshotAssemblerTest | 20 | Empty/populated bank, inventory/equipment/coins, placeholders, copies, variants, checked large quantities, incomplete data, immutability |
-| InitializationSessionTest | 14 | Explicit empty-bank activation, preview/confirmation/cancel, duplicate starts, changed contents, empty virtual economy and character guards |
-| CharacterIdentityTest | 8 | Login/hash/type/selected-profile verification, ambiguity, renames/config-key stability and isolated namespaces |
-| RunRecordCodecTest | 12 | Round-trip, reset record, checksum/version/field validation, exact integer parsing, overflow and nonzero future-data rejection |
-| RunRepositoryTest | 17 | Save/reload/restart, character isolation, duplicate/idempotent starts, corrupt/missing current protection, archival reset, locks, interrupted publication |
-| SetupControllerTest | 25 | Retry/open/reopen, multi-phase confirmation, missing personal data recovered after interface visits, unchanged active save bytes |
-| SnapshotPanelTest | 12 | Single instruction section, independent partial readiness/summaries, confirmation gating and instruction-free active state |
-| BankSnapshotReaderTest | 36 | All previous bank gates plus independent nullable observations, event payloads, stale/invalid data, change invalidation, immutable caches and diagnostic fields |
-| DiagnosticRateLimitTest | 2 | One diagnostic per ten seconds across tick/state changes; arbitrary monotonic origin |
-| PersonalContainerReaderTest | 29 | All four empty/populated combinations with API data and verified null empties; full layouts, default/hidden/partial/missing rejection, occupied contradictions, ring/ammo, tick settling, invalidation, mandatory bank/confirmation and codec round-trip |
-
-Tests use synthetic data and controlled dispatch/executor queues. Storage tests use Filepath under JUnit temporary roots, never real RuneLite profiles. No test sleeps, starts a game, requires credentials, or performs game actions. Existing Linux/Windows Java 11 CI automatically runs the expanded suite; no workflow change is needed.
-
-### Empty-container regression matrix
-
-| Inventory | Equipment | Observed API path | Independently verified null-empty path |
-| --- | --- | --- | --- |
-| Empty | Empty | observedEmptyInventoryAndEmptyEquipmentAreAccepted | nullEmptyInventoryAndNullEmptyEquipmentAreIndependentlyVerified |
-| Populated | Empty | observedPopulatedInventoryAndEmptyEquipmentAreAccepted | populatedInventoryAndVerifiedNullEmptyEquipmentAreAccepted |
-| Empty | Populated | observedEmptyInventoryAndPopulatedEquipmentAreAccepted | verifiedNullEmptyInventoryAndPopulatedEquipmentAreAccepted |
-| Populated | Populated | observedPopulatedInventoryAndPopulatedEquipmentAreAccepted | populatedContainersRequireNoEmptyInterfaceVerification |
-
-Empty sentinel arrays also count as valid. Null without a complete initialized mounted/visible view remains unknown. Missing slot 27/ammo parent/item/icon, default inventory ID=-1, hidden or unmounted roots, hidden/uninitialized empty icons, populated UI without a container, same-tick repeat reads, and missing BANK cannot manufacture readiness. Equipment validation includes ring/ammo, not just visible player appearance. Existing empty observations are invalidated before re-verification after a real populated read. A verified empty preview still requires explicit confirmation and round-trips through the unchanged save codec.
-
-Manual retest: use Cancel Setup between the four combinations so no saved run must be reset. Test with both locations empty first. Begin, manually visit normal inventory and equipment tabs for about two seconds each if Waiting, then open the bank within 60 seconds. Empty locations must show zero types/slots/units and all three must become Ready. Test populated/empty, empty/populated and populated/populated, including a ring/ammo item if available. With bank closed or PIN/incomplete data, confirmation must remain disabled. Confirm only one desired final baseline, verify zero virtual economy and restart preservation. Preserve any existing active run; no data deletion is required. If blocked, send only throttled From Scratch capture lines including emptyVerification values (UNKNOWN, NON_EMPTY, SETTLING, EMPTY).
-
-### Second live failure: personal-container regression evidence (historical)
-
-Before edits, a synthetic debugger test stopped in BankSnapshotReader.requireContainer: BANK=95 returned a non-null list, then INV=93 returned null. The stack was capture -> requireContainer, matching the user's exact rejection message. The unit debugger was stopped and agent breakpoints removed; user breakpoints were left unchanged. This proves the rejection path, not why INV is null on the user's client.
-
-| Requested case | New regression coverage |
-| --- | --- |
-| Bank available, inventory null | bankReadyAndNullInventoryReportsIndependentAvailability |
-| Bank available, equipment null | bankReadyAndNullEquipmentReportsIndependentAvailability |
-| Personal observations before bank | personalObservationsBeforeBankRemainUsableWhenGettersBecomeNull |
-| Bank arrives after personal data | lateBankContainerCombinesIndependentPersonalObservations |
-| Empty valid inventory | emptyValidInventoryIsReadyAndCanBeRetained |
-| Stale data | nullInventoryNeverRefreshesTheAgeOfAnEarlierValidObservation; equipmentObservationExpiresWhileAReadyPreviewIsAwaitingConfirmation; refreshingAnExpiredContainerRestoresReadiness |
-| Changes during setup | unknownInventoryChangeInvalidatesCachedContents; eventPayloadRemainsUsableIfTheGetterIsUnavailable; bankChangesInvalidateUnavailablePersonalObservations; bankChangeEventInvalidatesPersonalCacheBeforeConfirmation; unknownBankChangeInvalidatesPreviouslyCachedPersonalData |
-| Confirmation | Controller multiPhasePreviewConfirmsOnlyAfterBankArrivesAndPersistsZeroEconomy; panel completePreviewShowsAllLocationsReady/stalePartialProgressCannotEnableACompletePreview |
-| Persistence unchanged | Controller activeSaveBytesAreUnchangedWhenPersonalContainersDisappear; all previous persistence/isolation/restart cases |
-
-Additional coverage validates malformed cache rejection, reset/session cache clearing, immutable source copies, backwards time, partial UI summaries and throttled privacy-safe diagnostics. No production persistence/schema changes.
-
-### First bank-detection regression evidence (historical)
-
-Before changing production behavior, openingBankAfterBeginRetriesWithoutAnotherContainerChange failed against the old controller (one test, one expected failure). A temporary debugger probe in the existing assembler test observed bankOpen=true and freshCompleteBank=false at the rejection guard. This is synthetic runtime evidence of the event gate, not an observation of the user's account. Temporary probes were removed and the test session stopped; user breakpoints were preserved.
-
-| Requested regression | Coverage |
-| --- | --- |
-| 1 Begin before bank open | Reader beginBeforeBankOpensDoesNotReadCachedBankData; controller openingBankAfterBeginRetriesWithoutAnotherContainerChange |
-| 2 Begin with bank open | Reader alreadyOpenBankWorksWithoutWidgetLoadedOrContainerChangedEvents; controller beginningWhileBankAlreadyOpenNeedsNoFurtherContainerEvent |
-| 3 Widget before data | Reader openingWidgetWaitsForATickAndDelayedContainerData; controller delayedContainerArrivalRetriesWithoutAnAdditionalEvent |
-| 4 Populated bank | Reader populatedBankReadsTheCompleteBankInventoryAndEquipmentContainers |
-| 5 Empty bank | Reader genuinelyEmptyNonNullBankIsAccepted |
-| 6 Null rejection | Reader nullBankContainerIsNeverCountedAsAnEmptyBank |
-| 7 PIN/incomplete interface | Reader pinInterfaceRejectsEvenAnApparentlyPopulatedBank and incompleteBankInterfaceRejectsEvenWhenContainerExists |
-| 8 Tabs/search | Reader searchingOrChangingTabsNeverRestrictsTheCompleteContainer; existing unchanged-content review-token test |
-| 9 Closure before confirmation | Reader bankClosureRejectsAFormerlyReadyCapture; existing controller closingBankInvalidatesPreviouslyAvailableConfirmation |
-| 10 Confirm enable/disable | Updated panel initializationConfirmationIsDisabledUntilCompletePreviewExists exercises unavailable -> Ready -> closed |
-| 11 No duplicate instructions | Three new panel tests verify one before setup, capture-only setup, and none after activation |
-| 12 Existing data unchanged | Controller existingSavedRunBytesStayUnchangedAcrossBankLifecycle plus all prior repository/reload/isolation tests |
-
-### M2 required scenario mapping
-
-| Requested scenario | Automated coverage |
-| --- | --- |
-| 1 Empty bank initialization | SnapshotAssemblerTest.emptyBankIsACompleteValidSnapshot; InitializationSessionTest.completeEmptyBankCanBeExplicitlyActivatedWithZeroVirtualWealth |
-| 2 Populated bank | SnapshotAssemblerTest.populatedBankPreservesEveryTypeAndQuantity |
-| 3 Inventory | SnapshotAssemblerTest.inventoryItemsRemainInInventoryBaseline |
-| 4 Equipment | SnapshotAssemblerTest.equippedItemsRemainInEquipmentBaseline |
-| 5 GP zero | InitializationSessionTest.initialVirtualEconomyIsCompletelyEmptyDespiteLegacyCoins |
-| 6 Placeholders | SnapshotAssemblerTest.placeholdersAndEmptySlotsAreNotOwnedItems |
-| 7 Large stacks | SnapshotAssemblerTest.largeStacksAggregateBeyondSignedIntegerRange; codec long-range round-trip |
-| 8 Multiple copies | SnapshotAssemblerTest.multipleUnstackableCopiesAggregateWithoutLosingSlotCount |
-| 9 Distinct variants | SnapshotAssemblerTest.distinctNotedVariantsKeepTheirExactIds |
-| 10 Bank not open | SnapshotAssemblerTest.initializationWithoutAnOpenBankIsRejected; controller no-bank test |
-| 11 Incomplete bank | SnapshotAssemblerTest stale/absent-bank/null-slot tests; codec missing-container test |
-| 12 Duplicate initialization | InitializationSessionTest duplicate tests; repository active overwrite/idempotence tests |
-| 13 Immutable baseline | SnapshotAssemblerTest defensive-copy and unmodifiable maps; controller active non-recapture |
-| 14 Save/reload | RunRepositoryTest.saveAndReloadPreserveAllBaselineAndIdentityFields |
-| 15 Logout/restart | SetupControllerTest.logoutAndLoginRestoreTheSameRun; new repository restart test |
-| 16 Character isolation | CharacterIdentityTest, repository namespace/mismatched-save tests, controller stale/switch tests |
-| 17 Corrupt data | Codec validation, repository preservation, controller error/no-empty-replacement tests |
-| 18 Backup/reset | Repository archive verification/idempotence/interrupted reset and controller reset tests |
-| 19 Disable/reenable | SetupControllerTest.pluginDisableAndReenablePreserveTheCommittedRun; stale post-save callback test |
-| 20 Zero initial wealth | Empty VirtualEconomy model, session assertions and active panel zero metric assertions |
-
-### M2 manual acceptance — user only
-
-Run `.\gradlew.bat run` and follow [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts). Record RuneLite version, OS, UI scale, expected/actual counts and redacted errors. Agents must not control RuneScape. Test on a character/run you are comfortable resetting; reset changes only virtual plugin data and first archives it.
-
-1. Open the sidebar while logged out. Confirm Status: Not Started, disabled Begin, setup scope and special-storage exclusions.
-2. Log in and wait for loading. Click Begin with the normal bank closed: Status: Initializing, bank waiting, confirmation disabled. Cancel Setup; confirm no active run was created.
-3. Begin again and manually open the normal bank, entering any PIN yourself. Allow game ticks for settling. Verify Bank: Ready, Inventory: Ready and Equipment: Ready with enabled confirmation and all summaries. If a personal location is Waiting, close the bank, manually visit the indicated normal inventory/equipment interface and reopen within 60 seconds without moving items. A non-null complete empty container is valid; null is not. Cancel with bank open and Begin again; it must retry without a new quantity-change event, though unavailable personal data may require the manual interface step.
-4. Change tabs/search, including no-match searches: totals must still represent the full bank. Close the bank: confirmation must become unavailable. Reopen without changing any item quantity: capture must retry and become Ready. Choose No in the confirmation dialog, change a stack if desired and verify the updated summary before confirming again.
-5. Confirm Yes with bank open; wait for Active. Verify start date/time, all three legacy summaries, zero spendable GP/net worth/gained/unlocked values, and unchanged real items/coins. Later manually moving items must not change the saved baseline.
-6. Log out/in, disable/reenable (including rapid toggles), and restart RuneLite. Verify the same active run/start time/baseline, with no duplicate navigation or accidental reset. No later earnings are expected in M2.
-7. Switch to another character where available: it must load its own run or Not Started, never the first character's summary. Switching RuneLite configuration profiles or renaming a character must not create a new economic identity. Return to the original character and verify preservation.
-8. Reset -> No must leave the run active. Reset -> Yes must wait for archival success, return Not Started and create no replacement run. Real items must remain untouched. Begin again and confirm a fresh snapshot with a new start time; the old archive must remain.
-9. Check UI scale/scrolling and disabled buttons while saving/loading. Before initialization there must be exactly one short Setup instruction. During initialization show capture status/diagnostics/controls without that instruction; Active must hide all setup instructions. Detailed setup tooltip changes hover detail only. Storage errors must offer Retry Load, not Begin/Reset. No save deletion or reset is needed to test this correction; existing active runs should remain intact. Corrupt/incompatible cases already have automated coverage.
-
-Report results before M2 is accepted. A build or clean JVM launch does not prove in-game behavior. Do not begin M3 without explicit authorization.
-
-## Foundation evidence
-
-Historical M1 clean build on Java 11 / RuneLite 1.13.3 passed: **27 JUnit tests, no failures/errors/skips**. A separate M1 compatibility clean build against retrieved Hub target 1.13.2 also passed all 27. M1 has since passed user-run acceptance; hosted CI remains unverified. The launcher main method is not a test.
-
-| Suite | Tests | Coverage |
-| --- | ---: | --- |
-| RunStateTest | 16 | Empty/versioned header, all states, valid restore, character identity, invalid schema/status/identity/times |
-| FromScratchSidebarTest | 6 | Single registration, cleanup, reenable, help/disclosure, zero metrics, EDT guard |
-| FoundationResourcesTest | 5 | Metadata, PNG format/dimensions/alpha, Java 11 bytecode, config default |
-
-Headless Swing tests exercise the real panel and fake toolbar boundary without starting RuneScape. No game account or new test dependency is required.
-
-Run `.\gradlew.bat clean build` or `bash ./gradlew clean build`. HTML results: `build/reports/tests/test/index.html`; XML: `build/test-results/test/`. CI uses Temurin 11 on Linux/Windows and the Wrapper; hosted execution is pending.
-
-## M1 manual acceptance — user only
-
-Launch `.\gradlew.bat run` and follow [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts). Agents must not interact with RuneScape. Record OS, RuneLite version, UI scale, result, and redacted errors.
-
-| Case | Steps | Expected |
-| --- | --- | --- |
-| Identity | Find plugin in development client | Correct name/description, no template greeting |
-| Logged-out preview | Enable; click coin button before login | One navigation button, title, preview warning, six zero metrics, recent-acquisition message |
-| Logged-in preview | Log in manually | Same preview; no run begins or game items/GP change |
-| Cleanup | Disable while open | Navigation/panel removed without error |
-| Repeated toggles | Enable/disable repeatedly, including rapid toggles | No duplicate/stale buttons; working panel when enabled |
-| Help setting | Toggle Show foundation help | Explanation hides/shows; placeholder warning remains |
-| Resize/scale | Resize client and change UI scale | Readable labels/amounts, vertical scrolling, recognizable icon |
-| Restart | Close and relaunch | Clean preview; no claim of restored progression |
-
-These M1 cases passed user-run acceptance. M2's current procedure is above. User screenshots may be added after removing account details; automated agents do not capture or interact with gameplay.
-
-## Future test matrix — not implemented yet
-
-Test accounting independently of RuneLite. Use synthetic/recorded event batches for adapters and user-run acceptance for rendering/game behavior.
-
-| Area | Required scenarios |
-| --- | --- |
-| Initialization M2 | Automated coverage implemented above; user-run acceptance pending |
-| Ownership M3/M4 | New item and existing legacy type, multiple copies, deposit/withdraw, split/combine, equip/unequip, fully withdrawn bank stack retained elsewhere |
-| Bank UI M3 | Tabs/search, placeholders, clipping/scroll, purple bottom-right count, normal count retained, gray zero quantity, scaling, bank close/plugin disable |
-| Transfers M4 | Coalesced event orderings, duplicate batches, legacy transformations, partial visibility, unknown storage, uncertainty, no new wealth from movement |
-| Offline M4 | Net increase/decrease, 100->130 sharks, existing virtual quantities, incomplete bank, preserve history, audit corrections, no fabricated gross history |
-| Currency M5 | Earn/spend/reserve/refund, exact bounds/overflow rejection, insufficient funds, death debt, ordinary debt rejection, repayment, physical legacy cash never recredits spent virtual GP |
-| Valuation M5 | Acquisition, pooled basis/rounding conservation, sales above/below basis, price fluctuation, consumption, untradeable/unpriced, cash/items once, buyback effects |
-| GE M6 | Buy/sell, partial fills, committed goods/cash, completed/uncollected positions, tax gross/net once, cancellation/refund, collection deduplication, actual vs offer price, uncertainty |
-| Buybacks M7 | Fire Cape, natural duplicate with old copy locked, multiple copies, Infernal price, Ancient Sceptre flat price, full catalog, Graceful complete/partial/natural pieces, Elite Void total, Barrows Gloves/Royal Seed Pod/tradeable exclusions, insufficient/negative GP, atomic crash recovery |
-| Persistence M2/M9 | Logout/login, restart, characters/profiles, incomplete initialization, corruption/truncation, schema migration, backup/restore/reset, interrupted append/checkpoint/rename, filesystem fallback, idempotent replay |
-| UI M8 | Examine location/quantity/GE/HA, zero/N/A, original message retained, duplicate prevention, outgoing chat untouched, totals, large numbers, timers/mobile disclosure, notification deduplication |
-
-## Release gates
-
-Every milestone: review changed APIs/dependencies for compliance, run meaningful tests and build, then ask the user to accept changed behavior in-game. Keep ACCOUNTING.md's invariant mapping current. Add tests with their implementation; do not assert nonexistent features.
-
-M9 adds migration/recovery fixtures, full regression, bounded-work profiling, and user-run bank/UI/GE acceptance. M10 rechecks current Hub requirements, metadata, art, licensing, privacy, release notes, and approved source commit after all acceptance gates pass.
+Existing null/partial-bank rejection, migration/exact-byte archives, save failure/CAS/recovery, character isolation, rapid FIFO updates, 1,200-ID/large-history performance, custom colors, original quantity preservation and partial-row clipping remain covered. Physical/financial reducers, price service and persistence implementation are unchanged by this correction pass. Run the [latest manual procedure](docs/MILESTONE_5_FINAL_CORRECTIONS.md) for real native placeholder IDs/appearance, no-placeholder behavior, net worth, restart, sprite clarity, setup/GE guidance and live banking responsiveness. Only the user can accept those behaviors in-game.

@@ -85,17 +85,17 @@ public class FromScratchSidebarTest
 	}
 
 	@Test
-	public void dashboardDisplaysAllSixZeroMetrics() throws Exception
+	public void dashboardDisplaysRequestedPrimaryMetrics() throws Exception
 	{
 		SwingUtilities.invokeAndWait(() ->
 		{
 			List<String> text = visibleText(new FromScratchPanel(true));
 			for (String label : new String[]{"Total Value Gained", "Current Net Worth", "Spendable GP",
-				"Active run duration", "Items Unlocked", "Total Value Lost / Spent", "Recent acquisitions"})
+				"Active run duration", "Items Unlocked", "Recent acquisitions"})
 			{
 				assertTrue(label, text.contains(label));
 			}
-			assertEquals(4, text.stream().filter("0 GP"::equals).count());
+			assertEquals(3, text.stream().filter("0 GP"::equals).count());
 			assertTrue(text.contains("0"));
 			assertTrue(text.contains("0h 00m"));
 		});

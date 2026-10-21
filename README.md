@@ -2,128 +2,99 @@
 
 <img src="icon.png" width="48" height="48" alt="Purple coin stack" />
 
-By **Pilots r kwl**. Java 11 RuneLite plugin, BSD 2-Clause license.
+By **Pilots r kwl**. Java 11, RuneLite, BSD 2-Clause.
 
-Start fresh on your existing Old School RuneScape account. Build a separate virtual bank, earn items and wealth again, unlock legacy equipment, and track your progression.
+Start a bank-progress challenge on your existing Old School RuneScape character. Keep your levels and unlocks while building a separate signed bank balance. This is an honor-system challenge; the plugin never performs game actions.
 
-**Status: Milestones 1 and 2 accepted; Milestone 3 functionally accepted, revised lock appearance awaiting visual acceptance.** Active runs show purple virtual bank quantities and fade zero-owned bank items. Existing M2 saves migrate with a backup while preserving the run and legacy baseline. Acquisition/transfer accounting, mobile reconciliation, buybacks and valuation are not implemented, so live virtual balances remain zero. This plugin has not been submitted to or approved by the Plugin Hub.
+**M1–M4 accepted; M5 passes automated validation and awaits manual acceptance.** No Plugin Hub submission or approval is claimed. M5 adds bank-only GP and valuation estimates; GE accounting, buybacks and personal-container accounting remain unsupported. Earlier multi-container M4 workflows are superseded.
 
-## Development installation
+## Build and launch
 
-Install a Java 11 JDK and open this repository as a Gradle project. Use the included Gradle Wrapper.
+Use a Java 11 JDK and the existing Gradle Wrapper:
 
 ```powershell
 .\gradlew.bat clean build
 .\gradlew.bat run
 ```
 
-On Linux/macOS, use `bash ./gradlew clean build` and `bash ./gradlew run`. In IntelliJ, choose a Java 11 Gradle JVM and run the Gradle `run` task or `FromScratchPluginTest.main`.
+In IntelliJ use Java 11 for Gradle and run the `run` task or `FromScratchPluginTest.main`. On Linux/macOS use `bash ./gradlew`. Follow RuneLite's [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts) instructions for the development client. Never put credentials or launcher tokens in the repository.
 
-Follow RuneLite's [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts) instructions to log in to the development client. Keep login credentials and launcher tokens out of this repository. Enable **From Scratch** and click its purple coin button. Setup instructions/preview summaries appear during initialization; the active dashboard hides original account quantities and wealth. **Detailed setup tooltip** retains its existing configuration key.
+Enable **From Scratch** and open its purple coin sidebar. No public Plugin Hub installation is available yet. Screenshots await user acceptance; agents do not operate RuneScape.
 
-There is no public Plugin Hub installation yet. Screenshots will be added after user-run acceptance; agents have not captured in-game screenshots.
+## Before Starting
 
-## Initial setup
+1. Deposit everything from inventory into your normal bank.
+2. Unequip all gear and bank it.
+3. Check **I confirm my inventory and equipped items are banked.**
+4. Open your bank, then click **Start From Scratch** and confirm.
 
-1. Log in and wait for this character's run to load. Before login, Begin is disabled; an unknown identity or storage error blocks setup.
-2. Click **Begin From Scratch**, then manually open your normal bank, or begin with it already open. Enter any Bank PIN manually. Capture retries automatically on game ticks while the interface settles or data is unavailable; it does not require a new quantity-change event.
-3. Wait for **Bank: Ready**, **Inventory: Ready** and **Equipment: Ready**, then review summaries: item types, occupied slots, total units and legacy coins. Empty inventory and equipment are supported; carrying/equipping an item is unnecessary. If a personal location is Waiting, close the bank, manually open its normal tab for about two seconds, then reopen within 60 seconds without moving items. A null personal container is accepted as empty only after independently verifying every rendered slot on two different game ticks. Bank-side inventory can also provide this proof. Missing/incomplete views remain unknown. Tabs/search do not limit the complete bank container; placeholders/fillers are excluded and variants retain exact IDs.
-4. Click **Confirm Snapshot** and accept the confirmation dialog. Keep the bank open and contents unchanged during review. If anything changes, review and confirm the updated summary.
-5. Wait for **Active**. The run start time and progression dashboard appear. The original detailed baseline remains saved privately; it is hidden from the active sidebar. All virtual quantities, spendable GP, net worth, gained value and unlocked counts start at zero. Manually clear legacy inventory/equipment you do not intend to use.
+The complete bank becomes the permanent legacy baseline. Initial progress is zero, including coins; this does not establish spendable virtual GP. Items in Grand Exchange offers or other storage aren't included. Collect them into your bank first if you want them treated as legacy. No inventory/equipment or GE inspection is required. A Bank PIN, missing identity or incomplete bank data prevents starting. A genuinely empty complete bank is valid. Previously owned items collected from excluded storage after starting may need a Manual Bank Correction; GE accounting remains future Milestone 6 scope.
 
-The original baseline stays fixed when physical items change. M3 does not account for later activity. Cancel Setup, logout or disable before confirmation discards only the unsaved preview.
+## Bank progress
 
-## Virtual bank display
+For each exact item ID:
 
-While the normal bank is open in an Active run, each visible item shows its virtual bank-available quantity in purple at bottom-right. Physical OSRS quantities and banking actions remain unchanged. Zero-owned items receive a uniform dark neutral-gray tint (#505050, approximately 48% opacity). The darker neutral color is closer to the bank background, reducing the appearance of bright gray rectangles. This is a draw-only fallback, not true sprite grayscale: the background within each item's bounds is also tinted. Ordinary quantity glyphs retain about 52% of their original contrast; purple counters are drawn afterward at full color. Partially visible top and bottom rows receive identical treatment, clipped to the item content viewport. Counters keep their normal coordinates and may be clipped rather than moved. Placeholders show zero; empty slots and bank fillers have no counter. Shared storage, inventory, equipment and specialized storage have no overlay.
+`new balance = committed balance + (current physical bank quantity - committed physical bank quantity)`
 
-The overlay reads actual normal-bank item widgets because RuneLite 1.13.3's callback item list omits items whose top-left corner is outside the clip. Dragged items use RuneLite's supplied drag bounds. If a clipped-origin drag has no supplied bounds, that floating item's effect is temporarily omitted until release, avoiding an incorrectly positioned mask. No mouse offsets are guessed or game input changed.
+- Withdraw a legacy axe: `0 → -1`; return it: `-1 → 0`.
+- Deposit two new logs: `0 → 2`; withdraw one: `2 → 1`.
+- Burn that log outside the bank, then reopen: balance stays `1`.
 
-RuneLite's From Scratch settings provide **Virtual bank quantities**, **Dim locked bank items** (both enabled by default), and **Virtual quantity color** (default #B450FF). Changes apply immediately. The features can be toggled independently. Closing the bank, logging out or disabling the plugin removes rendering.
+Configurable bank numbers (bright green by default) are signed **bank progress**, not total earned ownership. Zero/negative items remain dimmed; positive items render normally. Original OSRS quantities and bank interactions are unchanged. Bank searches, tabs, scrolling and rearranging do not create changes. The full bank API container supplies accounting; only actual on-screen item widgets supply overlay coordinates.
 
-M3 has no earnings engine or grant-items control: all production quantities remain zero. Future accounting will update the separate total/location ownership model. Positive rendering is covered by synthetic tests; live positive-balance acceptance belongs to a later milestone. See [M3 implementation and acceptance](docs/MILESTONE_3.md).
+Updates capture complete bank data at the next game-tick boundary and publish after durable save. The repeated multi-tick debounce was removed. Unchanged observations are cached; queued bank changes commit in order on the storage worker. No inventory/equipment walkthrough, source review or ordinary confirmation is needed. If the bank closes before settling, the next opening catches the net change. Multiple actions inside one settling interval may become one net audit entry.
 
-## Challenge rules
+Six compact tiles show Total Value Gained (an estimate), Current Bank Net Worth, Bank GP, Items Unlocked, Active Run Duration, and Total Value Lost / Spent. Items Unlocked counts currently positive bank IDs. Genuine OSRS icons use cached RuneLite ItemManager sprites, with a bundled-icon fallback. Components are reused on deposits.
 
-The player keeps levels, quests, diaries, and other character progression. The initial normal-bank, inventory and equipment snapshot marks every captured quantity as legacy, including coins. Virtual quantities and spendable GP begin at zero.
+Item overlays and compact GP statistics share integer formatting: absolute values 0–9,999 are exact; 10,000–9,999,999 use truncated uppercase **K**; 10,000,000+ use truncated uppercase **M**. Examples: `1740`, `10K`, `1000K`, `1740K`, `9999K`, `10M`, `-1000K`. Billions use integer millions (`2147M`), without decimals or rounding up. Money adds ` GP`; `980640` GP displays as `980K GP`. Short, wrapped tooltips retain exact grouped GP, plain-language estimates and correct unknown-item grammar without technical dates.
 
-Planned accounting will recognize legitimate acquisitions, including gifts/trades. Identical legacy and earned copies will coexist through quantities; one earned copy will not unlock every copy. Transfers must create no earnings. This is an honor-system challenge, with any future visual warnings subject to RuneLite/Jagex rules.
+Withdrawing the last copy still changes progress (four legacy copies withdrawn means `-4`). Native OSRS placeholders show the original item's signed counter but represent zero physical copies. If no placeholder is retained, the absent item's balance remains saved, valued and searchable in Manual Bank Corrections. No artificial slot is created; OSRS's own Always set placeholders option is optional.
 
-One run may be active per character. Logout, disabling the plugin, or mobile play does not end it. Reset requires confirmation and an archive before clearing the run. Offline reconciliation is planned for M4; M2 does not reconstruct activity or invent history.
+**Current Bank Net Worth** sums signed bank progress times cached RuneLite GE-guide prices. Negative balances subtract value. Bank coins have unit price one and are included exactly once. Unpriced types produce a labeled **Priced subtotal**; `~`/tooltips identify older retained quotes. Prices refresh in the background every 30 minutes, retrying failures after a minute. These are estimates, not live execution prices. Untradeables without a feed record remain unpriced.
 
-The plugin must never click, withdraw, deposit, equip, buy, trade, type, or otherwise perform player actions. See [ACCOUNTING.md](ACCOUNTING.md).
+**Bank GP** is the signed progress for the actual coins item, not a spendable wallet. **Total Value Gained** estimates new per-item bank progression maxima. Withdrawing/redepositing below an earlier maximum never earns twice. Gain prices are fixed when recognized; missing/stale historical prices stay explicitly unpriced. Corrections raise the comparison ceiling without earning value. This estimate undercounts replenishment and cannot reconstruct out-of-bank activity, conversions, sales or profit. **Total Value Lost / Spent** says **Not tracked** until you explicitly record a verified expense by clicking that tile (or focusing it and pressing Space/Enter). Recorded expenses change the statistic only, not Bank GP or items; a reason and confirmation are required.
 
-## Buyback schedule (planned)
+## Played Elsewhere?
 
-Buybacks spend virtual GP and unlock existing locked legacy quantities without real game actions. Eligibility, physical existence, funds, and confirmation must precede an atomic ledger transaction. Naturally earning any untradeable is allowed even if absent from the catalog.
+The left information tile says: "Played on mobile or another PC? Bank your items and open your bank here. Your progress updates automatically." The adjacent **Manual Bank Corrections** tile fixes an incorrect count; returning from another device does not require it. Items earned and consumed outside the bank cannot be reconstructed.
 
-| Item | Virtual GP |
-| --- | ---: |
-| Fire Cape | 1,000,000 |
-| Infernal Cape | 15,000,000 |
-| Imbued God Cape | 750,000 each |
-| Ava's Assembler | 1,000,000 |
-| Dragon Defender | 250,000 |
-| Fighter Torso | 2,000,000 |
-| Salve Amulet (ei) | 500,000 |
-| Ancient Sceptre | 500,000 flat |
-| Void melee / ranged / mage helm | 300,000 each |
-| Void Knight top / robe | 800,000 each |
-| Void Knight gloves | 200,000 |
-| Elite top / robe upgrade | Additional 1,000,000 each |
-| Full Graceful outfit | 1,000,000 |
-| Full Prospector outfit | 1,000,000 |
-| Full Angler outfit | 750,000 |
-| Full Rogue outfit | 500,000 |
-| Full Lumberjack outfit | 500,000 |
-| Full Farmer's outfit | 750,000 |
+## Manual Bank Corrections
 
-An existing legacy Elite Void top/robe costs 1,800,000 each including its base piece; no physical downgrade. Graceful is an all-or-nothing purchase of six standard pieces, requiring their locked legacy physical quantities. No individual Graceful buybacks; naturally earned pieces remain independent. Other outfit/recolor mappings require an explicit policy before M7. Tradeables, Barrows Gloves, Royal Seed Pod, and uncatalogued items are ineligible. Ancient Sceptre's flat price overrides component pricing.
+Under **Played Elsewhere? → Manual Bank Corrections**, search a known item by name (exact ID distinguishes variants). Use this only if From Scratch recorded an incorrect bank quantity. The editor is available even with no automatic differences and includes negative items absent from the bank. Open your bank to save.
 
-## Known limitations
+Select an item, inspect physical quantity/current signed balance, enter a desired balance or enable signed adjustment, review the preview, and confirm **Save Correction**. Positive progress cannot exceed physical bank quantity. Cancel writes nothing. A newer bank/save invalidates the editor; reopen it rather than overwriting newer progress. Corrections add audit entries and survive later bank movements. No arbitrary grant-items command exists.
 
-- M3 adds bank-only visual ownership display. Live virtual balances stay zero; acquisitions, transfers, GE, buybacks, mobile reconciliation and valuation are not tracked yet.
-- APIs cannot prove provenance or distinguish identical physical copies. Ambiguous observations require reconciliation.
-- A trustworthy bank observation requires opening the bank. A missing personal container remains unknown unless its complete, settled interface independently verifies emptiness. Unsupported or incomplete widget layouts keep setup blocked.
-- POH/death storage, seed vault, looting bag, minigame points, Miscellania, and other special storage are excluded from initialization. Death fees need a manual fallback.
-- Notes/doses/charges remain distinct raw IDs in the baseline; canonical ownership mapping is deferred. Mobile reconciliation is not implemented.
-- Save recovery is conservative and manual; there is no restore/import/export UI yet. No automatic promotion of a checkpoint occurs when current data is missing or corrupt.
-- RuneLite profile-type namespaces separate standard and temporary modes. Storage is permanently local-only on one designated host computer. Cloud storage, cloud credentials, synchronization and a third-party backend are excluded from the project. Gameplay elsewhere must be reconciled on return to the host; reconciliation remains planned for M4.
-- M1/M2 and M3 functional behavior passed user acceptance. The revised M3 lock appearance, live performance and hosted CI still need verification. A local build does not establish those. Play-time tracking is deferred.
+**Bank History** has Automatic Changes and Manual Corrections tiles. Each opens a read-only view with item names, signed quantities, timestamps, sorting, page-local search/Gains/Losses filters and 25 rows per page. Previous/Next/Close and Escape are supported. Old journal segments load lazily; no transaction feed scrolls through the dashboard.
 
-## Data, backup, and reset
+## Existing runs, backups and reset
 
-Progression lives in RuneLite's plugin directory: `.runelite/plugin-data/from_scratch/characters/<opaque-character-key>/`. It is never written into this checkout. Character keys derive from the live account hash plus RuneLite world profile type after verification against the selected RS profile; display names and configuration-profile names are not save keys.
+Storage is local-only under RuneLite's plugin Filepath directory: `from_scratch/characters/<opaque-character-key>/`. Never copy saves into this repository. There is no cloud sync or account backend. This PC is authoritative.
 
-`current.json` is the authoritative checksummed versioned checkpoint. M3 uses envelope format 2 with ownership totals/location allocations, retaining header schema 1. Loading a valid M2 format-1 save first forces/verifies an exact-byte `migration-v1-<unique-id>.json` backup, then publishes a new recoverable checkpoint with zero virtual ownership. Run ID, start time, character identity, reset history and legacy baseline are preserved. Only the storage revision changes. Failed validation blocks loading and preserves files; it never substitutes empty ownership for missing/corrupt format-2 data. Older checkpoints/archives are retained. Downgrading requires deliberately restoring a compatible M2 backup with all clients closed; M2 cannot read format 2.
+Format 6 preserves M4 data. On first format-5 load, verify the entire journal and create exact-byte, forced, manifest-verified backups before publication. Preserve run/start/legacy bank/P/B/history and establish the financial measurement baseline at current positive progress. Earlier gains are not reconstructed; measurement timestamps remain stored internally. Existing M4 runs do not need a new bank anchor. Failed migrations retain originals/recovery evidence.
 
-Each successful activation/reset also keeps an immutable `checkpoint-<revision>.json`. Confirmed reset first verifies `archive-<run-id>-<unique-id>.json`, then writes Not Started without starting a replacement. Click **Begin From Scratch** and take a fresh snapshot to start again. Canceling reset leaves saved data and real items untouched.
+Formats 1–4 still verify/archive the old save/journal, preserving original legacy documents and committed bank allocation minus legacy deficits. Inventory/equipment/Elsewhere records remain archived rather than becoming bank gains.
 
-For backup, close RuneLite and copy the entire `from_scratch` plugin data directory to a private location outside Git. It is never synchronized to a server. Moving the designated host is an explicit manual backup/restore operation, not merging independent runs from several computers. To recover, first back up the entire directory and close all clients. Preserve the damaged current file separately; select a known-good checkpoint/archive for the same character and copy it to `current.json`, then relaunch and use **Retry Load**. Choose deliberately: an archive restores an old active run, while a reset checkpoint keeps it Not Started. Do not delete recovery evidence or edit checksums/identity fields. Future/incompatible versions require compatible software, not a blank replacement. Ask for help if the correct checkpoint is uncertain; do not share private save contents publicly.
+**One migration confirmation:** open your bank and select **Review Bank Anchor**. This keeps valid signed balances and establishes the physical comparison point without replaying old changes. If a saved positive balance exceeds physical bank quantity, bank the missing copies first or explicitly approve the listed reductions. No reduction is automatic. Subsequent sessions need only the bank. Use corrections for older ambiguous changes.
 
-Writes run in a background worker and force a recovery checkpoint before atomic current-file replacement. Filesystems without atomic replacement use a recoverable copy fallback. Wait for Active or reset confirmation before closing/disabling. A cancelled/interrupted write may be durable but unacknowledged; reload determines its result. A missing/corrupt current file with recovery evidence blocks new initialization. A transaction journal and restore/import/export UI remain future work. See [ARCHITECTURE.md](ARCHITECTURE.md).
+Back up the **entire character directory**, including current/checkpoints, both journal generations and migration directories, while the client is closed. Restore a matching complete directory on this host with the client closed. Hashes detect corruption, not cheating. The bottom **Reset Progress** danger area requires typing **RESET**, confirmation and a verified archive before replacing active progress. Opening/cancelling changes nothing; backups remain. It does not automatically create another run. Disabling/logging out preserves progress.
 
-## Troubleshooting and bug reports
+## Troubleshooting and limitations
 
-- Missing sidebar: launch this checkout's development client, enable From Scratch, toggle once, and inspect relevant log errors.
-- No bank overlay: wait for Active, open the normal bank, and check the two bank display settings. PIN screens, shared/special storage, an unknown identity, loading/error states and other characters cannot render. If another plugin draws over the same item corner, temporarily disable that plugin to identify a visual conflict; From Scratch never changes its settings.
-- Build failure: confirm Java 11, refresh Gradle, and check RuneLite repository/Maven Central access. Report the resolved RuneLite version; the template uses `latest.release`.
-- Cache lock error: use a writable `GRADLE_USER_HOME`; do not change system home variables.
-- Setup waits: read the independent Bank/Inventory/Equipment status and Run status instruction. Open the normal bank and enter any PIN manually. For a missing personal observation, close the bank and show the indicated normal inventory/equipment tab for about two seconds, then reopen within 60 seconds without moving items. Empty locations do not require adding an item. If still unavailable, leave setup blocked and collect only `From Scratch capture:` DEBUG lines including `emptyVerification` across these steps (the development run task enables `--debug`). See [diagnostic fields and manual procedure](docs/MILESTONE_2.md#empty-inventoryequipment-correction). No save deletion or reset is needed. A deposit box or cached closed-bank container is insufficient.
-- Storage error: keep all files, close other clients, check permissions, then Retry Load. Corrupt/incompatible saves require deliberate recovery or compatible software.
-- Zero virtual dashboard: expected for M2; legacy items and GP are excluded from virtual wealth.
+- Reading/waiting: unlock any PIN, keep the normal bank open for a few ticks, then close/reopen if needed. Null/partial containers are never empty banks.
+- Storage error: stop making corrections, check local access and free space, use Retry Loading. Do not delete recovery files to bypass errors. Missing/corrupt/future saves block new blank state.
+- Use one client on the host. File locking/CAS prevent competing writers; stale callbacks are discarded after identity/lifecycle changes.
+- Exact variants stay distinct. Noting, charges, crafting and special storage are not inferred as conserved transformations: only actual normal-bank ID changes count.
+- Bank value is an estimate from GE-guide records, not guaranteed sale proceeds. High-water gains are conservative recorded progression, not complete lifetime income. Withdrawals do not prove consumption/spending. Unpriced historical gains cannot be valued later with a newer price.
+- Optional development tracing emits rate-limited local DEBUG availability and sampled phase timings; disable it after diagnosis. Existing config keys remain compatible.
 
-Use the bug template with reproduction steps, OS/JDK/RuneLite versions, and a redacted relevant log excerpt. Remove character identities, credentials, local paths, and private saves. Never attach whole configuration folders.
+For bugs, use the GitHub issue templates with reproducible steps, expected/actual counters, RuneLite version and sanitized logs. Never attach credentials or private bank saves publicly. See [CONTRIBUTING](CONTRIBUTING.md), [architecture](ARCHITECTURE.md), [accounting](ACCOUNTING.md), [tests](TEST_PLAN.md), and the [M4 report](docs/MILESTONE_4.md). The curated buyback schedule in the master specification remains future scope, not available functionality.
 
-## Documentation
+## Appearance and timing diagnostics
 
-- [Architecture and milestone plan](ARCHITECTURE.md)
-- [Accounting policy and invariants](ACCOUNTING.md)
-- [Test plan](TEST_PLAN.md)
-- [Compatibility evidence](docs/COMPATIBILITY.md)
-- [Publication checklist](docs/PUBLICATION.md)
-- [Artwork provenance](docs/ARTWORK.md)
-- [Milestone 2 implementation and acceptance record](docs/MILESTONE_2.md)
-- [Contributing](CONTRIBUTING.md), [changelog](CHANGELOG.md), [license](LICENSE)
+Virtual quantity color defaults to **#1DFF00**. Locked Item Background Color defaults to **#333333**, with **50%** opacity (0–100). These independent settings apply live. Existing saved custom colors/opacity are retained; no configuration keys were renamed or overwritten. Partial-row clipping, signed labels and positive-item appearance are preserved.
 
-Created from the [official RuneLite template](https://github.com/runelite/example-plugin). Publication follows the [Plugin Hub](https://github.com/runelite/plugin-hub) and [review process](https://github.com/runelite/runelite/wiki/Plugin-Hub-Review); acceptance is not guaranteed.
+The sidebar retains its transparent purple pixel-art coin stack. Automatic Changes uses Banker's note; both Manual Corrections history and Manual Bank Corrections use **Purple partyhat (1046)**. These OSRS sprites are cached through RuneLite. Setup and the red typed-RESET danger area retain all M4 safeguards. See [latest M5 acceptance](docs/MILESTONE_5_FINAL_CORRECTIONS.md).
+
+The setup screen has a compact, visible attestation row and centered green **Start From Scratch** action. Start remains disabled without attestation and a complete bank, then opens the existing confirmation. Ordinary Active/Not Started subtitles are removed; actionable warnings remain. Played Elsewhere instructions and the red reset action are centered. See the [M5 polish checklist](docs/MILESTONE_5_POLISH.md).
+
+Optional Development: bank diagnostics emits sampled, monotonic DEBUG timings for EVENT, CAPTURE, AGGREGATE, DIFFERENCE, PREPARED, WRITE_START/END, PUBLISHED, OVERLAY and SWING. It contains no item lists/account identities. Disable after testing. See [the polish report](docs/MILESTONE_4_POLISH.md) for native-versus-counter comparison and measurement limits. Synthetic tests do not prove native banking lag is fixed.

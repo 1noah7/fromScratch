@@ -15,6 +15,17 @@ out/
 .gradle-user-home/
 run-data/
 backups/
+from_scratch/
+characters/
+current.json
+ledger-*.json
+checkpoint-*.json
+migration-v*.json
+archive-*.json
+bank-ledger-*.json
+bank-checkpoint-*.json
+bank-pending-*.json
+bank-migration-*/
 *.jfr
 .env
 .env.*

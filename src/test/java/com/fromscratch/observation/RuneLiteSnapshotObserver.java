@@ -28,6 +28,7 @@ public final class RuneLiteSnapshotObserver implements SnapshotSource
 	private final ConfigManager configManager;
 	private final BankSnapshotReader bankReader;
 	private final EmptyContainerVerifier emptyVerifier;
+	private final ItemObservationCollector itemCollector;
 	private long verifiedHash;
 	private RuneScapeProfileType verifiedType;
 	private String verifiedProfile;
@@ -47,7 +48,7 @@ public final class RuneLiteSnapshotObserver implements SnapshotSource
 		});
 		PersonalContainerReader containerReader = new PersonalContainerReader(
 			id -> copy(id, id == InventoryID.BANK), emptyVerifier);
-		bankReader = new BankSnapshotReader(new BankSnapshotReader.Access()
+		BankSnapshotReader.Access access = new BankSnapshotReader.Access()
 		{
 			public boolean isInterfaceOpen(int interfaceId)
 			{
@@ -67,12 +68,15 @@ public final class RuneLiteSnapshotObserver implements SnapshotSource
 			{
 				return containerReader.items(inventoryId);
 			}
-		});
+		};
+		bankReader = new BankSnapshotReader(access);
+		itemCollector = new ItemObservationCollector(access);
 	}
 
 	public void resetSession()
 	{
 		endInitialization();
+		itemCollector.reset();
 		verifiedCharacter = null;
 	}
 
@@ -94,17 +98,53 @@ public final class RuneLiteSnapshotObserver implements SnapshotSource
 
 	public void containerChanged(int id, ItemContainer container)
 	{
-		if (!initializing) { return; }
 		emptyVerifier.reset();
 		List<ObservedItem> items = null;
 		try { items = copy(container, id == InventoryID.BANK); }
 		catch (IllegalStateException ex) { /* A malformed payload must still invalidate the old observation. */ }
-		bankReader.containerChanged(id, items);
+		itemCollector.changed(id, items);
+		if (initializing) { bankReader.containerChanged(id, items); }
 	}
 
-	public void bankOpened() { bankReader.interfaceChanged(); }
-	public void bankClosed() { bankReader.interfaceChanged(); }
-	public void gameTick() { emptyVerifier.gameTick(); bankReader.gameTick(); }
+	public void bankOpened() { bankReader.interfaceChanged(); itemCollector.bankInterfaceChanged(); }
+	public void bankClosed() { bankReader.interfaceChanged(); itemCollector.bankInterfaceChanged(); }
+	public void gameTick() { emptyVerifier.gameTick(); bankReader.gameTick(); itemCollector.gameTick(); }
+	public boolean supportsTracking() { return true; }
+	// Login/identity boundaries already reset the collector. Keep observations made
+	// while a background load or the initial confirmation was in progress.
+	public void beginTracking() { }
+	public void confirmedSnapshot(LegacySnapshot snapshot) { itemCollector.seedConfirmed(snapshot); }
+	public void acknowledgeItems(long tick) { itemCollector.acknowledge(tick); }
+	public void acknowledgeItems(ItemObservation observation) { itemCollector.acknowledge(observation); }
+	public String itemName(int id)
+	{
+		try
+		{
+			String name = client.getItemDefinition(id).getName(); return name == null ? "Unknown item #" + id : name;
+		}
+		catch (RuntimeException ex) { return "Unknown item #" + id; }
+	}
+	public int noteBase(int id)
+	{
+		try
+		{
+			net.runelite.api.ItemComposition item = client.getItemDefinition(id);
+			return item.getNote() != -1 && item.getLinkedNoteId() >= 0 ? item.getLinkedNoteId() : id;
+		}
+		catch (RuntimeException ex) { return id; } // unknown definitions never create an inferred equivalence
+	}
+	public void itemAction(int id, ItemObservation.Action action) { itemCollector.action(id, action); }
+	public void unsupportedItemAction() { itemCollector.unsupportedAction(); }
+	public ItemObservation observeItems(boolean preparing)
+	{
+		ItemObservation observation = itemCollector.poll(preparing);
+		if (log.isDebugEnabled() && diagnosticRateLimit.allow(System.nanoTime()))
+		{
+			log.debug("From Scratch items: preparing={} observedLocations={} stable={} bankOpen={} uncertainBank={} {}",
+				preparing, observation.getProgress().getContainers().size(), observation.isStable(), observation.isBankOpen(), observation.isUncertainBankChange(), itemCollector.diagnostics());
+		}
+		return observation;
+	}
 
 	/** UI loading/closure invalidates verification candidates, not earlier valid setup observations. */
 	public void personalInterfaceChanged() { emptyVerifier.reset(); }
@@ -121,7 +161,7 @@ public final class RuneLiteSnapshotObserver implements SnapshotSource
 			return verifiedCharacter;
 		}
 		String key = CharacterIdentity.verify(true, hash, type, profile, configManager.getRSProfiles()).orElse(null);
-		if (!Objects.equals(key, verifiedCharacter)) { endInitialization(); }
+		if (!Objects.equals(key, verifiedCharacter)) { endInitialization(); itemCollector.reset(); }
 		verifiedHash = hash;
 		verifiedType = type;
 		verifiedProfile = profile;

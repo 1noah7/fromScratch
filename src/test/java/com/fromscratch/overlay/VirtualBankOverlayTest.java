@@ -32,7 +32,7 @@ public class VirtualBankOverlayTest
 	{
 		graphics = image.createGraphics();
 		clearFrame();
-		state.enable(); state.update(active());
+		state.enable(); com.fromscratch.overlay.LegacyOverlayFixture.update(state, active());
 	}
 	@After public void tearDown() { graphics.dispose(); }
 
@@ -154,7 +154,7 @@ public class VirtualBankOverlayTest
 	{
 		locked(25); overlay.render(graphics); int once = image.getRGB(30, 40);
 		clearFrame(); state.disable(); overlay.render(graphics); assertUntouched(30, 40);
-		state.enable(); state.update(active()); overlay.render(graphics);
+		state.enable(); com.fromscratch.overlay.LegacyOverlayFixture.update(state, active()); overlay.render(graphics);
 		assertEquals(once, image.getRGB(30, 40));
 	}
 	@Test public void positiveBankOwnershipKeepsItsPartiallyVisibleSpriteNormal()

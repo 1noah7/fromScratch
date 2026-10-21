@@ -19,4 +19,9 @@ public interface SetupActions
 	void cancel();
 	void reset(UUID runId);
 	void retry();
+	default void reviewItems() { }
+	default void confirmItems(UUID token, java.util.Map<Integer, com.fromscratch.model.VirtualItemOwnership> corrections, String reason, boolean permanentlyRemoved) { }
+	default void confirmUpdate(UUID token, com.fromscratch.tracking.ItemReviewEdits edits)
+	{ confirmItems(token, edits.getOwnership(), edits.getReason(), false); }
+	default void cancelUpdate(UUID token) { }
 }

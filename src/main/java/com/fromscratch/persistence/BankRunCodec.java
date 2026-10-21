@@ -1,0 +1,79 @@
+package com.fromscratch.persistence;
+
+import com.fromscratch.bank.*;
+import com.fromscratch.model.ContainerSnapshot;
+import com.google.gson.*;
+import java.time.Instant;
+import java.util.*;
+import javax.inject.Inject;
+
+/** Explicit format-6 JSON with verified format-5 decoding; no domain deserialization or inferred financial defaults. */
+public final class BankRunCodec
+{
+	public static final int FORMAT = 6;
+	private final Gson gson;
+	@Inject public BankRunCodec(Gson gson) { this.gson = gson.newBuilder().serializeNulls().create(); }
+	public String encode(BankRun r)
+	{
+		JsonObject p = new JsonObject();
+		p.addProperty("character", r.getCharacter()); p.addProperty("run", string(r.getRunId())); p.addProperty("previousRun", string(r.getPreviousRunId()));
+		p.addProperty("started", string(r.getStartedAt())); p.addProperty("revision", r.getRevision().toString()); p.addProperty("sequence", r.getSequence());
+		if (r.getInitialBank() == null) { p.add("initial", JsonNull.INSTANCE); }
+		else { JsonObject initial = new JsonObject(); initial.addProperty("slots", r.getInitialBank().getOccupiedSlots()); initial.add("quantities", map(r.getInitialBank().getQuantities())); p.add("initial", initial); }
+		p.add("physical", map(r.getPhysical())); p.add("balances", map(r.getBalances())); p.addProperty("anchored", r.isAnchored());
+		p.addProperty("legacyDocument", r.getLegacyDocument()); p.addProperty("migrationArchive", r.getMigrationArchive());
+		JsonArray recent = new JsonArray(); r.getRecent().forEach(a -> recent.add(audit(a))); p.add("recent", recent);
+		p.add("hostSummary", r.getHostSummary() == null ? JsonNull.INSTANCE : audit(r.getHostSummary())); p.add("financial",FinancialCodec.state(r.getFinancial())); return envelope(p, FORMAT);
+	}
+	public BankRun decode(String text, String character) throws SaveException
+	{
+		try
+		{
+			int format=Math.toIntExact(number(new JsonParser().parse(text).getAsJsonObject().get("formatVersion")));if(format!=5&&format!=FORMAT){throw new IllegalArgumentException("Unsupported bank schema");}
+			JsonObject p = payload(text, format);
+			if(format==5){keys(p, "character", "run", "previousRun", "started", "revision", "sequence", "initial", "physical", "balances", "anchored", "legacyDocument", "migrationArchive", "recent", "hostSummary");}
+			else{keys(p, "character", "run", "previousRun", "started", "revision", "sequence", "initial", "physical", "balances", "anchored", "legacyDocument", "migrationArchive", "recent", "hostSummary","financial");}
+			if (!character.equals(str(p, "character"))) { throw new IllegalArgumentException("Character mismatch"); }
+			ContainerSnapshot initial = null;
+			if (!p.get("initial").isJsonNull()) { JsonObject i = p.getAsJsonObject("initial"); keys(i, "slots", "quantities"); initial = new ContainerSnapshot(readMap(i.getAsJsonObject("quantities")), Math.toIntExact(number(i.get("slots")))); }
+			List<BankAudit> recent = new ArrayList<>(); for (JsonElement a : p.getAsJsonArray("recent")) { recent.add(readAudit(a.getAsJsonObject())); }
+			JsonElement anchored = p.get("anchored"); if (!anchored.isJsonPrimitive() || !anchored.getAsJsonPrimitive().isBoolean()) { throw new IllegalArgumentException("Invalid bank anchor flag"); }
+			return new BankRun(character, uuid(nullable(p, "run")), uuid(nullable(p, "previousRun")), instant(nullable(p, "started")), UUID.fromString(str(p, "revision")), number(p.get("sequence")), initial,
+				readMap(p.getAsJsonObject("physical")), readMap(p.getAsJsonObject("balances")), anchored.getAsBoolean(), nullable(p, "legacyDocument"), nullable(p, "migrationArchive"), recent,
+				p.get("hostSummary").isJsonNull() ? null : readAudit(p.getAsJsonObject("hostSummary")),format==5?com.fromscratch.wealth.FinancialState.baseline(readMap(p.getAsJsonObject("balances")),recent.get(0).getAt(),true):FinancialCodec.state(p.getAsJsonObject("financial")));
+		}
+		catch (RuntimeException ex) { throw new SaveException("Bank save is corrupt or incompatible. Existing data and recovery files were preserved."); }
+	}
+	String envelope(JsonObject p, int version)
+	{
+		String data = gson.toJson(p); JsonObject e = new JsonObject(); e.addProperty("formatVersion", version); e.addProperty("sha256", SaveIntegrity.sha256(data)); e.addProperty("payload", data); return gson.toJson(e);
+	}
+	JsonObject payload(String text, int version)
+	{
+		JsonObject e = new JsonParser().parse(text).getAsJsonObject(); keys(e, "formatVersion", "sha256", "payload");
+		if (number(e.get("formatVersion")) != version || !SaveIntegrity.sha256(str(e, "payload")).equals(str(e, "sha256"))) { throw new IllegalArgumentException("Invalid envelope"); }
+		return new JsonParser().parse(str(e, "payload")).getAsJsonObject();
+	}
+	JsonObject audit(BankAudit a)
+	{
+		JsonObject p = new JsonObject(); p.addProperty("id", a.getId().toString()); p.addProperty("session", a.getSession().toString()); p.addProperty("at", a.getAt().toString()); p.addProperty("kind", a.getKind().name());
+		p.add("physical", map(a.getPhysicalChanges())); p.add("balances", map(a.getBalanceChanges())); p.addProperty("reason", a.getReason()); p.add("valuations",FinancialCodec.events(a.getValuations())); return p;
+	}
+	BankAudit readAudit(JsonObject p)
+	{
+		if(p.has("valuations")){keys(p, "id", "session", "at", "kind", "physical", "balances", "reason","valuations");}else{keys(p, "id", "session", "at", "kind", "physical", "balances", "reason");}
+		return new BankAudit(UUID.fromString(str(p, "id")), UUID.fromString(str(p, "session")), Instant.parse(str(p, "at")), BankAudit.Kind.valueOf(str(p, "kind")), readMap(p.getAsJsonObject("physical")), readMap(p.getAsJsonObject("balances")), str(p, "reason"),p.has("valuations")?FinancialCodec.events(p.getAsJsonArray("valuations")):Collections.emptyList());
+	}
+	static JsonObject map(Map<Integer, Long> map) { JsonObject p = new JsonObject(); new TreeMap<>(map).forEach((id, n) -> p.addProperty(id.toString(), n)); return p; }
+	static Map<Integer, Long> readMap(JsonObject p)
+	{
+		Map<Integer, Long> result = new TreeMap<>(); for (Map.Entry<String, JsonElement> e : p.entrySet()) { if (!e.getKey().matches("0|[1-9][0-9]*")) { throw new IllegalArgumentException("Invalid item ID"); } result.put(Integer.parseInt(e.getKey()), number(e.getValue())); } return result;
+	}
+	static long number(JsonElement e) { if (!e.isJsonPrimitive() || !e.getAsJsonPrimitive().isNumber() || !e.getAsString().matches("-?(0|[1-9][0-9]*)")) { throw new IllegalArgumentException("Invalid integer"); } return Long.parseLong(e.getAsString()); }
+	static String str(JsonObject p, String key) { JsonElement v = p.get(key); if (v == null || !v.isJsonPrimitive() || !v.getAsJsonPrimitive().isString()) { throw new IllegalArgumentException("Invalid field " + key); } return v.getAsString(); }
+	static String nullable(JsonObject p, String key) { return p.get(key).isJsonNull() ? null : str(p, key); }
+	static void keys(JsonObject p, String... expected) { if (!p.keySet().equals(new HashSet<>(Arrays.asList(expected)))) { throw new IllegalArgumentException("Unknown or missing fields"); } }
+	private static String string(Object o) { return o == null ? null : o.toString(); }
+	private static UUID uuid(String s) { return s == null ? null : UUID.fromString(s); }
+	private static Instant instant(String s) { return s == null ? null : Instant.parse(s); }
+}

@@ -2,6 +2,8 @@
 
 ## Status and scope
 
+**Subsequent acceptance:** The user accepted Milestone 3 including the final rendering corrections and committed it as `5b7c49f` before authorizing M4. The details below are the historical M3 report. Its renderer remains unchanged in M4; live nonzero accounting integration is covered by the separate M4 acceptance procedure.
+
 M1/M2 passed user-run acceptance. This milestone started from clean commit `9e6b757` and implements only M3. M3 is functionally accepted. The latest visual correction addresses the omitted partly visible top row and the request for slightly darker, more natural shading; those visuals await user acceptance. Ownership storage, compatible migration, purple bank quantities, configuration and active-sidebar cleanup remain as functionally accepted. No acquisition/transfer engine, mobile reconciliation, GE accounting, buybacks, wealth valuation, grant-items control or M4 work was added. No code or assets were copied from purpleCounter. No commit, push, tag, progression reset or publication was performed.
 
 The agent has not controlled RuneScape, inspected private saves or migrated real account files. Migration/recovery tests use synthetic JUnit temporary roots. The visual refinement makes no persistence or schema change and requires no new snapshot, migration or reset.

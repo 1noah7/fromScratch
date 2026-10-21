@@ -1,0 +1,178 @@
+package com.fromscratch.bank;
+
+import com.fromscratch.ui.RunDuration;
+import com.fromscratch.wealth.*;
+import java.awt.*;
+import java.time.Instant;
+import java.util.Map;
+import javax.swing.*;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.ui.FontManager;
+
+/** Persistent two-column dashboard. Ordinary updates change labels/buttons, never rebuild the component tree. */
+public final class BankPanel extends PluginPanel
+{
+	public static final String START_WARNING = "Your current bank will become your legacy baseline. All virtual bank balances will start at zero.";
+	private static final Color PURPLE = new Color(0xB450FF);
+	private static final Color BACKGROUND = new Color(30, 28, 25);
+	private final CardLayout cards = new CardLayout();
+	private final JPanel body = new JPanel(cards)
+	{
+		@Override public Dimension getPreferredSize()
+		{
+			// CardLayout normally reserves space for the hidden dashboard, making a short setup scroll.
+			for(Component child:getComponents()){if(child.isVisible()){return child.getPreferredSize();}}
+			return super.getPreferredSize();
+		}
+		@Override public Dimension getMinimumSize()
+		{
+			for(Component child:getComponents()){if(child.isVisible()){return child.getMinimumSize();}}
+			return super.getMinimumSize();
+		}
+	};
+	private final JLabel notice = new JLabel();
+	private final JCheckBox attested = new BankAttestation();
+	private final JButton start = new BankPrimaryButton("Start From Scratch"), corrections = new JButton(), reset = new BankDangerButton("Reset Progress"), retry = new JButton("Retry Loading"), anchor = new JButton("Review Bank Anchor");
+	private final JPanel upgrade = vertical();
+	private final JPanel stats = new JPanel(new GridLayout(0, 2, 6, 6));
+	private final BankTile unlocked;
+	private final BankTile duration;
+	private final BankTile gained;
+	private final BankTile netWorth;
+	private final BankTile bankGp;
+	private final BankTile lost;
+	private final JLabel automaticSummary = new JLabel("No changes yet", SwingConstants.CENTER), manualSummary = new JLabel("No corrections yet", SwingConstants.CENTER);
+	private final javax.swing.Timer timer = new javax.swing.Timer(30000, e -> refreshDuration());
+	private BankView view;
+	private BankActions actions;
+	private String card;
+	private java.util.function.Consumer<Boolean> historyNavigation;
+	private Runnable correctionsNavigation;
+	private Confirmation confirmation = BankDialogs::confirm;
+	@FunctionalInterface interface Confirmation { boolean show(Component owner,String title,String text,String action,boolean typedReset); }
+	public BankPanel() { this(new BankIcons(id -> null)); }
+	BankPanel(BankIcons icons, java.util.function.Consumer<Boolean> navigation) { this(icons); historyNavigation = navigation; }
+	BankPanel(BankIcons icons, java.util.function.Consumer<Boolean> navigation, Runnable correctionsNavigation) { this(icons, navigation); this.correctionsNavigation = correctionsNavigation; }
+	BankPanel(BankIcons icons, Confirmation confirmation) { this(icons); this.confirmation = confirmation; }
+	public BankPanel(BankIcons icons)
+	{
+		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS)); setBackground(BACKGROUND); body.setOpaque(false); stats.setOpaque(false); stats.setAlignmentX(LEFT_ALIGNMENT);
+		for (JButton button : new JButton[]{retry, anchor}) { button.setAlignmentX(LEFT_ALIGNMENT); button.setBackground(new Color(55, 46, 63)); button.setForeground(new Color(235, 220, 190)); button.setOpaque(true); button.setContentAreaFilled(false); }
+		JLabel title = new JLabel("From Scratch"); title.setFont(FontManager.getRunescapeBoldFont()); title.setForeground(new Color(0xFFD54F)); add(title);
+		notice.setForeground(new Color(0xFFD54F)); notice.setVisible(false); add(notice); retry.setVisible(false); add(retry);
+		JPanel setup = vertical(); setup.setName("setupPanel"); setup.add(heading("Before Starting"));
+		JLabel intro = setupCopy("1. Bank everything from your inventory.\n2. Unequip and bank all gear."); intro.setName("setupInstructions"); intro.setBorder(BorderFactory.createEmptyBorder(0, 0, 3, 0)); setup.add(intro);
+		setup.add(attested);
+		JLabel bankStep = setupCopy("3. Open your bank, then start your run."); bankStep.setName("setupBankStep"); setup.add(bankStep);
+		JPanel startRow = centeredAction(start); startRow.setName("startActionRow"); startRow.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0)); setup.add(startRow);
+		JLabel storageNote = setupCopy("Items in Grand Exchange offers or other storage aren't included. Collect them into your bank first if you want them treated as legacy.");
+		storageNote.setName("setupStorageNote"); storageNote.setFont(new Font(Font.DIALOG, Font.PLAIN, 11)); storageNote.setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0)); setup.add(storageNote);
+		body.add(setup, "setup");
+		JPanel active = vertical();
+		stats.setName("statisticTiles");
+		gained=new BankTile("Total Value Gained", "Total Value<br>Gained", ItemID.PLATINUM, icons);stats.add(gained);
+		netWorth=new BankTile("Current Bank Net Worth", "Current Bank<br>Net Worth", ItemID.CASKET, icons);stats.add(netWorth);
+		bankGp=new BankTile("Bank GP", "Bank GP", ItemID.COINS, icons);stats.add(bankGp);
+		unlocked = new BankTile("Items Unlocked", "Items Unlocked", ItemID.CRYSTAL_KEY, icons); stats.add(unlocked);
+		duration = new BankTile("Active Run Duration", "Active Run<br>Duration", ItemID.GIANT_STOPWATCH, icons); stats.add(duration);
+		lost=new BankTile("Total Value Lost / Spent", "Total Value<br>Lost / Spent", ItemID.ASHES, icons);stats.add(lost);
+		lost.onActivate(this::recordExpense);
+		stats.setMaximumSize(new Dimension(Integer.MAX_VALUE, 348)); active.add(stats);
+		upgrade.add(heading("Finish Bank Upgrade")); upgrade.add(description("Open your bank and confirm its comparison point. Your previous save and history are archived.")); upgrade.add(anchor); active.add(upgrade);
+		active.add(heading("Bank History")); JPanel history = new JPanel(new GridLayout(1, 2, 6, 0)); history.setAlignmentX(LEFT_ALIGNMENT); history.setOpaque(false); history.setMaximumSize(new Dimension(Integer.MAX_VALUE, 102));
+		history.add(historyTile("Automatic Changes", BankIcons.AUTOMATIC_CHANGES, automaticSummary, icons, () -> openHistory(false)));
+		history.add(historyTile("Manual Corrections", BankIcons.MANUAL_CORRECTIONS, manualSummary, icons, () -> openHistory(true))); active.add(history);
+		JPanel elsewhere = vertical(); elsewhere.setName("playedElsewhere"); elsewhere.add(heading("Played Elsewhere?"));
+		JPanel returnTiles = new JPanel(new GridLayout(1, 2, 6, 0)); returnTiles.setName("playedElsewhereTiles"); returnTiles.setOpaque(false); returnTiles.setAlignmentX(LEFT_ALIGNMENT); returnTiles.setPreferredSize(new Dimension(200, 132)); returnTiles.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
+		JPanel instructions = new JPanel(new BorderLayout()); instructions.setName("elsewhereInstructions"); decorateTile(instructions);
+		JLabel help = new JLabel("<html><div style='width:90pt;text-align:center'>Played on mobile or another PC? Bank your items and open your bank here. Your progress updates automatically.</div></html>", SwingConstants.CENTER);
+		help.setName("elsewhereHelp"); help.setFont(new Font(Font.DIALOG, Font.PLAIN, 11)); help.setForeground(new Color(216, 205, 181)); help.setVerticalAlignment(SwingConstants.CENTER); instructions.add(help, BorderLayout.CENTER); returnTiles.add(instructions);
+		fillTile(corrections, "Manual Bank Corrections", BankIcons.BANK_CORRECTIONS, new JLabel("<html><center>Fix an incorrect<br>count</center></html>", SwingConstants.CENTER), icons); returnTiles.add(corrections); elsewhere.add(returnTiles); active.add(elsewhere);
+		JPanel danger = vertical(); danger.setName("resetDangerArea"); danger.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(18, 0, 0, 0), BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(121, 55, 55)), BorderFactory.createEmptyBorder(8, 8, 8, 8))));
+		JLabel dangerTitle = heading("Reset Progress"); dangerTitle.setForeground(new Color(235, 116, 116)); danger.add(dangerTitle); danger.add(description("Permanently restart your From Scratch challenge.")); Dimension resetSize=reset.getPreferredSize(); reset.setPreferredSize(new Dimension(Math.max(170,resetSize.width),resetSize.height)); danger.add(centeredAction(reset)); active.add(danger);
+		body.add(active, "active"); body.setAlignmentX(LEFT_ALIGNMENT); add(body);
+		attested.addActionListener(e -> updateControls());
+		start.addActionListener(e -> { if (actions != null && confirmation.show(this, "Start From Scratch?", START_WARNING, "Start Run", false)) { start.setEnabled(false); actions.startRun(attested.isSelected()); } });
+		corrections.addActionListener(e -> { if (correctionsNavigation != null) { correctionsNavigation.run(); } else if (view != null && actions != null) { BankCorrectionDialog.show(this, view, actions); } });
+		reset.addActionListener(e -> { BankView captured = view; if (actions != null && captured != null && captured.getRun() != null && confirmation.show(this, "Reset Progress", "This ends your current challenge and clears its active progress. A recovery archive will be kept. Your real OSRS items are untouched.", "Reset Progress", true)) { reset.setEnabled(false); actions.reset(captured.getRun().getRevision()); } });
+		retry.addActionListener(e -> { if (actions != null) { actions.retry(); } }); anchor.addActionListener(e -> anchor());
+	}
+	@Override public void addNotify() { super.addNotify(); timer.start(); }
+	@Override public void removeNotify() { timer.stop(); super.removeNotify(); }
+	public void render(BankView updated, BankActions actions)
+	{
+		if (updated.getObservation() == null || (view != null && view.getRun() != null && view.getRun().isActive() && (updated.getRun() == null || !updated.getRun().isActive()))) { attested.setSelected(false); }
+		this.view = updated; this.actions = actions; BankRun run = updated.getRun(); boolean active = run != null && run.isActive();
+		String wanted = active ? "active" : "setup"; if (!wanted.equals(card)) { cards.show(body, wanted); card = wanted; body.revalidate(); invalidate(); revalidate(); }
+		String message = updated.getMessage(); boolean important = updated.isError() || (!active && !updated.ready()) || (active && !updated.isBusy() && !message.equals("Bank progress saved.") && !message.equals("Bank progress updates automatically.") && run.isAnchored());
+		notice.setVisible(important); notice.setText(important ? "<html>" + escape(message) + "</html>" : ""); retry.setVisible(updated.isError());
+		if (active)
+		{
+			unlocked.value(Long.toString(run.unlocked()), "Distinct item IDs with positive bank progress; not a lifetime acquisition count."); refreshDuration();
+			FinancialState financial=run.getFinancial();
+			gained.value(financial.getGainedGp()==0&&!financial.getUnpricedGains().isEmpty()?"Unpriced":GpFormatter.compact(financial.getGainedGp())+(financial.getUnpricedGains().isEmpty()?"":"*"),BankTooltips.gained(financial));
+			bankGp.value(GpFormatter.compact(run.balance(ItemID.COINS)),BankTooltips.bankGp(run.balance(ItemID.COINS)));
+			BankValuation market=updated.getValuation();
+			if(market!=null&&market.getRevision().equals(run.getRevision())){netWorth.value(market.label(),BankTooltips.netWorth(market),market.getMissingTypes()>0&&market.getPricedTypes()>0?"Priced subtotal":null);}
+			else{netWorth.value(run.isAnchored()?"Updating…":"Unavailable",BankTooltips.netWorth(null));}
+			lost.value(financial.getExpenseRecords()==0?"Not tracked":GpFormatter.compact(financial.getExpenseGp()),BankTooltips.expenses(financial));
+			automaticSummary.setText(count(run, false) + " recent"); manualSummary.setText(count(run, true) + " recent");
+		}
+		upgrade.setVisible(active && !run.isAnchored()); updateControls();
+	}
+	private void updateControls()
+	{
+		if (view == null) { return; } boolean usable = !view.isBusy() && !view.isError();
+		start.setEnabled(view.ready() && attested.isSelected()); corrections.setEnabled(usable && view.getRun() != null && view.getRun().isAnchored()); reset.setEnabled(usable && view.getRun() != null && view.getRun().isActive()); anchor.setEnabled(view.ready());
+	}
+	private void openHistory(boolean manual) { if (historyNavigation != null) { historyNavigation.accept(manual); } else if (actions != null) { BankHistoryDialog.show(this, actions, manual); } }
+	private void recordExpense()
+	{
+		if(view!=null&&actions!=null&&!view.isBusy()&&!view.isError()&&view.getRun()!=null&&view.getRun().isAnchored()){BankExpenseDialog.show(this,view,actions);}
+	}
+	private void refreshDuration() { if (view != null && view.getRun() != null && view.getRun().isActive()) { duration.value(RunDuration.format(RunDuration.minutes(view.getRun().getStartedAt(), Instant.now())), "Elapsed run age, including offline time."); } }
+	private void anchor()
+	{
+		BankView captured = view; if (captured == null || !captured.ready()) { return; }
+		StringBuilder text = new StringBuilder("Keep saved balances and use this bank as the comparison point? Earlier changes will not be replayed.\n"); boolean excess = false;
+		for (Map.Entry<Integer, Long> e : captured.getRun().getBalances().entrySet()) { long p = captured.getObservation().getBank().quantity(e.getKey()); if (e.getValue() > p) { excess = true; text.append(captured.name(e.getKey())).append(": ").append(e.getValue()).append(" → ").append(p).append('\n'); } }
+		if (excess) { text.append("Bank missing copies first, or approve the listed reductions."); }
+		if (BankDialogs.confirm(this, excess ? "Approve listed reductions and anchor?" : "Confirm bank anchor?", text.toString(), "Confirm Anchor", false)) { actions.anchor(captured.getRun().getRevision(), captured.getObservation().getBank(), excess); }
+	}
+	private static long count(BankRun run, boolean manual) { return run.getRecent().stream().filter(a -> manual ? a.getKind() == BankAudit.Kind.CORRECTION || a.getKind() == BankAudit.Kind.ANCHOR : a.getKind() == BankAudit.Kind.AUTOMATIC).mapToLong(a -> a.getBalanceChanges().size()).sum(); }
+	private static JPanel vertical() { JPanel p = new JPanel(); p.setBackground(BACKGROUND); p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS)); p.setAlignmentX(LEFT_ALIGNMENT); return p; }
+	private static JLabel setupCopy(String text)
+	{
+		JLabel label=new JLabel("<html><div style='width:200pt'>"+BankTooltips.escape(text).replace("\n","<br>")+"</div></html>");
+		label.setFont(new Font(Font.DIALOG,Font.PLAIN,12));label.setForeground(new Color(216,205,181));label.setAlignmentX(LEFT_ALIGNMENT);return label;
+	}
+	private static JPanel centeredAction(JButton button)
+	{
+		JPanel row=new JPanel(new FlowLayout(FlowLayout.CENTER,0,4))
+		{
+			@Override public Dimension getMaximumSize(){return new Dimension(Integer.MAX_VALUE,getPreferredSize().height);}
+		};row.setOpaque(false);row.setAlignmentX(LEFT_ALIGNMENT);row.add(button);return row;
+	}
+	private static JLabel heading(String text) { JLabel label = new JLabel(text); label.setForeground(PURPLE); label.setBorder(BorderFactory.createEmptyBorder(14, 0, 6, 0)); label.setAlignmentX(LEFT_ALIGNMENT); return label; }
+	private static JTextArea description(String text) { JTextArea area = new JTextArea(text); area.setFont(new Font(Font.DIALOG, Font.PLAIN, 12)); area.setForeground(new Color(216, 205, 181)); area.setLineWrap(true); area.setWrapStyleWord(true); area.setOpaque(false); area.setEditable(false); area.setFocusable(false); area.setSize(170, Short.MAX_VALUE); area.setMaximumSize(new Dimension(Integer.MAX_VALUE, area.getPreferredSize().height)); area.setAlignmentX(LEFT_ALIGNMENT); return area; }
+	private static JButton historyTile(String title, int id, JLabel summary, BankIcons icons, Runnable action)
+	{
+		JButton button = new JButton(); fillTile(button, title, id, summary, icons); button.addActionListener(e -> action.run()); return button;
+	}
+	private static void decorateTile(JComponent tile)
+	{
+		tile.setBackground(new Color(43, 39, 33)); tile.setOpaque(true);
+		tile.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(75, 62, 85)), BorderFactory.createEmptyBorder(6, 3, 6, 3)));
+	}
+	private static void fillTile(JButton button, String title, int id, JLabel summary, BankIcons icons)
+	{
+		button.setUI(new javax.swing.plaf.basic.BasicButtonUI()); button.setLayout(new BorderLayout(0, 2)); decorateTile(button); button.setContentAreaFilled(false); button.setRolloverEnabled(true); button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		button.setToolTipText(title); button.getAccessibleContext().setAccessibleName(title);
+		button.getModel().addChangeListener(e -> { button.setBackground(button.getModel().isRollover() || button.hasFocus() ? new Color(55, 45, 63) : new Color(43, 39, 33)); });
+		JLabel icon = new JLabel(); icons.apply(icon, id); button.add(icon, BorderLayout.NORTH);
+		JLabel label = new JLabel("<html><center>" + title.replace(" ", "<br>") + "</center></html>", SwingConstants.CENTER); label.setFont(FontManager.getRunescapeSmallFont()); label.setForeground(new Color(216, 205, 181)); button.add(label, BorderLayout.CENTER);
+		summary.setFont(FontManager.getRunescapeSmallFont()); summary.setForeground(new Color(0xFFD54F)); button.add(summary, BorderLayout.SOUTH);
+	}
+	private static String escape(String s) { return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"); }
+}

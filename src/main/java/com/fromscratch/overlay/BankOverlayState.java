@@ -1,11 +1,6 @@
 package com.fromscratch.overlay;
 
 import com.fromscratch.FromScratchConfig;
-import com.fromscratch.model.RunRecord;
-import com.fromscratch.model.RunStatus;
-import com.fromscratch.model.VirtualLocation;
-import com.fromscratch.model.VirtualOwnership;
-import com.fromscratch.ui.SetupView;
 import java.awt.Color;
 import java.util.Collections;
 import java.util.HashMap;
@@ -17,7 +12,7 @@ import lombok.Getter;
 @Singleton
 public final class BankOverlayState
 {
-	public static final Color DEFAULT_COLOR = new Color(0xB450FF);
+	public static final Color DEFAULT_COLOR = new Color(0x1DFF00);
 	@Getter private volatile boolean enabled;
 	@Getter private volatile Projection projection;
 	@Getter private volatile Settings settings = new Settings(true, true, DEFAULT_COLOR);
@@ -27,39 +22,37 @@ public final class BankOverlayState
 	public void clear() { projection = null; }
 	public void configure(FromScratchConfig config)
 	{
-		settings = new Settings(config.bankVirtualQuantities(), config.lockedBankItems(), config.virtualQuantityColor());
+		settings = new Settings(config.bankVirtualQuantities(), config.lockedBankItems(), config.virtualQuantityColor(), config.lockedItemBackgroundColor(), config.lockedItemBackgroundOpacity());
 	}
 
-	public void update(SetupView view)
+	/** Live bank-only path. Unanchored migrations are hidden until the player confirms the anchor. */
+	public void updateBank(com.fromscratch.bank.BankView view)
 	{
-		RunRecord run = view.getSaved();
-		if (!enabled || view.getMode() != SetupView.Mode.ACTIVE || run == null || run.getState().getStatus() != RunStatus.ACTIVE)
-		{
-			projection = null;
-			return;
-		}
-		projection = new Projection(run);
+		com.fromscratch.bank.BankRun run = view.getRun();
+		if (!enabled || view.isError() || run == null || !run.isActive() || !run.isAnchored()) { projection = null; }
+		else if (projection == null || !projection.revision.equals(run.getRevision())) { projection = new Projection(run, view.getTrace()); }
 	}
 
 	@Getter
 	public static final class Projection
 	{
 		private final String characterKey;
-		private final VirtualOwnership ownership;
 		private final Map<Integer, String> labels;
-		private Projection(RunRecord run)
+		private final Map<Integer, Long> bankBalances;
+		private final java.util.UUID revision;
+		private final com.fromscratch.bank.BankTimings.Trace trace;
+		private Projection(com.fromscratch.bank.BankRun run, com.fromscratch.bank.BankTimings.Trace trace)
 		{
-			characterKey = run.getState().getCharacterKey();
-			ownership = run.getOwnership();
-			Map<Integer, String> labels = new HashMap<>();
-			ownership.getItems().forEach((id, item) ->
-			{
-				long bank = item.at(VirtualLocation.BANK);
-				if (bank > 0) { labels.put(id, VirtualQuantityFormatter.format(bank)); }
-			});
-			this.labels = Collections.unmodifiableMap(labels);
+			this.revision = run.getRevision(); this.trace = trace;
+			characterKey = run.getCharacter(); bankBalances = run.getBalances();
+			Map<Integer, String> formatted = new HashMap<>(); bankBalances.forEach((id, n) -> formatted.put(id, VirtualQuantityFormatter.signed(n)));
+			labels = Collections.unmodifiableMap(formatted);
 		}
 		public String label(int id) { return labels.getOrDefault(id, "0"); }
+		public long balance(int id, boolean placeholder)
+		{
+			long n = bankBalances.getOrDefault(id, 0L); return placeholder ? Math.min(0, n) : n;
+		}
 	}
 
 	@Getter
@@ -68,11 +61,16 @@ public final class BankOverlayState
 		private final boolean quantities;
 		private final boolean dimLocked;
 		private final Color color;
+		private final Color lockedTint;
 		public Settings(boolean quantities, boolean dimLocked, Color color)
+		{ this(quantities, dimLocked, color, new Color(0x333333), 50); }
+		public Settings(boolean quantities, boolean dimLocked, Color color, Color lockedColor, int opacity)
 		{
 			this.quantities = quantities;
 			this.dimLocked = dimLocked;
 			this.color = color == null ? DEFAULT_COLOR : new Color(color.getRGB());
+			Color tint = lockedColor == null ? new Color(0x333333) : lockedColor;
+			this.lockedTint = new Color(tint.getRed(), tint.getGreen(), tint.getBlue(), Math.round(Math.max(0, Math.min(100, opacity)) * 255f / 100));
 		}
 	}
 }

@@ -1,99 +1,122 @@
-# Accounting policy and invariants
+# Bank accounting policy
 
-**M3 implements ownership storage and bank visuals; the economic engine below remains planned.** Confirmed immutable bank/inventory/equipment quantities, including coins, remain legacy. New/accepted-M2 runs have zero virtual ownership; no acquisition/transfer engine can change it yet. Currency/wealth metrics remain zero. Initial isolation, migration, character separation, reload and reset preservation are tested. Review the future policy before implementing M5 valuation.
+**Current contract: M1–M4 accepted; M5 bank valuation passes automated validation and awaits manual acceptance.** The original multi-container ownership policy is historical and lives in [the archived specification](docs/history/ACCOUNTING_MULTI_CONTAINER.md). It is not a source for current acquisition, transfer or session-gate behavior.
 
-## M3 ownership contract
+## Quantities and equation
 
-For exact item ID i, persist total T(i) separately from allocations A(i,BANK), A(i,INVENTORY), A(i,EQUIPMENT), A(i,GRAND_EXCHANGE). All values are nonnegative long quantities. Checked sum S(i) = sum A(i,l) must satisfy S(i) <= T(i). U(i) = T(i) - S(i) is unallocated ownership; it is not silently bank-available. Missing records/locations mean zero, not corrupt state. No physical quantity, legacy baseline, market price or rendered slot can create virtual ownership.
+For each exact API item ID i:
 
-The purple counter is A(i,BANK), never T(i). A placeholder is a zero-availability display regardless of ownership elsewhere. Fillers own nothing and have no counter. An item physically absent from the bank remains in the immutable ownership model, and no visual slot is invented. Exact notes/variants remain distinct; future canonical mappings must be explicit.
+- `L(i)` is the immutable initial physical bank quantity (legacy baseline).
+- `P(i)` is the last durably committed complete physical bank quantity.
+- `B(i)` is signed bank progress, independent of original game quantities.
+- Missing map records mean zero. Physical quantities are nonnegative. B may be negative.
 
-Ownership objects and run revisions are immutable. Future reducers may replace validated records and create a new revision while retaining the same legacy baseline; M3 adds no acquisition, transfer, loss, reconciliation or currency transaction. The format-1 migration can initialize virtual ownership to zero only because valid M2 data explicitly guarantees an empty virtual economy. It must preserve run identity/baseline and back up original bytes first. Missing/corrupt format-2 ownership can never take this default path.
+A new run has `P = L`, `B = 0`, after player attestation and explicit Start confirmation. Personal inventory/equipment are not inspected; the player banks them manually first. Special storage is excluded.
 
-Setup may combine a current complete open-bank container with validated inventory/equipment observations from the same uninterrupted initialization session, at most 60 seconds old. Null never means empty. Personal change events expire the affected observation; a changed previously observed bank invalidates cached personal observations. Incomplete/stale data prevents confirmation. These are setup observations only, not acquisition or transfer accounting. Confirmed baseline data and persistence are unchanged by this correction.
+For a new complete normal-bank observation `P'`:
 
-Zero occupied slots is a valid observed state. If an empty personal location has no API container, a complete mounted/visible normal interface must independently verify every initialized empty slot on two different game ticks before supplying a zero-item observation. Unknown/partial views are not zero. This leaves all three required snapshot locations and explicit confirmation intact. Storage is permanently local-only on one designated host; future mobile/other-computer reconciliation uses that host's trusted baseline, without cloud synchronization or remote save merging.
+```text
+delta(i) = P'(i) - P(i)
+B'(i)    = B(i) + delta(i)
+```
 
-## Ownership
+All stored quantity arithmetic uses checked longs. A batch with overflow/invalid data is rejected atomically. Stored B excludes Long.MIN_VALUE for safe delta operations; its formatter can still handle either long bound without negation. `B(i) <= P(i)` when anchored; there is no lower bound tied to P, because an absent item may retain negative progress.
 
-For supported item identity `i` and location `l`, record physical `P(i,l)`, locked legacy `L(i,l)`, and virtual `V(i,l)` quantities separately, using nonnegative long values. Preserve raw item/variant IDs; normalize notes only through explicit policies, preserving doses/charges correctly. Placeholders contribute zero owned quantity.
+Without corrections, `B = P - L`. A correction introduces an explicit offset `C`, giving `B = P - L + C`. Later physical deltas preserve C. Corrections never rewrite L.
 
-For a complete, reconciled observation: `P(i,l) = L(i,l) + V(i,l)`.
+| Action | P | B |
+| --- | ---: | ---: |
+| Initial legacy axe | 1 | 0 |
+| Withdraw axe | 0 | -1 |
+| Return axe | 1 | 0 |
+| New logs initially absent | 0 | 0 |
+| Deposit two logs | 2 | 2 |
+| Withdraw one log | 1 | 1 |
+| Burn outside bank, reopen unchanged bank | 1 | 1 |
 
-Unknown containers, in-flight changes, and unsupported storage are not forced into that equation. Preserve reliable history and a reconciliation record; never create negative quantities to make observations match. Virtual ownership includes supported and explicitly unresolved recorded positions. A vanished bank stack alone does not prove loss.
+Mixed stacks use the same equation: legacy 100, deposit 3 -> P103/B3; withdraw 4 -> P99/B-1; return 4 -> P103/B3. No earned/legacy instance allocation or elsewhere ownership is inferred.
 
-`V_total(i) = sum(V(i,l))` over nonoverlapping positions.
+## Meaning and limits
 
-Transfer `q` from A to B: `delta V(i,A) = -q`, `delta V(i,B) = q`, `delta V_total(i) = 0`. Location movement changes neither aggregate basis nor earnings. Identical physical copies cannot be individually identified; reliable transfers need deterministic allocation, uncertain transfers need review. Moving/transforming locked legacy inputs does not make their outputs virtual.
+Bank progress measures net bank holdings relative to the baseline and explicit corrections. A deposit alone does **not** prove an acquisition. A withdrawal does **not** prove spending, loss or consumption. Repeated withdrawal/redeposit cycles have zero net progress and create no lifetime acquisition count.
 
-Initialization sets all observed quantities to legacy and all virtual quantities/cash to zero. Natural acquisition of another Fire Cape credits only the new copy. Buyback shifts only the purchased quantity from locked legacy to virtual; physical counts do not change.
+Items Unlocked counts current distinct IDs with `B > 0`; a withdrawal can reduce that count. Automatic Changes history reports signed physical bank changes, not earnings. M5 financial estimates below respect this measurement boundary; no trade/cost-basis engine, spendable wallet or acquisition attribution is claimed.
 
-## Virtual currency
+Exact IDs/variants remain distinct. No noted/unnoted, charged/degraded, crafting or special-storage equivalence is inferred. API bank placeholders/fillers/empty slots contribute no physical quantity. Rendering never invents absent slots; a negative absent item remains searchable in Bank Corrections. Only a positive progress balance removes the lock effect.
 
-Keep spendable cash `S`, committed cash `C`, directly earned GP, GP spent/lost/owed as checked longs. `C >= 0`. Physical coins must not determine `S` after initialization. Valuation counts virtual coins/cash once.
+## Observation and durability
 
-- Earn `e`: `S' = S + e`; directly earned GP and gained value increase by `e`.
-- Reserve `r`: require `S >= r`; `S' = S - r`, `C' = C + r`; no new gain/spend.
-- Refund/cancel `r`: `C' = C - r`, `S' = S + r`; no new gain.
-- Settle purchase `p` from commitment: `C' = C - p`; acquire asset with basis `p`; no external earnings from conversion.
-- Ordinary purchase/buyback: require nonnegative sufficient spendable cash, deduct atomically with the asset changes.
-- Death fee `d`: `S' = S - d`, including supported debt. Approved manual debt corrections require an explicit reason.
-- GP owed: `max(0, -S)`. New income repays negative cash before positive spendable cash accumulates.
+Only a currently mounted, visible normal bank without a PIN and complete non-null API bank data can advance P. A complete aggregate is read at the first game-tick boundary after invalidation, following packet processing, then cached until the next bank/interface event. An observed empty container is valid; unavailable/partial is not an empty bank. Search, tabs, scrolling and reordering do not change aggregate P. Closing before settling postpones the comparison, not a write of empty holdings.
 
-Validate inputs and use exact add/subtract/multiply, rejecting overflow before mutation. Owed GP must also fit a signed long, so reject cash equal to Long.MIN_VALUE; the supported negative endpoint is -Long.MAX_VALUE. Never clamp, wrap, or partially apply. Unrepresentable valuation shows an unavailable/error result while retaining valid ownership/cash.
+The candidate anchor, balances and matching audit are committed as one forced journal/checkpoint publication. The old cursor remains authoritative until durable acknowledgment. Failed writes, unreferenced orphans, restarts and repeated bank openings cannot replay a committed delta. CAS rejects stale corrections and competing clients. A lost acknowledgment after successful publication is recovered by loading current, not by applying the delta again.
 
-Buyback expenditure remains spent even if physical coins stay in place. Do not recompute spendable cash as physical GP minus initial legacy GP. Only reliably classified new inflows change cash.
+## Host sessions and corrections
 
-## Historical basis and lifetime gained value
+There is no normal-session approval gate. The first complete bank observation in a new host session automatically compares against saved P, applies net deltas and stores a summary of that first comparison. Later same-session changes do not replace the summary. Same unchanged session/aggregate produces no journal append. A new session may record a no-change marker so its comparison remains visible.
 
-Proposed policy: pooled weighted-average historical basis per supported economic item identity and run, independent of location. Store total basis `B` and quantity `Q`, not a rounded unit average. External acquisitions add historical reference value. Cash-funded purchases add actual cost and no newly generated value. Gifts use the same rules as other acquisitions.
+Mobile/other-PC changes are exactly the difference between final bank holdings and committed P. Items earned and consumed entirely outside bank cannot be reconstructed. There is no cloud/remote merge.
 
-Removing `q` units allocates `b = floor(B*q/Q)` basis; removing all `Q` units takes all remaining `B`. Retain the remainder with the pool. Use exact JDK intermediate arithmetic (such as BigInteger) and validate the final long. This prevents rounding drift and multiplication overflow. Transfers do not remove aggregate basis. Transformations carry virtual input basis into outputs with deterministic remainder allocation; uncertain transformations require review.
+Bank Corrections searches known current, baseline, history and signed-balance IDs even with no pending changes. Desired signed B or signed adjustment must satisfy positive B <= current observed P and checked arithmetic. Preview/confirmation binds to the committed revision and current complete bank; stale/closed/unavailable data prevents saving. Cancel writes nothing. Manual corrections have distinct audit entries and are not represented as acquisitions.
 
-Let `A` be historical external item acquisitions/direct GP earnings, `R` cumulative signed realized trading gains, and `M` audited historical-value corrections:
+## Existing saves
 
-`Total Value Gained = A + R + M`.
+Formats 1–4 are verified using their historical schema and journal encoding before exact-byte, forced, manifest-verified archives. Preserve run identity/start and original three-container snapshot/document. Import bank display as `old BANK allocation - old outstanding legacy deficit`; do not convert personal/Elsewhere ownership into bank progress.
 
-For a sale: `R_delta = actual net proceeds - removed basis`. Record gross/tax components of one sale and use net proceeds once. Sale receipts increase cash but are not entirely newly earned GP/value. Loss-making sales create negative realized gain. Transfers, purchase principal, commitments/refunds, buybacks, and price refreshes create no lifetime gain.
+Imported active runs have no bank-only comparison anchor until one player-confirmed bank observation. That anchor is a deliberate boundary, not an inferred replay of unrecorded earlier changes. Keep all valid balances; excessive positives require banking those copies or explicit approval of listed reductions. Record reductions in the anchor audit. Afterward every host session uses bank-only automatic deltas. Historical acquisitions remain archived, not appended to new financial/lifetime statistics.
 
-Example: acquire an item at reference value 100 -> gained 100, basis 100. Sell for net 120 -> gained 120 overall, cash 120. Selling for net 80 instead -> gained 80 overall, cash 80. Later collection adds no gain. Repricing an unsold item to 150 changes current worth, not its historical 100 acquisition value.
+## Invariants and automated evidence
 
-Unpriced acquisitions have a missing-valuation marker and provisional zero reference value. Filling historical missing data requires an explicit audited correction, not a market refresh. Untradeables without reliable prices default to zero valuation and remain recorded as unlocked.
+1. **Net conservation:** equal final bank aggregates preserve B, irrespective of outside-bank activity.
+2. **No duplicate earnings:** cycles/reopen/repeated events create no lifetime metric and do not replay deltas.
+3. **Baseline isolation:** L and the original imported document never change during an active run.
+4. **Atomic authority:** P, B and audit publish together after storage acknowledgment.
+5. **Signed progress:** P >= 0, B <= P, absent IDs are zero, negative B remains valid/searchable.
+6. **No wallet/debt inference:** Bank GP is B(COINS); withdrawing coins does not prove spending. No unobserved inventory/GE wallet exists.
+7. **Fixed historical valuation:** current prices cannot alter B or previously recognized gain values.
+8. **Character isolation:** verified identity namespaces and CAS isolate runs.
+9. **Restart equivalence:** committed P/B survive reload; first next comparison applies only its net difference.
+10. **Uncertainty preservation:** null/partial bank data and corrupt/newer saves cannot replace trusted state.
+11. **No automation:** observations/rendering/storage never send normal game actions.
+12. **Corrections persist:** B-P changes only through explicit confirmed correction/anchor policy, not ordinary bank movement.
 
-## Current worth and expenditure
+See [TEST_PLAN.md](TEST_PLAN.md) for current integration, persistence, UI and accepted M3 regression coverage. Synthetic tests are not manual in-game acceptance.
 
-`Current Net Worth = S + C + market value(virtual non-cash assets in nonoverlapping positions)`.
+UI/performance polish changes scheduling, queueing and presentation, not the signed equation or save format. Complete snapshots commit FIFO on the worker; no speculative balances appear as committed. See [the polish report](docs/MILESTONE_4_POLISH.md).
 
-Include supported bank/inventory/equipment/GE positions. Uncollected proceeds separate from spendable cash count exactly once. Negative cash reduces worth. Do not count physical coins, legacy assets, or both offer goods and their collected replacements.
+## M5 market and currency equations
 
-Use cached current RuneLite market estimates and show missing/stale valuation status. High alchemy is a separately labeled metric, not a universal GE fallback. Historical basis never changes on a market refresh.
+`Bank GP = B(ItemID.COINS)`; `N = sum(B(i) * p(i))` over priced nonzero balances. Coins use p=1 exactly once. Legacy holdings contribute nothing unless B changes; negative balances subtract market value. Unknown prices are excluded with an explicit priced-subtotal label and count. Stale last-received values may support a current estimate with a warning, but do not establish a historical gain price. A present zero-price feed record is verified zero, not missing.
 
-Keep separate summaries for purchase expenditure, buybacks, death costs, consumption basis, other losses, and realized trading losses. Define the displayed Lost / Spent aggregation when implemented, with categories visible. Purchase cash converted into an asset is expenditure, not immediate economic loss; net worth must not deduct it twice. Consumption removes quantity/basis without erasing past gained value. Net worth is not generally lifetime gained minus all cash spending.
+Price identity resolves only noted forms to their linked unnoted ID; bank quantities/high-water IDs remain exact. Charged/degraded variants are not arbitrarily merged. RuneLite ItemClient's bulk feed supplies GE guide prices; no private holdings are sent. Refresh every 30 minutes on a dedicated worker, retry failures after one minute, retaining stale last-good values. Receipt time is not a server market timestamp. Current caches are ephemeral; persisted historical quotes survive restarts. Arithmetic uses arbitrary precision for the signed sum and reports out-of-long-range totals unavailable; bank/history changes still use checked longs.
 
-Buybacks reduce cash, release legacy quantities, create no gained value, and assign no earned acquisition basis to unlocked legacy assets. Keep their virtual cost as expenditure. An unpriced untradeable buyback reduces current market worth by its virtual price.
+## Estimated recorded gains
 
-## Ledger and recovery
+H(i) starts at zero for a new run. For an automatic bank update only:
 
-Each command produces one immutable transaction with multiple entries. Include UUID/sequence/time, character/run identity, raw item ID, item/location/legacy/virtual deltas, cash deltas, classification/source, valuation/basis changes, and confidence/reconciliation references. Classifications: ACQUISITION, TRANSFER, CONSUMPTION, TRANSFORMATION, PURCHASE, SALE, BUYBACK, DEATH_COST, LOSS, MANUAL_ADJUSTMENT.
+```text
+q(i) = max(0, B'(i) - H(i))
+H'(i) = max(H(i), B'(i))
+known gain addition = q(i) * unit price recorded at recognition
+```
 
-Validate the whole candidate state, durably commit the whole transaction, then publish it. GP deduction and every bundle piece share a commit boundary. Duplicate references cannot apply twice. Recovery replays complete committed records only. Corrections append linked adjustments instead of editing history.
+Persist one uniquely identified event per changed high-water ID, tied to the parent bank-audit ID. Missing/stale price at recognition stores explicit unpriced quantity/evidence and contributes no asserted known GP. Never backfill with future prices. Recognized known GP and unpriced quantities only accumulate within the run. Market refresh writes no history.
 
-Offline reconciliation compares complete reliable combined totals. 100 legacy sharks -> 130 after offline play credits at most net 30 after accounting for known ownership; do not invent 50 acquired/20 consumed. Decreases require supported allocation/loss or uncertainty without new earnings. Missing bank data cannot erase trusted history.
+Corrections/legacy anchors can raise H to current B, never lower it or generate gain events. Thus correction→withdraw→redeposit cannot manufacture gains. Example: H=2, B=2; withdraw to B=1 and return to B=2: q=0 both times. Later B=3: q=1. Legacy B=-1→0 creates no gain. This deliberately misses replenishment below a prior peak. Conversions/sales across IDs may appear as new progression maxima: this is an estimated gross bank-progression metric, not realized profit or full lifetime income.
 
-## Required invariants
+Format-5 migration archives every original checkpoint/segment byte before changing current, then adds a linked FINANCIAL_BASELINE operation. Preserve P/B/run/start/initial bank and all older history; H=max(0,B), known/unpriced financial totals start at zero with an imported measurement timestamp. No M4 gain history is invented. Formats 1–4 retain their existing explicit bank anchor workflow. Financial archive manifests remain checked on load. No changes replay after restart.
 
-| # | Invariant | Meaning | Automated gate |
-| --- | --- | --- | --- |
-| 1 | Ownership conservation | Movement does not change total virtual ownership | M4 transfers/splits/equipment |
-| 2 | No duplicate earnings | Repeated deposits/withdrawals create no gained value | M4/M5 overlapping/repeated batches |
-| 3 | Legacy isolation | Legacy becomes virtual only by legitimate acquisition or explicit buyback | M2/M4/M7 snapshots/duplicates/transforms |
-| 4 | Buyback atomicity | Cash expenditure and unlocks occur together or neither occurs | M7 insufficient funds and crash boundaries |
-| 5 | Item quantities | Virtual quantities never become negative | M3/M4/M7 validation/underflow |
-| 6 | GP debt | Only supported debt actions create negative cash | M5 death/approved correction/ordinary rejection/repayment |
-| 7 | Historical valuation | Market updates never modify acquisition values | M5 repricing and audited correction |
-| 8 | Character isolation | One character cannot affect another run | M1 header identity; M2+ repository/ledger |
-| 9 | Persistence | Reload/restart preserves equivalent ownership/currency | M2/M5/M9 round-trip/replay/migration |
-| 10 | Uncertain events | Ambiguity never overwrites trusted history or invents earnings | M4/M6 incomplete/offline observations |
-| 11 | No automation | No feature performs normal player actions | Every milestone source/API review and user acceptance |
+## Explicit losses and expenses
 
-M2 tests cover initial legacy isolation/empty virtual economy, immutable quantities, character isolation and baseline persistence/recovery/reset. Movement, debt, buyback atomicity and valuation invariants remain deferred with their engines. See [TEST_PLAN.md](TEST_PLAN.md).
+Ordinary withdrawals produce no loss/spending evidence. No explicit records means **Not tracked**. A player can record a positive verified GP amount, reason and confirmation from the loss/spent tile. This statistical event increases the recorded expense total only: it does not deduct B(COINS), change P/B/H or alter gained value. No automatic inference or historical transfer reclassification occurs. Events retain identity/time/source/amount/reason in the same auditable durable chain. Corrections of financial records and future GE/buyback categories require a later explicit design; this milestone does not invent those transactions.
+
+Both quantity and financial evidence publish atomically after forced persistence/CAS validation. Persistence recomputes financial transitions from the event evidence, rejects missing/duplicate/mismatched events and overflow, and never advances a failed observation cursor. Derived current valuation alone never writes a save.
+
+## Final-copy withdrawal and native placeholders
+
+An ID absent from a complete physical aggregate has P=0. The union of previous/current IDs therefore applies the final negative delta: legacy P=4/B=0 → P=1/B=-3 → P=0/B=-4. Negative B is retained independently of physical presence and contributes to signed net worth whenever priced. Returning 1, 2, then 4 copies produces B=-3, -2, then 0 without historical gains or expenses.
+
+Placeholders represent zero physical copies, even if their variant has a nonzero widget/container quantity. Rendering resolves a native placeholder variant to its original item ID using the supported definition link; this is not an accounting conversion, new physical item or acquisition. No-placeholder disappearance removes only the native slot, not B/history/value/searchability. Null or partial bank data remains unknown, never P=0.
+
+Only the bank participates in initial legacy setup. GE offers and other storage are excluded unless the player first collects/banks those items. Later collection can appear as positive bank progression and require an explicit Manual Bank Correction. There is no GE inspection or mandatory empty-offer verification; reliable GE accounting is planned for Milestone 6, which is not implemented here.
+
+Compact GP now shares item-stack integer K/M thresholds; exact tooltips and every numeric quantity, market calculation, historical quote, high-water mark and financial event are unchanged.

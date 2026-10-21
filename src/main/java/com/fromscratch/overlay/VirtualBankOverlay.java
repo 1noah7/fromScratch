@@ -1,6 +1,6 @@
 package com.fromscratch.overlay;
 
-import com.fromscratch.observation.RuneLiteSnapshotObserver;
+import com.fromscratch.bank.RuneLiteBankSource;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -11,6 +11,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.ItemComposition;
 import net.runelite.api.WidgetNode;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
@@ -27,12 +28,12 @@ public final class VirtualBankOverlay extends Overlay
 {
 	private final Context context;
 	private final BankOverlayState state;
-	private final Map<Integer, Boolean> placeholders = new ConcurrentHashMap<>();
+	private final Map<Integer, ItemIdentity> identities = new ConcurrentHashMap<>();
 	private BankOverlayState.Projection frame;
 	private BankOverlayState.Settings settings;
 
 	@Inject
-	public VirtualBankOverlay(Client client, RuneLiteSnapshotObserver observer, BankOverlayState state, OverlayManager overlayManager)
+	public VirtualBankOverlay(Client client, RuneLiteBankSource observer, BankOverlayState state, OverlayManager overlayManager)
 	{
 		this(new Context()
 		{
@@ -51,6 +52,13 @@ public final class VirtualBankOverlay extends Overlay
 				return bank;
 			}
 			public boolean placeholder(int id) { return client.getItemDefinition(id).getPlaceholderTemplateId() != -1; }
+			public int balanceItemId(int id)
+			{
+				ItemComposition item = client.getItemDefinition(id);
+				// getPlaceholderId is bidirectional. Only a placeholder template links back
+				// to the physical item; normal variants must keep their exact identity.
+				return item.getPlaceholderTemplateId() != -1 ? item.getPlaceholderId() : id;
+			}
 			public Rectangle bankViewport()
 			{
 				Widget layer = client.getWidget(InterfaceID.Bankmain.ITEMS);
@@ -120,6 +128,7 @@ public final class VirtualBankOverlay extends Overlay
 		{
 			graphics.clip(viewport);
 			context.forEachItem(viewport, (itemId, physicalQuantity, bounds) -> renderItem(graphics, viewport, itemId, physicalQuantity, bounds));
+			com.fromscratch.bank.BankTimings.mark(frame.getTrace(), com.fromscratch.bank.BankTimings.Phase.OVERLAY);
 			return null;
 		}
 		finally { graphics.setClip(originalClip); frame = null; }
@@ -130,20 +139,30 @@ public final class VirtualBankOverlay extends Overlay
 		if (frame == null || !state.isEnabled() || bounds == null || !viewport.intersects(bounds)
 			|| !graphics.hitClip(bounds.x, bounds.y, bounds.width, bounds.height)
 			|| !BankItemPainter.eligible(InterfaceID.Bankmain.ITEMS, itemId, physicalQuantity)) { return; }
-		boolean placeholder = physicalQuantity == 0 || placeholders.computeIfAbsent(itemId, context::placeholder);
-		long quantity = BankItemPainter.quantity(frame.getOwnership(), itemId, placeholder);
+		ItemIdentity identity = identities.computeIfAbsent(itemId, id -> new ItemIdentity(context.balanceItemId(id), context.placeholder(id)));
+		boolean placeholder = physicalQuantity == 0 || identity.placeholder;
+		long quantity = frame.balance(identity.balanceItemId, placeholder);
 		// Keep the full item rectangle for label placement. Only its pixels are clipped;
 		// moving the label into the visible fragment would make it jump while scrolling.
-		BankItemPainter.paint(graphics, bounds, quantity, placeholder ? "0" : frame.label(itemId), settings);
+		BankItemPainter.paint(graphics, bounds, quantity, quantity == 0 ? "0" : frame.label(identity.balanceItemId), settings);
 	}
 
-	public void clearCache() { placeholders.clear(); }
+	public void clearCache() { identities.clear(); }
+
+	/** Cached definition metadata only. A placeholder never creates an item or changes bank accounting. */
+	private static final class ItemIdentity
+	{
+		private final int balanceItemId;
+		private final boolean placeholder;
+		private ItemIdentity(int balanceItemId, boolean placeholder) { this.balanceItemId = balanceItemId; this.placeholder = placeholder; }
+	}
 
 	interface Context
 	{
 		String characterKey();
 		boolean bankVisible();
 		boolean placeholder(int itemId);
+		default int balanceItemId(int itemId) { return itemId; }
 		Rectangle bankViewport();
 		void forEachItem(Rectangle viewport, ItemConsumer consumer);
 	}

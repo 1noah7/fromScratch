@@ -5,6 +5,8 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import com.fromscratch.tracking.ItemProgress;
+import com.fromscratch.tracking.AccountingPlan;
 
 /** A durable activation or reset checkpoint, distinct from an unsaved setup preview. */
 @Getter
@@ -16,6 +18,7 @@ public final class RunRecord
 	private final UUID previousRunId;
 	private final LegacySnapshot snapshot;
 	private final VirtualOwnership ownership;
+	private final ItemProgress itemProgress;
 
 	public RunRecord(RunState state, UUID revision, UUID previousRunId, LegacySnapshot snapshot)
 	{
@@ -24,20 +27,32 @@ public final class RunRecord
 
 	public RunRecord(RunState state, UUID revision, UUID previousRunId, LegacySnapshot snapshot, VirtualOwnership ownership)
 	{
+		this(state, revision, previousRunId, snapshot, ownership, snapshot == null ? null : ItemProgress.initial(snapshot));
+	}
+
+	public RunRecord(RunState state, UUID revision, UUID previousRunId, LegacySnapshot snapshot, VirtualOwnership ownership, ItemProgress itemProgress)
+	{
 		this.state = Objects.requireNonNull(state);
 		this.revision = Objects.requireNonNull(revision);
 		this.previousRunId = previousRunId;
 		this.snapshot = snapshot;
 		this.ownership = Objects.requireNonNull(ownership, "Virtual ownership is required");
+		this.itemProgress = itemProgress;
 		if (state.getStatus() == RunStatus.ACTIVE)
 		{
 			Objects.requireNonNull(snapshot, "An active run requires its complete baseline");
+			Objects.requireNonNull(itemProgress, "An active run requires its item checkpoint");
+			if (itemProgress.isEstablished())
+			{
+				if (!revision.equals(itemProgress.getLedgerHead())) { throw new IllegalArgumentException("Checkpoint revision does not match its item journal"); }
+				itemProgress.validateOwnership(ownership);
+			}
 			if (previousRunId != null || snapshot.getCapturedAt().isAfter(state.getStartedAt()))
 			{
 				throw new IllegalArgumentException("Invalid activation checkpoint");
 			}
 		}
-		else if (state.getStatus() != RunStatus.NOT_STARTED || snapshot != null || previousRunId == null || !ownership.getItems().isEmpty())
+		else if (state.getStatus() != RunStatus.NOT_STARTED || snapshot != null || previousRunId == null || !ownership.getItems().isEmpty() || itemProgress != null)
 		{
 			throw new IllegalArgumentException("Only active runs or empty explicit resets can be saved");
 		}
@@ -61,12 +76,19 @@ public final class RunRecord
 
 	public VirtualEconomy getEconomy()
 	{
-		return new VirtualEconomy(ownership);
+		return new VirtualEconomy(ownership, itemProgress == null ? 0 : itemProgress.getUnlocked().size());
 	}
 
 	/** New immutable revision; the run header and permanent legacy baseline stay unchanged. */
 	public RunRecord withOwnership(VirtualOwnership ownership)
 	{
-		return new RunRecord(state, UUID.randomUUID(), previousRunId, snapshot, ownership);
+		if (itemProgress != null && itemProgress.isEstablished()) { throw new IllegalStateException("Tracked ownership must change through a journaled item plan"); }
+		return new RunRecord(state, UUID.randomUUID(), previousRunId, snapshot, ownership, itemProgress);
+	}
+
+	/** The ledger head is also the new revision, linking one atomic item batch to one checkpoint. */
+	public RunRecord withItems(AccountingPlan plan)
+	{
+		return new RunRecord(state, plan.getProgress().getLedgerHead(), previousRunId, snapshot, plan.getOwnership(), plan.getProgress());
 	}
 }

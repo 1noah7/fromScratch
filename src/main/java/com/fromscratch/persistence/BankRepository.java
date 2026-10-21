@@ -1,0 +1,238 @@
+package com.fromscratch.persistence;
+
+import com.fromscratch.bank.*;
+import com.fromscratch.model.*;
+import com.fromscratch.wealth.*;
+import com.google.gson.*;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.*;
+import java.nio.file.*;
+import java.security.*;
+import java.time.Instant;
+import java.util.*;
+import java.util.stream.*;
+import javax.inject.Inject;
+import net.runelite.client.util.Filepath;
+
+/** Bank-only durable checkpoint/journal. All methods are background-worker-only. */
+public final class BankRepository
+{
+	private final BankRunCodec codec;
+	private final RunRecordCodec legacy;
+	private final Publication publication;
+	@Inject public BankRepository(BankRunCodec codec, RunRecordCodec legacy) { this(codec, legacy, BankRepository::publish); }
+	BankRepository(BankRunCodec codec, RunRecordCodec legacy, Publication publication) { this.codec = codec; this.legacy = legacy; this.publication = publication; }
+	public Optional<BankRun> load(Filepath root, String character) throws IOException
+	{
+		return locked(root, character, d ->
+		{
+			Filepath current = d.joinSegment("current.json");
+			if (!current.exists())
+			{
+				try (Stream<Filepath> files = d.walk(1)) { if (files.anyMatch(f -> f.getFileName().endsWith(".json") || f.getFileName().startsWith("bank-migration-"))) { throw new SaveException("Current save is missing but recovery data exists. Restore its matching checkpoint; no new run was created."); } }
+				return Optional.empty();
+			}
+			String text = BankStorageFiles.readText(current);
+			int version;
+			try { version = Math.toIntExact(BankRunCodec.number(new JsonParser().parse(text).getAsJsonObject().get("formatVersion"))); }
+			catch (RuntimeException ex) { throw new SaveException("Save header is unreadable. Existing files were preserved."); }
+			if (version == BankRunCodec.FORMAT) { BankRun run = codec.decode(text, character); verify(d, run, true); return Optional.of(run); }
+			if(version==5)
+			{
+				BankRun old=codec.decode(text,character);verify(d,old,true);String archived=archive(d);Instant at=Instant.now();
+				BankAudit audit=new BankAudit(UUID.randomUUID(),UUID.randomUUID(),at,BankAudit.Kind.FINANCIAL_BASELINE,Collections.emptyMap(),Collections.emptyMap(),"M4 files archived exactly. Estimated gains begin at this imported bank baseline; earlier income is not reconstructed.");
+				List<BankAudit> recent=new ArrayList<>(old.getRecent());recent.add(0,audit);if(recent.size()>30){recent.remove(30);}
+				BankRun migrated=new BankRun(old.getCharacter(),old.getRunId(),old.getPreviousRunId(),old.getStartedAt(),audit.getId(),Math.incrementExact(old.getSequence()),old.getInitialBank(),old.getPhysical(),old.getBalances(),old.isAnchored(),old.getLegacyDocument(),old.getMigrationArchive(),recent,old.getHostSummary(),FinancialState.baseline(old.getBalances(),at,true).archived(archived));
+				commit(d,old,migrated);return Optional.of(migrated);
+			}
+			// Decode and verify the old chain before making a byte-for-byte archive.
+			RunRecordCodec.DecodedSave decoded = legacy.decodeSave(text, character);
+			RunRecord old = decoded.record;
+			if (version >= 3) { new ItemJournalStore(legacy).verifyChain(d, old, version); }
+			String archive = archive(d);
+			Map<Integer, Long> balances = new TreeMap<>();
+			Set<Integer> ids = new TreeSet<>(old.getOwnership().getItems().keySet());
+			if (old.getItemProgress() != null) { ids.addAll(old.getItemProgress().getLegacyDeficits().getItems().keySet()); }
+			for (int id : ids)
+			{
+				long deficit = old.getItemProgress() == null ? 0 : old.getItemProgress().getLegacyDeficits().quantity(id);
+				balances.put(id, Math.subtractExact(old.getOwnership().at(id, VirtualLocation.BANK), deficit));
+			}
+			boolean active = old.getState().getRunId() != null;
+			BankAudit audit = new BankAudit(UUID.randomUUID(), UUID.randomUUID(), Instant.now(), BankAudit.Kind.MIGRATION, Collections.emptyMap(), Collections.emptyMap(), "Previous checkpoint and journals archived. Confirm one complete bank observation before automatic comparisons.");
+			BankRun migrated = new BankRun(character, old.getState().getRunId(), old.getPreviousRunId(), old.getState().getStartedAt(), audit.getId(), 1,
+				active ? old.getSnapshot().at(SnapshotLocation.BANK) : null, Collections.emptyMap(), active ? balances : Collections.emptyMap(), false, text, archive, Collections.singletonList(audit), null,
+				FinancialState.baseline(active?balances:Collections.emptyMap(),audit.getAt(),true).archived(archive));
+			commit(d, null, migrated); return Optional.of(migrated);
+		});
+	}
+	/** CAS prevents a stale editor or another client from overwriting more recent progress. */
+	public BankRun save(Filepath root, BankRun expected, BankRun next) throws IOException
+	{
+		return locked(root, next.getCharacter(), d ->
+		{
+			Filepath current = d.joinSegment("current.json");
+			BankRun actual = current.exists() ? codec.decode(BankStorageFiles.readText(current), next.getCharacter()) : null;
+			if (next.equals(actual)) { verify(d, actual, false); return actual; }
+			if (!Objects.equals(expected, actual)) { throw new SaveException("Bank progress changed. Reload before applying this change."); }
+			if (actual != null) { verify(d, actual, false); }
+			else
+			{
+				try (Stream<Filepath> files = d.walk(1)) { if (files.anyMatch(f -> f.getFileName().endsWith(".json"))) { throw new SaveException("Recovery files exist. Restore the prior checkpoint before starting a run."); } }
+			}
+			validate(expected, next);
+			if (expected != null && !next.isActive()) { archive(d); }
+			commit(d, expected, next); return next;
+		});
+	}
+	private void validate(BankRun before, BankRun after) throws SaveException
+	{
+		BankAudit audit = after.getRecent().get(0);
+		if (before == null) { if (after.getSequence() != 1 || audit.getKind() != BankAudit.Kind.START) { throw new SaveException("Invalid initial bank transaction."); } validateStart(after); return; }
+		if (!before.getCharacter().equals(after.getCharacter()) || after.getSequence() != Math.incrementExact(before.getSequence())) { throw new SaveException("Bank transaction sequence changed."); }
+		if (audit.getKind() == BankAudit.Kind.START && !before.isActive() && after.isActive()) { validateStart(after); if (!Objects.equals(before.getPreviousRunId(), after.getPreviousRunId())) { throw new SaveException("Previous run identity changed."); } return; }
+		if (audit.getKind() == BankAudit.Kind.RESET) { if (!before.isActive() || after.isActive() || !before.getRunId().equals(after.getPreviousRunId())) { throw new SaveException("Invalid reset."); } return; }
+		if (!Objects.equals(before.getRunId(), after.getRunId()) || !Objects.equals(before.getStartedAt(), after.getStartedAt())
+			|| !Objects.equals(before.getInitialBank(), after.getInitialBank()) || !Objects.equals(before.getLegacyDocument(), after.getLegacyDocument())
+			|| !Objects.equals(before.getMigrationArchive(), after.getMigrationArchive())) { throw new SaveException("Immutable run baseline changed."); }
+		if (audit.getKind() == BankAudit.Kind.ANCHOR)
+		{ if (before.isAnchored() || !after.isAnchored() || before.getLegacyDocument() == null) { throw new SaveException("Invalid migration anchor transition."); } }
+		else if (!before.isActive() || !before.isAnchored() || !after.isAnchored()
+			|| (audit.getKind() != BankAudit.Kind.AUTOMATIC && audit.getKind() != BankAudit.Kind.SESSION_CHECK && audit.getKind() != BankAudit.Kind.CORRECTION && audit.getKind()!=BankAudit.Kind.EXPENSE))
+		{ throw new SaveException("Invalid bank accounting transition."); }
+		if (!BankEngine.differences(before.getBalances(), after.getBalances()).equals(audit.getBalanceChanges())) { throw new SaveException("Bank balance audit does not match checkpoint."); }
+		if (audit.getKind() != BankAudit.Kind.ANCHOR && !BankEngine.differences(before.getPhysical(), after.getPhysical()).equals(audit.getPhysicalChanges())) { throw new SaveException("Bank observation audit does not match checkpoint."); }
+		if ((audit.getKind() == BankAudit.Kind.AUTOMATIC || audit.getKind() == BankAudit.Kind.SESSION_CHECK) && !audit.getBalanceChanges().equals(audit.getPhysicalChanges())) { throw new SaveException("Automatic bank movement does not conserve the progress offset."); }
+		if (audit.getKind() == BankAudit.Kind.CORRECTION && !audit.getPhysicalChanges().isEmpty()) { throw new SaveException("A correction cannot change the physical bank anchor."); }
+		if(audit.getKind()==BankAudit.Kind.EXPENSE&&(!audit.getPhysicalChanges().isEmpty()||!audit.getBalanceChanges().isEmpty())){throw new SaveException("Expenses cannot change bank holdings.");}
+		if(!FinancialEngine.advance(before.getFinancial(),after.getBalances(),audit).equals(after.getFinancial())){throw new SaveException("Financial checkpoint does not match durable event evidence.");}
+	}
+	/** Read only enough immutable segments for one page; never run from the EDT/client thread. */
+	public BankHistory.Page history(Filepath root, BankRun run, BankHistory.Cursor cursor, boolean manual) throws IOException
+	{
+		return locked(root, run.getCharacter(), d ->
+		{
+			UUID head = cursor == null ? run.getRevision() : cursor.getRevision(); int offset = cursor == null ? 0 : cursor.getOffset();
+			if (offset < 0) { throw new SaveException("Invalid history page."); }
+			List<BankHistory.Row> rows = new ArrayList<>(); int examined = 0;
+			while (head != null && rows.size() < 25 && examined++ < 64)
+			{
+				JsonObject batch = codec.payload(BankStorageFiles.readText(d.joinSegment("bank-ledger-" + head + ".json")), 1);
+				if (!run.getCharacter().equals(BankRunCodec.str(batch, "character")) || !Objects.equals(run.getRunId().toString(), BankRunCodec.nullable(batch, "run"))) { head = null; break; }
+				BankAudit audit = codec.readAudit(batch.getAsJsonObject("audit"));
+				if (!head.equals(audit.getId())) { throw new SaveException("Bank history page failed validation."); }
+				boolean include = manual ? audit.getKind() == BankAudit.Kind.CORRECTION || audit.getKind() == BankAudit.Kind.ANCHOR : audit.getKind() == BankAudit.Kind.AUTOMATIC;
+				if (include)
+				{
+					int index = 0;
+					for (Map.Entry<Integer, Long> entry : audit.getBalanceChanges().entrySet())
+					{
+						if (index++ < offset) { continue; }
+						rows.add(new BankHistory.Row(audit.getAt(), entry.getKey(), "", entry.getValue())); offset = index;
+						if (rows.size() == 25) { return new BankHistory.Page(rows, new BankHistory.Cursor(head, offset), ""); }
+					}
+				}
+				String previous = BankRunCodec.nullable(batch, "previous"); head = previous == null ? null : UUID.fromString(previous); offset = 0;
+			}
+			return new BankHistory.Page(rows, head == null ? null : new BankHistory.Cursor(head, offset), rows.isEmpty() ? "No matching bank changes on this page." : "");
+		});
+	}
+	private static void validateStart(BankRun run) throws SaveException
+	{
+		if (!run.isActive() || !run.isAnchored() || !run.getBalances().isEmpty() || !run.getInitialBank().getQuantities().equals(run.getPhysical())
+			|| !run.getRecent().get(0).getBalanceChanges().isEmpty() || !run.getRecent().get(0).getPhysicalChanges().isEmpty()
+			|| !run.getRecent().get(0).getValuations().isEmpty() || !FinancialState.baseline(Collections.emptyMap(),run.getStartedAt(),false).equals(run.getFinancial()))
+		{ throw new SaveException("A new run must start from its complete bank with zero progress."); }
+	}
+	private void commit(Filepath d, BankRun before, BankRun after) throws IOException
+	{
+		String encoded = codec.encode(after);
+		JsonObject batch = new JsonObject(); batch.addProperty("character", after.getCharacter()); batch.addProperty("run", after.getRunId() == null ? null : after.getRunId().toString());
+		batch.addProperty("previous", before == null ? null : before.getRevision().toString()); batch.addProperty("sequence", after.getSequence());
+		batch.addProperty("result", SaveIntegrity.sha256(encoded)); batch.add("audit", codec.audit(after.getRecent().get(0)));
+		writeVerified(d.joinSegment("bank-ledger-" + after.getRevision() + ".json"), codec.envelope(batch, 1));
+		writeVerified(d.joinSegment("bank-checkpoint-" + after.getRevision() + ".json"), encoded);
+		Filepath pending = d.joinSegment("bank-pending-" + after.getRevision() + ".json"); writeVerified(pending, encoded);
+		publication.replace(pending, d.joinSegment("current.json"));
+		if (!codec.decode(BankStorageFiles.readText(d.joinSegment("current.json")), after.getCharacter()).equals(after)) { throw new SaveException("Bank save verification failed; recovery checkpoints were retained."); }
+	}
+	private void verify(Filepath d, BankRun run, boolean fullChain) throws IOException
+	{
+		try
+		{
+			UUID head = run.getRevision(); long seq = run.getSequence(); Set<UUID> seen = new HashSet<>();
+			while (head != null)
+			{
+				JsonObject batch = codec.payload(BankStorageFiles.readText(d.joinSegment("bank-ledger-" + head + ".json")), 1);
+				BankRunCodec.keys(batch, "character", "run", "previous", "sequence", "result", "audit");
+				BankAudit audit = codec.readAudit(batch.getAsJsonObject("audit"));
+				if (!head.equals(audit.getId()) || !seen.add(head) || seq != BankRunCodec.number(batch.get("sequence")) || !run.getCharacter().equals(BankRunCodec.str(batch, "character"))) { throw new IllegalArgumentException("Broken bank journal chain"); }
+				// Hash the original published bytes, not a future Gson version's re-encoding.
+				if (head.equals(run.getRevision()) && (!audit.equals(run.getRecent().get(0)) || !SaveIntegrity.sha256(BankStorageFiles.readText(d.joinSegment("current.json"))).equals(BankRunCodec.str(batch, "result")))) { throw new IllegalArgumentException("Bank journal head mismatch"); }
+				if (head.equals(run.getRevision()) && !Objects.equals(run.getRunId() == null ? null : run.getRunId().toString(), BankRunCodec.nullable(batch, "run"))) { throw new IllegalArgumentException("Bank journal run identity mismatch"); }
+				if (!fullChain) { return; }
+				String previous = BankRunCodec.nullable(batch, "previous"); head = previous == null ? null : UUID.fromString(previous); seq--;
+			}
+			if (seq != 0 || !seen.containsAll(run.getRecent().stream().map(BankAudit::getId).collect(Collectors.toSet())) || (run.getHostSummary() != null && !seen.contains(run.getHostSummary().getId()))) { throw new IllegalArgumentException("Missing bank journal history"); }
+			if (run.getMigrationArchive() != null) { verifyArchive(d.joinSegment(run.getMigrationArchive())); }
+			if(run.getFinancial().getImportArchive()!=null){verifyArchive(d.joinSegment(run.getFinancial().getImportArchive()));}
+		}
+		catch (RuntimeException ex) { throw new SaveException("Bank history or migration archive is incomplete or corrupt. Files were preserved; restore the matching checkpoint and journals."); }
+	}
+	/** Every pre-existing JSON checkpoint/ledger is copied, forced and byte-hash verified before current changes. */
+	private String archive(Filepath d) throws IOException
+	{
+		String name = "bank-migration-" + UUID.randomUUID(); Filepath archive = d.joinSegment(name); archive.createDirectories(); JsonObject files = new JsonObject();
+		List<Filepath> originals;
+		try (Stream<Filepath> walk = d.walk(1)) { originals = walk.filter(f -> f.getFileName().endsWith(".json")).collect(Collectors.toList()); }
+		for (Filepath source : originals)
+		{
+			Filepath copy = archive.joinSegment(source.getFileName()); source.copyTo(copy); force(copy);
+			String digest = digest(source); if (!digest.equals(digest(copy))) { throw new SaveException("Archive verification failed. Original progression was not changed."); } files.addProperty(source.getFileName(), digest);
+		}
+		writeVerified(archive.joinSegment("manifest.json"), codec.envelope(files, 1)); verifyArchive(archive); return name;
+	}
+	private void verifyArchive(Filepath archive) throws IOException
+	{
+		JsonObject files = codec.payload(BankStorageFiles.readText(archive.joinSegment("manifest.json")), 1);
+		if (!files.has("current.json")) { throw new SaveException("Migration archive lacks the original checkpoint."); }
+		for (Map.Entry<String, JsonElement> f : files.entrySet()) { if (!f.getKey().matches("[a-zA-Z0-9-]+\\.json") || !digest(archive.joinSegment(f.getKey())).equals(f.getValue().getAsString())) { throw new SaveException("Migration archive is incomplete or corrupt."); } }
+	}
+	private static String digest(Filepath file) throws IOException
+	{
+		try
+		{
+			MessageDigest digest = MessageDigest.getInstance("SHA-256"); ByteBuffer buffer = ByteBuffer.allocate(8192);
+			try (FileChannel c = file.openFileChannel(StandardOpenOption.READ)) { while (c.read(buffer) != -1) { buffer.flip(); digest.update(buffer); buffer.clear(); } }
+			StringBuilder hex = new StringBuilder(); for (byte b : digest.digest()) { hex.append(String.format("%02x", b & 255)); } return hex.toString();
+		}
+		catch (NoSuchAlgorithmException ex) { throw new IllegalStateException(ex); }
+	}
+	private static void writeVerified(Filepath file, String text) throws IOException
+	{
+		if (!file.exists()) { BankStorageFiles.writeNew(file, text); }
+		if (!BankStorageFiles.readText(file).equals(text)) { throw new SaveException("Recovery file conflicts with this transaction. Existing files were preserved."); }
+	}
+	private static void force(Filepath file) throws IOException { try (FileChannel c = file.openFileChannel(StandardOpenOption.WRITE)) { c.force(true); } }
+	private static void publish(Filepath pending, Filepath current) throws IOException
+	{
+		try { pending.moveTo(current, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
+		catch (AtomicMoveNotSupportedException ex) { pending.copyTo(current, StandardCopyOption.REPLACE_EXISTING); force(current); pending.delete(); }
+	}
+	private <T> T locked(Filepath root, String character, Task<T> task) throws IOException
+	{
+		if (character == null || !character.matches("[a-f0-9]{64}")) { throw new SaveException("Unverified character identity; storage is blocked."); }
+		try
+		{
+			Filepath d = root.joinSegment("characters").joinSegment(character); d.createDirectories();
+			try (FileChannel c = d.joinSegment("run.lock").openFileChannel(StandardOpenOption.CREATE, StandardOpenOption.WRITE); FileLock lock = c.tryLock())
+			{ if (lock == null) { throw new SaveException("Another client is using this run. Close it and retry."); } return task.run(d); }
+		}
+		catch (SaveException ex) { throw ex; }
+		catch (OverlappingFileLockException ex) { throw new SaveException("Run storage is busy. Retry after the other operation finishes."); }
+		catch (IOException | RuntimeException ex) { throw new SaveException("Bank data could not be verified or saved. Recovery files were preserved; check storage and retry."); }
+	}
+	@FunctionalInterface private interface Task<T> { T run(Filepath d) throws IOException; }
+	@FunctionalInterface interface Publication { void replace(Filepath pending, Filepath current) throws IOException; }
+}

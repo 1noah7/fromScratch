@@ -1,10 +1,10 @@
 package com.fromscratch;
 
-import com.fromscratch.controller.SetupController;
-import com.fromscratch.observation.RuneLiteSnapshotObserver;
+import com.fromscratch.bank.BankController;
+import com.fromscratch.bank.RuneLiteBankSource;
 import com.fromscratch.overlay.BankOverlayRegistration;
 import com.fromscratch.overlay.BankOverlayState;
-import com.fromscratch.ui.FromScratchSidebar;
+import com.fromscratch.bank.BankSidebar;
 import com.google.inject.Provides;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
@@ -40,27 +40,30 @@ import net.runelite.client.plugins.PluginDescriptor;
 public class FromScratchPlugin extends Plugin
 {
 	@Inject
-	private FromScratchSidebar sidebar;
+	private BankSidebar sidebar;
 
 	@Inject
 	private FromScratchConfig config;
 
 	@Inject
-	private SetupController setupController;
+	private BankController setupController;
 
 	@Inject
-	private RuneLiteSnapshotObserver observer;
+	private RuneLiteBankSource observer;
 
 	@Inject
 	private ClientThread clientThread;
 	@Inject private BankOverlayRegistration bankOverlay;
 	@Inject private BankOverlayState bankOverlayState;
+	@Inject private com.fromscratch.wealth.PriceService prices;
 
 	@Override
 	protected void startUp()
 	{
 		bankOverlayState.configure(config);
+		observer.configure(config.developmentItemTrace());
 		bankOverlay.start();
+		prices.start();
 		// Queue UI work without blocking the client thread. Lifecycle operations
 		// share the EDT queue, so rapid enable/disable sequences retain their order.
 		clientThread.invokeLater(observer::resetSession);
@@ -68,7 +71,7 @@ public class FromScratchPlugin extends Plugin
 		SwingUtilities.invokeLater(() ->
 		{
 			sidebar.bind(setupController);
-			sidebar.show(config.showFoundationHelp());
+			sidebar.show();
 		});
 		log.debug("From Scratch started");
 	}
@@ -78,6 +81,7 @@ public class FromScratchPlugin extends Plugin
 	{
 		bankOverlay.stop();
 		setupController.stop();
+		prices.stop();
 		clientThread.invokeLater(observer::resetSession);
 		SwingUtilities.invokeLater(sidebar::hide);
 		log.debug("From Scratch stopped");
@@ -93,12 +97,17 @@ public class FromScratchPlugin extends Plugin
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
-		if (event.getGameState() != GameState.LOGGED_IN)
+		GameState state = event.getGameState();
+		// Region loading and a normal world hop do not establish a new host login.
+		// The renderer already hides itself outside LOGGED_IN. Clearing a valid
+		// projection here could strand it when unchanged state is restored.
+		if (state != GameState.LOGGED_IN && state != GameState.LOADING && state != GameState.HOPPING)
 		{
 			bankOverlayState.clear();
 			observer.resetSession();
 			setupController.tick();
 		}
+		else if (state == GameState.LOGGED_IN) { setupController.tick(); }
 	}
 
 	@Subscribe
@@ -113,46 +122,32 @@ public class FromScratchPlugin extends Plugin
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
 		int id = event.getContainerId();
-		if (id == InventoryID.BANK || id == InventoryID.INV || id == InventoryID.WORN)
+		if (id == InventoryID.BANK)
 		{
-			observer.containerChanged(id, event.getItemContainer());
-			setupController.observationChanged();
+			observer.changed();
 		}
 	}
 
 	@Subscribe
 	public void onWidgetLoaded(WidgetLoaded event)
 	{
-		personalInterfaceChanged(event.getGroupId());
-		if (event.getGroupId() == InterfaceID.BANKMAIN) { observer.bankOpened(); }
 		if (event.getGroupId() == InterfaceID.BANKMAIN || event.getGroupId() == InterfaceID.BANKPIN_KEYPAD
 			|| event.getGroupId() == InterfaceID.BANKPIN_SETTINGS)
 		{
-			setupController.observationChanged();
+			observer.changed();
 		}
 	}
 
 	@Subscribe
 	public void onWidgetClosed(WidgetClosed event)
 	{
-		personalInterfaceChanged(event.getGroupId());
 		if (event.getGroupId() == InterfaceID.BANKMAIN)
 		{
-			observer.bankClosed();
-			setupController.observationChanged();
+			observer.changed();
 		}
 		else if (event.getGroupId() == InterfaceID.BANKPIN_KEYPAD || event.getGroupId() == InterfaceID.BANKPIN_SETTINGS)
 		{
-			setupController.observationChanged();
-		}
-	}
-
-	private void personalInterfaceChanged(int group)
-	{
-		if (group == InterfaceID.INVENTORY || group == InterfaceID.WORNITEMS || group == InterfaceID.BANKSIDE)
-		{
-			observer.personalInterfaceChanged();
-			setupController.observationChanged();
+			observer.changed();
 		}
 	}
 
@@ -162,7 +157,7 @@ public class FromScratchPlugin extends Plugin
 		if (FromScratchConfig.GROUP.equals(event.getGroup()))
 		{
 			bankOverlayState.configure(config);
-			SwingUtilities.invokeLater(() -> sidebar.refresh(config.showFoundationHelp()));
+			observer.configure(config.developmentItemTrace());
 		}
 	}
 

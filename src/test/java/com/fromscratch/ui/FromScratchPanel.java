@@ -34,7 +34,11 @@ public final class FromScratchPanel extends PluginPanel
 	private boolean showSetupDetails;
 	private boolean beforeInitialization;
 	private final JPanel setup = new JPanel(new DynamicGridLayout(0, 1, 0, 4));
+	private final JPanel tools = new JPanel(new DynamicGridLayout(0, 1, 0, 4));
+	private boolean historyExpanded;
 	private final JLabel durationValue = new JLabel("0h 00m");
+	private final JLabel unlockedValue = new JLabel("0");
+	private final JLabel recentValue = new JLabel("No acquisitions recorded.");
 
 	public FromScratchPanel(boolean showHelp)
 	{
@@ -54,9 +58,10 @@ public final class FromScratchPanel extends PluginPanel
 		add(metric("Current Net Worth", "0 GP", GOLD));
 		add(metric("Spendable GP", "0 GP", GOLD));
 		add(metric("Active run duration", durationValue, Color.WHITE));
-		add(metric("Items Unlocked", "0", PURPLE));
-		add(metric("Total Value Lost / Spent", "0 GP", GOLD));
-		add(message("Recent acquisitions", "No acquisitions recorded."));
+		add(metric("Items Unlocked", unlockedValue, PURPLE));
+		add(new JLabel("Recent acquisitions")); add(recentValue);
+		add(new JLabel("GP and value metrics are not tracked yet."));
+		tools.setBackground(ColorScheme.DARK_GRAY_COLOR); add(tools);
 
 		setFoundationHelpVisible(showHelp);
 		render(SetupView.signedOut(), SetupActions.NONE);
@@ -66,11 +71,16 @@ public final class FromScratchPanel extends PluginPanel
 	void render(SetupView view, SetupActions actions)
 	{
 		setup.removeAll();
-		durationValue.setText(view.getSaved() != null && view.getSaved().getSnapshot() != null ? "Not tracked yet" : "0h 00m");
+		tools.removeAll();
+		durationValue.setText(RunDuration.format(view.getElapsedMinutes()));
+		durationValue.setToolTipText("Elapsed time since run start, including time away.");
+		unlockedValue.setText(view.getSaved() == null ? "0" : Long.toString(view.getSaved().getEconomy().getItemsUnlocked()));
+		recentValue.setText(recentAcquisitions(view));
 		String status;
 		switch (view.getMode())
 		{
 			case ACTIVE: status = "Active"; break;
+			case RECONCILING: status = "Active — item changes need review"; break;
 			case INITIALIZING: status = "Initializing"; break;
 			case SAVING: status = view.getSaved() != null && view.getSaved().getSnapshot() != null
 				? "Active (resetting)" : "Initializing (saving)"; break;
@@ -79,7 +89,12 @@ public final class FromScratchPanel extends PluginPanel
 			default: status = "Not Started";
 		}
 		setup.add(new JLabel("Status: " + status));
-		setup.add(message("Run status", view.getMessage()));
+		if (view.getMode() != SetupView.Mode.ACTIVE)
+		{
+			setup.add(message("Run status", view.getMode() == SetupView.Mode.INITIALIZING
+				? PreparationChecklist.instruction(view.getProgress()) : view.getMode() == SetupView.Mode.RECONCILING
+				? "Review item changes in Account Tools below." : view.getMessage()));
+		}
 		beforeInitialization = view.getMode() == SetupView.Mode.NOT_STARTED || view.getMode() == SetupView.Mode.SIGNED_OUT;
 		if (beforeInitialization)
 		{
@@ -95,9 +110,9 @@ public final class FromScratchPanel extends PluginPanel
 		}
 		if (view.getMode() == SetupView.Mode.INITIALIZING)
 		{
-			setup.add(new JLabel("Bank: " + (view.getProgress().ready(SnapshotLocation.BANK) ? "Ready" : "Waiting")));
-			setup.add(new JLabel("Inventory: " + (view.getProgress().ready(SnapshotLocation.INVENTORY) ? "Ready" : "Waiting")));
-			setup.add(new JLabel("Equipment: " + (view.getProgress().ready(SnapshotLocation.EQUIPMENT) ? "Ready" : "Waiting")));
+			setup.add(new JLabel("Prepare Your Account"));
+			for (String step : PreparationChecklist.steps(view.getProgress())) { setup.add(new JLabel(step)); }
+			setup.add(new JLabel(PreparationChecklist.step(false, "Review and confirm your snapshot.")));
 			if (summary == null)
 			{
 				for (SnapshotLocation location : SnapshotLocation.values())
@@ -135,9 +150,26 @@ public final class FromScratchPanel extends PluginPanel
 			setup.add(confirm);
 			setup.add(button("Cancel Setup", actions::cancel));
 		}
-		if (view.getMode() == SetupView.Mode.ACTIVE)
+		if (view.getMode() == SetupView.Mode.ACTIVE || view.getMode() == SetupView.Mode.RECONCILING)
 		{
-			setup.add(button("Reset From Scratch", () ->
+			tools.add(new JLabel("Account Tools"));
+			tools.add(message("Update Progress", "Played on mobile or another computer? Update your From Scratch progress when you return to this PC."));
+			tools.add(button("Update Progress", () ->
+			{
+				if (view.getItemReview() != null) { ItemReviewDialog.show(this, view, actions); }
+				else { actions.reviewItems(); }
+			}));
+			if (view.getMode() == SetupView.Mode.ACTIVE && view.getProgress().getContainers().size() < SnapshotLocation.values().length)
+			{ tools.add(message("Item observation", PreparationChecklist.instruction(view.getProgress()))); }
+			if (view.getMode() == SetupView.Mode.RECONCILING)
+			{
+				for (String step : PreparationChecklist.steps(view.getProgress())) { tools.add(new JLabel(step)); }
+				tools.add(message("Next step", view.getItemReview() == null ? PreparationChecklist.instruction(view.getProgress()) : "Review the changed items, then apply your decisions."));
+				JButton review = button("Review changes", () -> ItemReviewDialog.show(this, view, actions));
+				review.setEnabled(view.getItemReview() != null); tools.add(review);
+			}
+			addLegacyDeficits(view);
+			tools.add(button("Reset From Scratch", () ->
 			{
 				if (JOptionPane.showConfirmDialog(this, "Back up and reset this From Scratch run?\n"
 					+ "You must begin again and confirm a fresh snapshot. Real OSRS items are unchanged.",
@@ -146,10 +178,56 @@ public final class FromScratchPanel extends PluginPanel
 					actions.reset(view.getSaved().getState().getRunId());
 				}
 			}));
+			tools.add(button((historyExpanded ? "▼ " : "▶ ") + "Transaction History", () -> { historyExpanded = !historyExpanded; render(view, actions); }));
+			if (historyExpanded) { tools.add(button("View recent transactions", () -> showHistory(view))); }
 		}
 		if (view.getMode() == SetupView.Mode.ERROR) { setup.add(button("Retry Load", actions::retry)); }
+		if (view.isWriting())
+		{
+			for (java.awt.Component component : setup.getComponents()) { if (component instanceof JButton) { component.setEnabled(false); } }
+			for (java.awt.Component component : tools.getComponents()) { if (component instanceof JButton) { component.setEnabled(false); } }
+		}
 		revalidate();
 		repaint();
+	}
+
+	private static String recentAcquisitions(SetupView view)
+	{
+		if (view.getSaved() == null || view.getSaved().getItemProgress() == null || view.getSaved().getItemProgress().getAcquisitions().isEmpty()) { return "No acquisitions recorded."; }
+		StringBuilder text = new StringBuilder("<html>"); int count = 0;
+		for (com.fromscratch.tracking.ItemTransaction entry : view.getSaved().getItemProgress().getAcquisitions())
+		{
+			if (count++ == 5) { break; }
+			String name = view.getItemNames().getOrDefault(entry.getItemId(), "Item #" + entry.getItemId());
+			text.append(name.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+				.append(" × ").append(entry.getVirtualChange()).append("<br>");
+		}
+		return text.append("</html>").toString();
+	}
+	private void showHistory(SetupView view)
+	{
+		StringBuilder text = new StringBuilder("Most recent 50 item changes. Full history is saved locally on this PC.\n\n");
+		for (com.fromscratch.tracking.ItemTransaction entry : view.getSaved().getItemProgress().getRecent())
+		{
+			text.append(entry.getTime()).append(" | ").append(entry.getCategory()).append(" | ")
+				.append(entry.getItemId() < 0 ? "Progress check" : view.getItemNames().getOrDefault(entry.getItemId(), "Item #" + entry.getItemId()))
+				.append(" | quantity ").append(entry.getQuantity()).append(" | virtual change ").append(entry.getVirtualChange())
+				.append(" | ").append(entry.getConfidence()).append("\n").append(entry.getReason()).append("\n\n");
+		}
+		javax.swing.JTextArea area = new javax.swing.JTextArea(text.toString()); area.setEditable(false);
+		javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(area); scroll.setPreferredSize(new java.awt.Dimension(800, 400));
+		JOptionPane.showMessageDialog(this, scroll, "From Scratch transaction history", JOptionPane.PLAIN_MESSAGE);
+	}
+	private void addLegacyDeficits(SetupView view)
+	{
+		if (view.getSaved() == null || view.getSaved().getItemProgress() == null) { return; }
+		view.getSaved().getItemProgress().getLegacyDeficits().getItems().forEach((id, quantity) ->
+		{
+			String name = view.getItemNames().getOrDefault(id, "Unknown item #" + id);
+			boolean absent = view.getSaved().getItemProgress().getPhysical().at(id, SnapshotLocation.BANK) == 0;
+			tools.add(message("Legacy withdrawal", name + ": -" + quantity + (absent ? " (not currently in bank)" : " outstanding")
+				+ ". Return legacy copies or resolve this in Update Progress."));
+		});
 	}
 
 	private void addSummary(String title, ContainerSnapshot container)

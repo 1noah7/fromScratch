@@ -4,6 +4,15 @@ import com.fromscratch.model.InitializationSession;
 import com.fromscratch.model.LegacySnapshot;
 import com.fromscratch.model.RunRecord;
 import com.fromscratch.model.RunStatus;
+import com.fromscratch.model.VirtualItemOwnership;
+import com.fromscratch.tracking.ItemTrackingSession;
+import com.fromscratch.tracking.AccountingPlan;
+import com.fromscratch.tracking.ItemTrackingDiagnostics;
+import com.fromscratch.observation.ItemObservation;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Set;
+import java.util.TreeSet;
 import com.fromscratch.observation.RuneLiteSnapshotObserver;
 import com.fromscratch.observation.SnapshotSource;
 import com.fromscratch.observation.CaptureProgress;
@@ -51,12 +60,17 @@ public final class SetupController implements SetupActions
 	private InitializationSession session;
 	private boolean busy;
 	private SetupView lastView;
+	private ItemTrackingSession items;
+	private CaptureProgress itemProgress = CaptureProgress.from(null);
+	private final Map<Integer, String> nameCache = new HashMap<>();
+	private ItemTrackingDiagnostics diagnostics = new ItemTrackingDiagnostics();
 
 	@Inject
 	public SetupController(RuneLiteSnapshotObserver source, RunRepository repository,
-		ClientThread clientThread, FromScratchSidebar sidebar, BankOverlayState bankState)
+		ClientThread clientThread, FromScratchSidebar sidebar, BankOverlayState bankState, ItemTrackingDiagnostics diagnostics)
 	{
-		this(source, repository, clientThread::invokeLater, view -> { bankState.update(view); sidebar.update(view); });
+		this(source, repository, clientThread::invokeLater, view -> { com.fromscratch.overlay.LegacyOverlayFixture.update(bankState, view); sidebar.update(view); });
+		this.diagnostics = diagnostics;
 	}
 
 	SetupController(SnapshotSource source, RunRepository repository,
@@ -92,6 +106,8 @@ public final class SetupController implements SetupActions
 			if (!enabled || lifecycle.get() != epoch) { return; }
 			character = null;
 			session = null;
+			items = null;
+			nameCache.clear();
 			busy = false;
 			lastView = null;
 			context++;
@@ -119,6 +135,8 @@ public final class SetupController implements SetupActions
 			character = observed;
 			context++;
 			session = null;
+			items = null;
+			nameCache.clear();
 			busy = false;
 			if (character == null) { displayView(SetupView.signedOut()); }
 			else { load(); }
@@ -139,10 +157,35 @@ public final class SetupController implements SetupActions
 				publish(SetupView.Mode.INITIALIZING, ex.getMessage());
 			}
 		}
+		else if (!busy && items != null)
+		{
+			try
+			{
+				ItemObservation observation = source.observeItems(items.isPreparing());
+				if (observation == null) { return; }
+				itemProgress = observation.getProgress();
+				diagnostics.observe(items.getRun(), observation, items.isPreparing());
+				AccountingPlan candidate = items.observe(observation);
+				if (items.getLastPlan() != null) { diagnostics.plan(items.getLastPlan(), items.isReviewRequested()); }
+				if (candidate != null) { saveItems(candidate, observation); }
+				else
+				{
+					diagnostics.pending(items.isReviewRequested(), items.getMessage());
+					if (!items.isPreparing() && observation.isStable() && observation.getHoldings() != null
+						&& items.getRun().getItemProgress().getPhysical().equals(observation.getHoldings())) { source.acknowledgeItems(observation); }
+					publish(itemMode(), items.getMessage());
+				}
+			}
+			catch (IllegalArgumentException | IllegalStateException | ArithmeticException ex)
+			{
+				items.requestReview(); publish(SetupView.Mode.RECONCILING, "Items need review. " + ex.getMessage());
+			}
+		}
 	}
 
 	public void observationChanged()
 	{
+		if (items != null) { items.changed(); }
 		if (!busy && session != null && session.isInitializing())
 		{
 			session.invalidatePreview();
@@ -173,13 +216,14 @@ public final class SetupController implements SetupActions
 			try { fresh = source.capture(character); }
 			catch (IllegalStateException ex) { session.invalidatePreview(); throw ex; }
 			RunRecord candidate = session.prepareActivation(reviewToken, fresh, Instant.now());
+			source.confirmedSnapshot(fresh);
 			busy = true;
 			publish(SetupView.Mode.SAVING, "Saving the confirmed snapshot. Wait for Active before closing the client.");
 			submit(root -> repository.activate(root, candidate), saved ->
 			{
 				session.committed(saved);
 				source.endInitialization();
-				publish(SetupView.Mode.ACTIVE, "Run active.");
+				startItems(saved, true);
 			});
 		});
 	}
@@ -211,6 +255,7 @@ public final class SetupController implements SetupActions
 			submit(root -> repository.reset(root, selectedCharacter, runId), saved ->
 			{
 				session.committed(saved);
+				items = null;
 				publish(SetupView.Mode.NOT_STARTED, "Previous run archived. A new run requires a fresh snapshot.");
 			});
 		});
@@ -224,6 +269,7 @@ public final class SetupController implements SetupActions
 			if (busy) { return; }
 			context++;
 			session = null;
+			items = null;
 			load();
 		});
 	}
@@ -237,8 +283,63 @@ public final class SetupController implements SetupActions
 		{
 			session = new InitializationSession(selectedCharacter, saved.orElse(null));
 			boolean active = saved.isPresent() && saved.get().getState().getStatus() == RunStatus.ACTIVE;
+			if (active && source.supportsTracking()) { startItems(saved.get(), false); return; }
 			publish(active ? SetupView.Mode.ACTIVE : SetupView.Mode.NOT_STARTED,
 				active ? "Active run restored." : "No saved active run.");
+		});
+	}
+
+	private void startItems(RunRecord saved, boolean fresh)
+	{
+		if (!source.supportsTracking()) { publish(SetupView.Mode.ACTIVE, "Run active."); return; }
+		source.beginTracking(); items = new ItemTrackingSession(saved, source::noteBase, fresh);
+		itemProgress = CaptureProgress.from(null);
+		publish(itemMode(), items.getMessage());
+	}
+
+	@Override public void reviewItems()
+	{
+		dispatch(() -> { if (!busy && items != null) { items.requestReview(); tick(); } });
+	}
+
+	@Override public void confirmItems(UUID token, Map<Integer, VirtualItemOwnership> corrections, String reason, boolean permanentlyRemoved)
+	{
+		dispatch(() ->
+		{
+			if (busy || items == null || !items.isPreparing()) { return; }
+			ItemObservation observation = source.observeItems(true);
+			saveItems(items.confirm(token, observation, corrections, reason, permanentlyRemoved), observation);
+		});
+	}
+	@Override public void confirmUpdate(UUID token, com.fromscratch.tracking.ItemReviewEdits edits)
+	{
+		dispatch(() ->
+		{
+			if (busy || items == null || !items.isPreparing()) { return; }
+			ItemObservation observation = source.observeItems(true);
+			saveItems(items.confirm(token, observation, edits), observation);
+		});
+	}
+	@Override public void cancelUpdate(UUID token)
+	{
+		dispatch(() -> { if (!busy && items != null) { items.cancelReview(token); publish(itemMode(), items.getMessage()); } });
+	}
+
+	private SetupView.Mode itemMode()
+	{
+		return items.isPreparing() && items.isReviewRequested() ? SetupView.Mode.RECONCILING : SetupView.Mode.ACTIVE;
+	}
+
+	private void saveItems(AccountingPlan candidate, ItemObservation observation)
+	{
+		diagnostics.plan(candidate, false);
+		RunRecord expected = session.getSaved(); busy = true;
+		publish(itemMode(), "Saving item changes locally...");
+		submit(root -> repository.saveItems(root, expected, candidate), saved ->
+		{
+			session.committed(saved); items.committed(saved); source.acknowledgeItems(observation);
+			diagnostics.committed(saved);
+			publish(SetupView.Mode.ACTIVE, "Item tracking active.");
 		});
 	}
 
@@ -250,9 +351,10 @@ public final class SetupController implements SetupActions
 			if (!enabled || lifecycle.get() != epoch) { return; }
 			if (character == null || !character.equals(source.characterKey())) { tick(); return; }
 			try { action.run(); }
-			catch (IllegalStateException | IllegalArgumentException ex)
+			catch (IllegalStateException | IllegalArgumentException | ArithmeticException ex)
 			{
-				publish(session != null && session.isInitializing() ? SetupView.Mode.INITIALIZING : SetupView.Mode.ERROR, ex.getMessage());
+				publish(session != null && session.isInitializing() ? SetupView.Mode.INITIALIZING
+					: items != null && items.isPreparing() ? SetupView.Mode.RECONCILING : SetupView.Mode.ERROR, ex.getMessage());
 			}
 		});
 	}
@@ -286,6 +388,8 @@ public final class SetupController implements SetupActions
 						if (!enabled || lifecycle.get() != epoch || context != generation) { return; }
 						busy = false;
 						if (!Objects.equals(character, source.characterKey())) { tick(); return; }
+						items = null; // a failed/uncertain write requires explicit reload, never an automatic retry loop
+						diagnostics.failed(message);
 						publish(SetupView.Mode.ERROR, message);
 					});
 				}
@@ -302,12 +406,26 @@ public final class SetupController implements SetupActions
 	{
 		LegacySnapshot preview = session == null ? null : session.getPreview();
 		CaptureProgress progress = source.progress();
+		if (items != null) { progress = itemProgress; }
 		if (preview != null && progress.getContainers().isEmpty())
 		{
 			progress = CaptureProgress.from(preview);
 		}
+		Map<Integer, String> names = new HashMap<>(); Set<Integer> ids = new TreeSet<>();
+		if (items != null)
+		{
+			items.getRun().getItemProgress().getRecent().forEach(entry -> { if (entry.getItemId() >= 0) { ids.add(entry.getItemId()); } });
+			items.getRun().getItemProgress().getAcquisitions().forEach(entry -> { if (entry.getItemId() >= 0) { ids.add(entry.getItemId()); } });
+			ids.addAll(items.getRun().getItemProgress().getLegacyDeficits().getItems().keySet());
+			if (items.getReview() != null)
+			{
+				ids.addAll(items.getReview().getCurrent().ids()); ids.addAll(items.getReview().getBefore().ids());
+				ids.addAll(items.getReview().getPrevious().getItems().keySet());
+			}
+			for (int id : ids) { names.put(id, nameCache.computeIfAbsent(id, source::itemName)); }
+		}
 		SetupView view = new SetupView(mode, message, session == null ? null : session.getSaved(),
-			preview, session == null ? null : session.getReviewToken(), progress);
+			preview, session == null ? null : session.getReviewToken(), progress, items == null ? null : items.getReview(), names, busy);
 		// Polling is needed to expire observations even without events. Unchanged
 		// immutable views must not rebuild Swing on every game tick.
 		displayView(view);

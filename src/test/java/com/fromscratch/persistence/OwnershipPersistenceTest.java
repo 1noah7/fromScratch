@@ -108,7 +108,7 @@ public class OwnershipPersistenceTest
 			Filepath backup = files.filter(path -> path.getFileName().startsWith("migration-v1-")).findFirst().get();
 			assertEquals(before, contents(backup));
 		}
-		assertEquals(2, SnapshotFixtures.gson().fromJson(contents(current()), JsonObject.class).get("formatVersion").getAsInt());
+		assertEquals(RunRecordCodec.FORMAT_VERSION, SnapshotFixtures.gson().fromJson(contents(current()), JsonObject.class).get("formatVersion").getAsInt());
 	}
 	@Test public void migratedSaveDoesNotMigrateAgainOnRestart() throws Exception
 	{
