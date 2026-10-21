@@ -1,5 +1,13 @@
 # RuneLite Plugin Development — Agent Guidelines
 
+## From Scratch project scope
+
+- Read `ARCHITECTURE.md`, `ACCOUNTING.md`, and `TEST_PLAN.md` before behavior changes.
+- Implement one authorized milestone at a time. M1 is foundation only; later features remain planned.
+- Identity: From Scratch, author Pilots r kwl, package `com.fromscratch`, config `fromscratch`, internal name `from_scratch`.
+- Preserve config/schema compatibility and Git history. No commit, push, publication, or PR without explicit approval.
+- Distinguish automated evidence, pending user acceptance, and unsupported observations in documentation.
+
 ## Logging
 
 - Use `log.debug()` for developer/diagnostic logging.

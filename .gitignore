@@ -8,3 +8,14 @@ nbactions.xml
 nb-configuration.xml
 nbproject/
 *.class
+out/
+.tmp/
+*.tmp
+*.log
+.gradle-user-home/
+run-data/
+backups/
+*.jfr
+.env
+.env.*
+!.env.example

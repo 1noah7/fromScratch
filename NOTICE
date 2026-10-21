@@ -1,0 +1,9 @@
+From Scratch was created from the official RuneLite example plugin template:
+https://github.com/runelite/example-plugin
+
+Existing third-party notices, including src/test/resources/logback-test.xml,
+are retained. RuneLite dependencies retain their own licenses and are not
+redistributed in the standard Plugin Hub JAR.
+
+Purple coin artwork was generated specifically for this project; see
+docs/ARTWORK.md. It is not extracted from RuneScape assets.
