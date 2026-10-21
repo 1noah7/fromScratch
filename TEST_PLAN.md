@@ -89,3 +89,19 @@ The latest clean build passes **654 tests, 0 failures/errors/skips, 45 suites**,
 - FinalCorrectionsUiTest: five cases covering a visible readable optional GE-storage note without a new observation gate; 14-pixel Start gap/nearby attestation; centered automatic-update instructions/equal tiles; shared cached Purple partyhat 1046; all four financial tiles using integer GP with exact tooltips.
 
 Existing null/partial-bank rejection, migration/exact-byte archives, save failure/CAS/recovery, character isolation, rapid FIFO updates, 1,200-ID/large-history performance, custom colors, original quantity preservation and partial-row clipping remain covered. Physical/financial reducers, price service and persistence implementation are unchanged by this correction pass. Run the [latest manual procedure](docs/MILESTONE_5_FINAL_CORRECTIONS.md) for real native placeholder IDs/appearance, no-placeholder behavior, net worth, restart, sprite clarity, setup/GE guidance and live banking responsiveness. Only the user can accept those behaviors in-game.
+
+## M6 Grand Exchange validation
+
+M1–M5 are user accepted at v0.5.0-wealth. The M6 clean build passes **723 tests, 0 failures/errors/skips, 52 suites**, preserving 655 earlier tests and adding 68 cases:
+
+| Suite | Tests | Coverage |
+| --- | ---: | --- |
+| GeObservationTest | 15 | Cumulative quantities/actual reported-GP differences, independent slots, partial cancellation, duplicate/out-of-order packets, initial EMPTY, reuse/terminal regression, pre-start lifecycle without clock inference, unchanged resume context, capped/zero/exempt estimated tax |
+| GeSourceLifecycleTest | 8 | Real API-interface copies, login clears, missing/late arrays, confirmed clear, reconnect, invalid/missing packets, bounds and beyond-max-cash longs |
+| GePipelineTest | 25 | Source → FIFO controller → real Filepath journal/checkpoint → financial/projection path; buys/sales/partial fills/refunds/returns, concurrent budgets, high-water exclusions and unrelated/excess gains, no duplicate item/GP/tax, uncollected bank-only worth, restart/offline uncertainty, pre-start/unknown origins, acknowledgment, isolation, history sides, platinum units, 80-event FIFO and 400-event overload recovery, shared immutable overlay-label cache |
+| GePersistenceTest | 9 | Roundtrip offers/fees/budgets, genuine format-6 exact-byte migration, unchanged identity/start/initial/P/B/financial state, broken data preservation, missing GE rejection, interrupted migration/save, lost acknowledgment, idempotency/CAS and bounded immutable history pages |
+| GeDashboardTest | 4 | Exactly two matching GE tiles in the required location, side-specific read-only navigation, estimated-fee display without Bank GP changes |
+| GeHistoryViewTest | 6 | Name search, fill/uncertainty filters, numeric sorting, read-only cells, exact GP/unknown profit/collection details, average-price presentation and page-size bounds |
+| GePerformanceTest | 1 | 1,200 physical IDs and 128 forced GE commits, bounded retained state, lazy 25-row page and restart equality, worker CPU versus wall diagnostics |
+
+The historical format-5 fixture explicitly removes the new schema-7 field before encoding old bytes; this preserves meaningful older migration coverage. Current fees remain estimates with a documented incomplete exemption catalog, not verified native tax. Initial/offline identical-slot ambiguity and late bank/trade ordering cannot establish complete history or profit. The [M6 report](docs/MILESTONE_6.md) contains exact measurements, constraints and the required user-run manual procedure. No automated test or synthetic render establishes live correctness or responsiveness.

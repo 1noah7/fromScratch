@@ -1,6 +1,6 @@
 # Bank accounting policy
 
-**Current contract: M1–M4 accepted; M5 bank valuation passes automated validation and awaits manual acceptance.** The original multi-container ownership policy is historical and lives in [the archived specification](docs/history/ACCOUNTING_MULTI_CONTAINER.md). It is not a source for current acquisition, transfer or session-gate behavior.
+**Current contract: M1–M5 accepted; M6 passive GE records/attribution await manual acceptance.** The original multi-container ownership policy is historical and lives in [the archived specification](docs/history/ACCOUNTING_MULTI_CONTAINER.md). It is not a source for current acquisition, transfer or session-gate behavior.
 
 ## Quantities and equation
 
@@ -120,3 +120,25 @@ Placeholders represent zero physical copies, even if their variant has a nonzero
 Only the bank participates in initial legacy setup. GE offers and other storage are excluded unless the player first collects/banks those items. Later collection can appear as positive bank progression and require an explicit Manual Bank Correction. There is no GE inspection or mandatory empty-offer verification; reliable GE accounting is planned for Milestone 6, which is not implemented here.
 
 Compact GP now shares item-stack integer K/M thresholds; exact tooltips and every numeric quantity, market calculation, historical quote, high-water mark and financial event are unchanged.
+
+## M6 exchange records and conservative conversions
+
+P/B, Bank GP and current worth keep their existing definitions. A buy/sell/fill/cancel/collection observation never directly changes any of them. Reservations and uncollected items/cash stay outside bank worth. Reported execution GP and actual physical bank deposits are different measurements; do not apply both as quantity/currency movements.
+
+Within a compatible offer generation, record `dq = filled' - filled` and `dv = reportedGP' - reportedGP`. Duplicate observations add nothing; regressions preserve uncertainty rather than negative/invented fills. Initial already-filled snapshots are recorded as cumulative existing evidence, not an asserted historical sequence. Compatible offline increments are explicitly conditional because identical unseen reuse cannot be ruled out. Status/clear events carry no new executed quantity. There is no verified cost-basis allocation or realized-profit figure.
+
+Each fill/snapshot can create a bounded possible purchase/proceeds budget; terminal buy refunds and canceled sell returns can create return budgets. Compatible earlier bank withdrawals can be associated once. Positive bank movements consume compatible budgets once (FIFO, exact item identity, up to 24 hours; GP budgets can cover coins/platinum units). The immutable audit stores trade/bank references and actual matched units. These links are possible provenance, never certainty about identical copies or collection destination. Expiry/capacity removes only automatic matching context; original unmatched records remain in history.
+
+For a new automatic bank high-water portion `q = max(0, B' - H)`, let `c` be compatible conversion units consumed by this bank operation:
+
+```text
+new estimated external-gain units = max(0, q - c)
+H' = max(H, B')
+B' = B + (P' - P)              [unchanged]
+```
+
+Only the remaining gain units receive fixed historical quotes. Possible conversion ceilings still prevent withdraw/redeposit from later manufacturing gain. Unrelated item IDs remain eligible. Because provenance is deliberately conservative, unrelated same-ID gains can be excluded; deposits beyond the compatible budget remain eligible. Missing, expired or late trade evidence cannot reconstruct every conversion, and earlier M5/M6 recognized history is not silently rewritten. The result remains an estimated bank-progression statistic, not complete lifetime income or profit.
+
+Seller fee estimate for a newly observed executed increment is `quantity * min(5,000,000, floor(floor(reportedGP / quantity) / 50))`, except explicitly published exempt tools/bonds/Mind runes. Sub-50 average prices yield zero. This is not verified per-fill tax: other exemptions, varying unit executions, old rates and the API's undocumented seller gross/net basis may differ. Record method/source/amount once with the trade identity; never charge buyers. Legacy snapshots do not invent earlier fees. Display explicit expenses + estimated GE fees with an estimate marker, without reducing Bank GP a second time. Native settlement is counted only when physically observed in the bank.
+
+Known pre-start offers are identified by actual setup lifecycle observations, not a fabricated initial GE baseline or clock ordering. Their compatible returns are excluded from estimated gains; signed bank balances still obey the bank equation. A concise Manual Bank Corrections notice addresses any legacy quantity offset the player wants corrected. No initial GE screen or normal review/session gate is introduced. Schema-7 migration preserves every prior financial total and quote; only future observations use this classifier.

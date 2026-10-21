@@ -43,17 +43,20 @@ public final class BankPanel extends PluginPanel
 	private final BankTile bankGp;
 	private final BankTile lost;
 	private final JLabel automaticSummary = new JLabel("No changes yet", SwingConstants.CENTER), manualSummary = new JLabel("No corrections yet", SwingConstants.CENTER);
+	private final JLabel purchasesSummary=new JLabel("0 fills",SwingConstants.CENTER),salesSummary=new JLabel("0 fills",SwingConstants.CENTER);
 	private final javax.swing.Timer timer = new javax.swing.Timer(30000, e -> refreshDuration());
 	private BankView view;
 	private BankActions actions;
 	private String card;
 	private java.util.function.Consumer<Boolean> historyNavigation;
 	private Runnable correctionsNavigation;
+	private java.util.function.Consumer<Boolean> exchangeNavigation;
 	private Confirmation confirmation = BankDialogs::confirm;
 	@FunctionalInterface interface Confirmation { boolean show(Component owner,String title,String text,String action,boolean typedReset); }
 	public BankPanel() { this(new BankIcons(id -> null)); }
 	BankPanel(BankIcons icons, java.util.function.Consumer<Boolean> navigation) { this(icons); historyNavigation = navigation; }
 	BankPanel(BankIcons icons, java.util.function.Consumer<Boolean> navigation, Runnable correctionsNavigation) { this(icons, navigation); this.correctionsNavigation = correctionsNavigation; }
+	BankPanel(BankIcons icons,java.util.function.Consumer<Boolean> navigation,Runnable correctionsNavigation,java.util.function.Consumer<Boolean> exchangeNavigation){this(icons,navigation,correctionsNavigation);this.exchangeNavigation=exchangeNavigation;}
 	BankPanel(BankIcons icons, Confirmation confirmation) { this(icons); this.confirmation = confirmation; }
 	public BankPanel(BankIcons icons)
 	{
@@ -83,6 +86,9 @@ public final class BankPanel extends PluginPanel
 		active.add(heading("Bank History")); JPanel history = new JPanel(new GridLayout(1, 2, 6, 0)); history.setAlignmentX(LEFT_ALIGNMENT); history.setOpaque(false); history.setMaximumSize(new Dimension(Integer.MAX_VALUE, 102));
 		history.add(historyTile("Automatic Changes", BankIcons.AUTOMATIC_CHANGES, automaticSummary, icons, () -> openHistory(false)));
 		history.add(historyTile("Manual Corrections", BankIcons.MANUAL_CORRECTIONS, manualSummary, icons, () -> openHistory(true))); active.add(history);
+		active.add(heading("Grand Exchange"));JPanel exchange=new JPanel(new GridLayout(1,2,6,0));exchange.setName("grandExchangeTiles");exchange.setAlignmentX(LEFT_ALIGNMENT);exchange.setOpaque(false);exchange.setMaximumSize(new Dimension(Integer.MAX_VALUE,102));
+		exchange.add(historyTile("Purchases",ItemID.COINS,purchasesSummary,icons,()->openExchange(true,icons)));
+		exchange.add(historyTile("Sales",ItemID.PLATINUM,salesSummary,icons,()->openExchange(false,icons)));active.add(exchange);
 		JPanel elsewhere = vertical(); elsewhere.setName("playedElsewhere"); elsewhere.add(heading("Played Elsewhere?"));
 		JPanel returnTiles = new JPanel(new GridLayout(1, 2, 6, 0)); returnTiles.setName("playedElsewhereTiles"); returnTiles.setOpaque(false); returnTiles.setAlignmentX(LEFT_ALIGNMENT); returnTiles.setPreferredSize(new Dimension(200, 132)); returnTiles.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
 		JPanel instructions = new JPanel(new BorderLayout()); instructions.setName("elsewhereInstructions"); decorateTile(instructions);
@@ -116,8 +122,11 @@ public final class BankPanel extends PluginPanel
 			BankValuation market=updated.getValuation();
 			if(market!=null&&market.getRevision().equals(run.getRevision())){netWorth.value(market.label(),BankTooltips.netWorth(market),market.getMissingTypes()>0&&market.getPricedTypes()>0?"Priced subtotal":null);}
 			else{netWorth.value(run.isAnchored()?"Updating…":"Unavailable",BankTooltips.netWorth(null));}
-			lost.value(financial.getExpenseRecords()==0?"Not tracked":GpFormatter.compact(financial.getExpenseGp()),BankTooltips.expenses(financial));
+			long geTax=run.getExchange().getEstimatedTaxGp();String loss;
+			try{loss=financial.getExpenseRecords()==0&&geTax==0?"Not tracked":GpFormatter.compact(Math.addExact(financial.getExpenseGp(),geTax))+(geTax>0?"~":"");}catch(ArithmeticException ex){loss="Out of range";}
+			lost.value(loss,BankTooltips.expenses(financial,run.getExchange()));
 			automaticSummary.setText(count(run, false) + " recent"); manualSummary.setText(count(run, true) + " recent");
+			purchasesSummary.setText(run.getExchange().getPurchases()+" fills");salesSummary.setText(run.getExchange().getSales()+" fills");
 		}
 		upgrade.setVisible(active && !run.isAnchored()); updateControls();
 	}
@@ -127,6 +136,7 @@ public final class BankPanel extends PluginPanel
 		start.setEnabled(view.ready() && attested.isSelected()); corrections.setEnabled(usable && view.getRun() != null && view.getRun().isAnchored()); reset.setEnabled(usable && view.getRun() != null && view.getRun().isActive()); anchor.setEnabled(view.ready());
 	}
 	private void openHistory(boolean manual) { if (historyNavigation != null) { historyNavigation.accept(manual); } else if (actions != null) { BankHistoryDialog.show(this, actions, manual); } }
+	private void openExchange(boolean buy,BankIcons icons){if(exchangeNavigation!=null){exchangeNavigation.accept(buy);}else if(actions!=null){com.fromscratch.ge.GeHistoryDialog.show(this,actions,buy,icons);}}
 	private void recordExpense()
 	{
 		if(view!=null&&actions!=null&&!view.isBusy()&&!view.isError()&&view.getRun()!=null&&view.getRun().isAnchored()){BankExpenseDialog.show(this,view,actions);}

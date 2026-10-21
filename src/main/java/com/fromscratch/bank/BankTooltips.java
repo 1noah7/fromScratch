@@ -55,6 +55,11 @@ final class BankTooltips
 		return html("Recorded Losses / Expenses", "Recorded amount: " + GpFormatter.exact(state.getExpenseGp()) + ".",
 			count + (count == 1 ? " recorded expense." : " recorded expenses."), "Click to record another expense.");
 	}
+	static String expenses(FinancialState state,com.fromscratch.ge.GeState exchange)
+	{
+		if(exchange.getEstimatedTaxGp()==0){return expenses(state);}
+		return html("Recorded Losses / Expenses","Explicit expenses: "+GpFormatter.exact(state.getExpenseGp())+".","Estimated GE seller fees: "+GpFormatter.exact(exchange.getEstimatedTaxGp())+".","Fees are estimates; bank coins are never deducted twice.");
+	}
 
 	static String escape(String value)
 	{

@@ -24,6 +24,7 @@ public class BankRun
 	List<BankAudit> recent;
 	BankAudit hostSummary;
 	com.fromscratch.wealth.FinancialState financial;
+	com.fromscratch.ge.GeState exchange;
 	public BankRun(String character, UUID runId, UUID previousRunId, Instant startedAt, UUID revision, long sequence,
 		ContainerSnapshot initialBank, Map<Integer, Long> physical, Map<Integer, Long> balances, boolean anchored,
 		String legacyDocument, String migrationArchive, List<BankAudit> recent, BankAudit hostSummary)
@@ -32,6 +33,10 @@ public class BankRun
 	public BankRun(String character, UUID runId, UUID previousRunId, Instant startedAt, UUID revision, long sequence,
 		ContainerSnapshot initialBank, Map<Integer, Long> physical, Map<Integer, Long> balances, boolean anchored,
 		String legacyDocument, String migrationArchive, List<BankAudit> recent, BankAudit hostSummary, com.fromscratch.wealth.FinancialState financial)
+	{this(character,runId,previousRunId,startedAt,revision,sequence,initialBank,physical,balances,anchored,legacyDocument,migrationArchive,recent,hostSummary,financial,com.fromscratch.ge.GeState.empty());}
+	public BankRun(String character, UUID runId, UUID previousRunId, Instant startedAt, UUID revision, long sequence,
+		ContainerSnapshot initialBank, Map<Integer, Long> physical, Map<Integer, Long> balances, boolean anchored,
+		String legacyDocument, String migrationArchive, List<BankAudit> recent, BankAudit hostSummary, com.fromscratch.wealth.FinancialState financial, com.fromscratch.ge.GeState exchange)
 	{
 		if (character == null || !character.matches("[a-f0-9]{64}")) { throw new IllegalArgumentException("Unverified character identity"); }
 		if (sequence < 1 || recent == null || recent.isEmpty() || recent.size() > 30) { throw new IllegalArgumentException("Incomplete bank history"); }
@@ -41,12 +46,14 @@ public class BankRun
 		this.legacyDocument = legacyDocument; this.migrationArchive = migrationArchive;
 		this.recent = Collections.unmodifiableList(new ArrayList<>(recent)); this.hostSummary = hostSummary;
 		this.financial=Objects.requireNonNull(financial);
+		this.exchange=Objects.requireNonNull(exchange);
 		this.balances.forEach((id,n)->{if(n>financial.getHighWater().getOrDefault(id,0L)){throw new IllegalArgumentException("Financial high-water below bank progress");}});
 		if (!revision.equals(recent.get(0).getId())) { throw new IllegalArgumentException("Bank history head mismatch"); }
 		if (migrationArchive != null && !migrationArchive.matches("bank-migration-[a-f0-9-]{36}")) { throw new IllegalArgumentException("Invalid archive reference"); }
 		if ((legacyDocument == null) != (migrationArchive == null)) { throw new IllegalArgumentException("Incomplete migration evidence"); }
 		if (runId == null)
 		{
+			if(!exchange.equals(com.fromscratch.ge.GeState.empty())){throw new IllegalArgumentException("Reset state retains GE progress");}
 			if (startedAt != null || initialBank != null || !physical.isEmpty() || !balances.isEmpty() || anchored) { throw new IllegalArgumentException("Invalid reset state"); }
 			if(!financial.getHighWater().isEmpty()||financial.getEventCount()!=0||financial.getGainedGp()!=0||financial.getExpenseGp()!=0||!financial.getUnpricedGains().isEmpty()){throw new IllegalArgumentException("Reset state retains active financial progress");}
 		}

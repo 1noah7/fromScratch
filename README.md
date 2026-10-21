@@ -6,7 +6,7 @@ By **Pilots r kwl**. Java 11, RuneLite, BSD 2-Clause.
 
 Start a bank-progress challenge on your existing Old School RuneScape character. Keep your levels and unlocks while building a separate signed bank balance. This is an honor-system challenge; the plugin never performs game actions.
 
-**M1–M4 accepted; M5 passes automated validation and awaits manual acceptance.** No Plugin Hub submission or approval is claimed. M5 adds bank-only GP and valuation estimates; GE accounting, buybacks and personal-container accounting remain unsupported. Earlier multi-container M4 workflows are superseded.
+**M1–M5 accepted; M6 awaits manual acceptance.** M5 is preserved as `v0.5.0-wealth`. M6 adds passive GE execution history and conservative bank attribution. No Plugin Hub submission or approval is claimed. Buybacks, cloud and personal-container ownership remain unsupported. Earlier multi-container M4 workflows are superseded.
 
 ## Build and launch
 
@@ -28,7 +28,7 @@ Enable **From Scratch** and open its purple coin sidebar. No public Plugin Hub i
 3. Check **I confirm my inventory and equipped items are banked.**
 4. Open your bank, then click **Start From Scratch** and confirm.
 
-The complete bank becomes the permanent legacy baseline. Initial progress is zero, including coins; this does not establish spendable virtual GP. Items in Grand Exchange offers or other storage aren't included. Collect them into your bank first if you want them treated as legacy. No inventory/equipment or GE inspection is required. A Bank PIN, missing identity or incomplete bank data prevents starting. A genuinely empty complete bank is valid. Previously owned items collected from excluded storage after starting may need a Manual Bank Correction; GE accounting remains future Milestone 6 scope.
+The complete bank becomes the permanent legacy baseline. Initial progress is zero, including coins; this does not establish spendable virtual GP. Items in Grand Exchange offers or other storage aren't included. Collect them into your bank first if you want them treated as legacy. No inventory/equipment or GE inspection is required. A Bank PIN, missing identity or incomplete bank data prevents starting. A genuinely empty complete bank is valid. Offers observed before starting are marked preexisting; later bank returns from them can still need a Manual Bank Correction because the immutable baseline remains bank-only.
 
 ## Bank progress
 
@@ -66,11 +66,21 @@ Select an item, inspect physical quantity/current signed balance, enter a desire
 
 **Bank History** has Automatic Changes and Manual Corrections tiles. Each opens a read-only view with item names, signed quantities, timestamps, sorting, page-local search/Gains/Losses filters and 25 rows per page. Previous/Next/Close and Escape are supported. Old journal segments load lazily; no transaction feed scrolls through the dashboard.
 
+## Grand Exchange
+
+Purchases and Sales tiles below Bank History open read-only, paginated histories. Observe placements, incremental fills, completion/cancellation and cumulative reported execution GP automatically, even without opening the GE sidebar. Search, sort and filter each page; select a row for exact totals, derived average, origin and uncertainty. Times are local observation times. First-seen already-filled offers are snapshots, not invented earlier fills; initial login EMPTY events never erase saved offers.
+
+GE events never independently change bank items, Bank GP or net worth. Withdraw/buy/collect/deposit normally; only physical bank changes update counters. Uncollected assets stay outside bank worth. Compatible purchase/sale/refund/unsold-return budgets may exclude the associated portion from new high-water gains, without changing bank balances. These are **possible matches**, not proof of the origin of identical items. Matching is bounded to 24 hours/256 pending credits and may undercount unrelated same-ID gains; older/missing/late trade evidence cannot reconstruct or revise past estimates. Profit and exact collection destination remain unknown.
+
+Seller fees are explicitly **estimated** from incremental reported GP and average unit price under the 2%/5M-per-item policy, with published tool/bond/Mind rune exemptions and sub-50 flooring. Unlisted exemptions, varying execution prices, old offer rates and the API's undocumented seller gross/net basis can differ from the estimate. Estimated fees appear once in Total Value Lost / Spent with `~`, separately from explicit expenses; they never debit Bank GP again. Buyers have no seller tax. See [sources, limits and manual checks](docs/MILESTONE_6.md).
+
+Playing elsewhere still needs only banking/opening the bank here. Compatible saved offers can reveal a net change; trades completed and removed entirely elsewhere cannot be recovered. No GE visit, review wizard, inventory or equipment observation is required. A concise notice can suggest Manual Bank Corrections for a known preexisting return; it never silently rewrites the legacy snapshot.
+
 ## Existing runs, backups and reset
 
 Storage is local-only under RuneLite's plugin Filepath directory: `from_scratch/characters/<opaque-character-key>/`. Never copy saves into this repository. There is no cloud sync or account backend. This PC is authoritative.
 
-Format 6 preserves M4 data. On first format-5 load, verify the entire journal and create exact-byte, forced, manifest-verified backups before publication. Preserve run/start/legacy bank/P/B/history and establish the financial measurement baseline at current positive progress. Earlier gains are not reconstructed; measurement timestamps remain stored internally. Existing M4 runs do not need a new bank anchor. Failed migrations retain originals/recovery evidence.
+Format 7 preserves M5 data. Before a format-6 migration, verify the full chain and create exact-byte, forced, manifest-verified backups of all original checkpoints/journals. Keep run/start/legacy bank/P/B/financial history exactly; begin GE observation without reconstructing old trades or changing prior gains. Existing M5 runs need no new bank anchor. Format-5 migration retains its original imported financial baseline safeguards; older migrations and failed/interrupted recovery evidence remain supported.
 
 Formats 1–4 still verify/archive the old save/journal, preserving original legacy documents and committed bank allocation minus legacy deficits. Inventory/equipment/Elsewhere records remain archived rather than becoming bank gains.
 
@@ -93,7 +103,7 @@ For bugs, use the GitHub issue templates with reproducible steps, expected/actua
 
 Virtual quantity color defaults to **#1DFF00**. Locked Item Background Color defaults to **#333333**, with **50%** opacity (0–100). These independent settings apply live. Existing saved custom colors/opacity are retained; no configuration keys were renamed or overwritten. Partial-row clipping, signed labels and positive-item appearance are preserved.
 
-The sidebar retains its transparent purple pixel-art coin stack. Automatic Changes uses Banker's note; both Manual Corrections history and Manual Bank Corrections use **Purple partyhat (1046)**. These OSRS sprites are cached through RuneLite. Setup and the red typed-RESET danger area retain all M4 safeguards. See [latest M5 acceptance](docs/MILESTONE_5_FINAL_CORRECTIONS.md).
+The sidebar retains its transparent purple pixel-art coin stack. Automatic Changes uses Banker's note; Manual Corrections history uses the Horror from the Deep Diary (3846), while Manual Bank Corrections uses Purple partyhat (1046). GE Purchases/Sales use coins/platinum sprites. These OSRS sprites are cached through RuneLite. Setup and the red typed-RESET danger area retain all safeguards. See [M6 acceptance](docs/MILESTONE_6.md).
 
 The setup screen has a compact, visible attestation row and centered green **Start From Scratch** action. Start remains disabled without attestation and a complete bank, then opens the existing confirmation. Ordinary Active/Not Started subtitles are removed; actionable warnings remain. Played Elsewhere instructions and the red reset action are centered. See the [M5 polish checklist](docs/MILESTONE_5_POLISH.md).
 

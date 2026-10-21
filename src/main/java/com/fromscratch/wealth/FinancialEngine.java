@@ -10,11 +10,19 @@ public final class FinancialEngine
 {
 	private FinancialEngine() { }
 	public static List<ValuationEvent> recognize(FinancialState before,Map<Integer,Long> balances,UUID audit,Map<Integer,PriceQuote> prices,Instant at)
+	{return recognize(before,balances,audit,prices,at,Collections.emptyMap());}
+	public static List<ValuationEvent> recognize(FinancialState before,Map<Integer,Long> balances,UUID audit,Map<Integer,PriceQuote> prices,Instant at,Map<Integer,Long> exclusions)
 	{
 		List<ValuationEvent> events=new ArrayList<>();
-		gains(before,balances).forEach((id,q)->events.add(new ValuationEvent(ValuationEvent.identity(audit,ValuationEvent.Kind.GAIN,id),ValuationEvent.Kind.GAIN,id,q,
+		eligibleGains(before,balances,exclusions).forEach((id,q)->events.add(new ValuationEvent(ValuationEvent.identity(audit,ValuationEvent.Kind.GAIN,id),ValuationEvent.Kind.GAIN,id,q,
 			id==ItemID.COINS?PriceQuote.coins(at):prices.getOrDefault(id,PriceQuote.unknown(id)),"New bank progression high-water mark.")));
 		return events;
+	}
+	/** Conservative possible conversions raise H without asserting new external income. */
+	private static Map<Integer,Long> eligibleGains(FinancialState before,Map<Integer,Long> balances,Map<Integer,Long> exclusions)
+	{
+		Map<Integer,Long> eligible=gains(before,balances);
+		exclusions.forEach((id,q)->{if(q<0){throw new IllegalArgumentException("Negative conversion exclusion");}long remaining=Math.max(0,eligible.getOrDefault(id,0L)-q);if(remaining==0){eligible.remove(id);}else{eligible.put(id,remaining);}});return eligible;
 	}
 	private static Map<Integer,Long> gains(FinancialState before,Map<Integer,Long> balances)
 	{
@@ -23,7 +31,8 @@ public final class FinancialEngine
 	/** Also called at the persistence boundary: invalid/missing/duplicate event evidence rejects the entire commit. */
 	public static FinancialState advance(FinancialState before,Map<Integer,Long> balances,BankAudit audit)
 	{
-		Map<Integer,Long> required=audit.getKind()==BankAudit.Kind.AUTOMATIC?gains(before,balances):Collections.emptyMap();
+		if(audit.getKind()!=BankAudit.Kind.AUTOMATIC&&!audit.getExchange().getGainExclusions().isEmpty()){throw new IllegalArgumentException("Conversion exclusion outside bank movement");}
+		Map<Integer,Long> required=audit.getKind()==BankAudit.Kind.AUTOMATIC?eligibleGains(before,balances,audit.getExchange().getGainExclusions()):Collections.emptyMap();
 		Map<Integer,Long> actual=new TreeMap<>(),unknown=new TreeMap<>(before.getUnpricedGains()),high=new TreeMap<>(before.getHighWater());
 		long gained=before.getGainedGp(),expense=before.getExpenseGp(),records=before.getExpenseRecords(),count=before.getEventCount();Set<UUID> ids=new HashSet<>();
 		for(ValuationEvent e:audit.getValuations())

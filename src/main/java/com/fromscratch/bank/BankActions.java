@@ -11,6 +11,8 @@ public interface BankActions
 	void reset(UUID revision);
 	void retry();
 	default void recordExpense(UUID revision,long gp,String reason) { throw new UnsupportedOperationException("Expense recording is unavailable"); }
+	default void exchangeHistory(boolean buy,BankHistory.Cursor cursor,java.util.function.Consumer<com.fromscratch.ge.GeHistory.Page> callback)
+	{callback.accept(new com.fromscratch.ge.GeHistory.Page(java.util.Collections.emptyList(),null,"No GE history recorded."));}
 	default void history(boolean manual, BankHistory.Cursor cursor, java.util.function.Consumer<BankHistory.Page> callback)
 	{ callback.accept(new BankHistory.Page(java.util.Collections.emptyList(), null, "No bank changes recorded.")); }
 }

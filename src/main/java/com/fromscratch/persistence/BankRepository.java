@@ -3,6 +3,7 @@ package com.fromscratch.persistence;
 import com.fromscratch.bank.*;
 import com.fromscratch.model.*;
 import com.fromscratch.wealth.*;
+import com.fromscratch.ge.*;
 import com.google.gson.*;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -38,6 +39,14 @@ public final class BankRepository
 			try { version = Math.toIntExact(BankRunCodec.number(new JsonParser().parse(text).getAsJsonObject().get("formatVersion"))); }
 			catch (RuntimeException ex) { throw new SaveException("Save header is unreadable. Existing files were preserved."); }
 			if (version == BankRunCodec.FORMAT) { BankRun run = codec.decode(text, character); verify(d, run, true); return Optional.of(run); }
+			if(version==6)
+			{
+				BankRun old=codec.decode(text,character);verify(d,old,true);String archived=archive(d);
+				BankAudit audit=new BankAudit(UUID.randomUUID(),UUID.randomUUID(),Instant.now(),BankAudit.Kind.EXCHANGE_BASELINE,Collections.emptyMap(),Collections.emptyMap(),"M5 files archived exactly. GE observation starts without replaying old trades or gains.");
+				List<BankAudit> recent=new ArrayList<>(old.getRecent());recent.add(0,audit);if(recent.size()>30){recent.remove(30);}
+				BankRun upgraded=new BankRun(old.getCharacter(),old.getRunId(),old.getPreviousRunId(),old.getStartedAt(),audit.getId(),Math.incrementExact(old.getSequence()),old.getInitialBank(),old.getPhysical(),old.getBalances(),old.isAnchored(),old.getLegacyDocument(),old.getMigrationArchive(),recent,old.getHostSummary(),old.getFinancial(),old.isActive()?GeState.empty(archived):GeState.empty());
+				commit(d,old,upgraded);return Optional.of(upgraded);
+			}
 			if(version==5)
 			{
 				BankRun old=codec.decode(text,character);verify(d,old,true);String archived=archive(d);Instant at=Instant.now();
@@ -98,6 +107,8 @@ public final class BankRepository
 			|| !Objects.equals(before.getMigrationArchive(), after.getMigrationArchive())) { throw new SaveException("Immutable run baseline changed."); }
 		if (audit.getKind() == BankAudit.Kind.ANCHOR)
 		{ if (before.isAnchored() || !after.isAnchored() || before.getLegacyDocument() == null) { throw new SaveException("Invalid migration anchor transition."); } }
+		else if(audit.getKind()==BankAudit.Kind.EXCHANGE)
+		{if(!before.isActive()||before.isAnchored()!=after.isAnchored()||!audit.getPhysicalChanges().isEmpty()||!audit.getBalanceChanges().isEmpty()){throw new SaveException("GE cannot change bank holdings.");}}
 		else if (!before.isActive() || !before.isAnchored() || !after.isAnchored()
 			|| (audit.getKind() != BankAudit.Kind.AUTOMATIC && audit.getKind() != BankAudit.Kind.SESSION_CHECK && audit.getKind() != BankAudit.Kind.CORRECTION && audit.getKind()!=BankAudit.Kind.EXPENSE))
 		{ throw new SaveException("Invalid bank accounting transition."); }
@@ -107,8 +118,37 @@ public final class BankRepository
 		if (audit.getKind() == BankAudit.Kind.CORRECTION && !audit.getPhysicalChanges().isEmpty()) { throw new SaveException("A correction cannot change the physical bank anchor."); }
 		if(audit.getKind()==BankAudit.Kind.EXPENSE&&(!audit.getPhysicalChanges().isEmpty()||!audit.getBalanceChanges().isEmpty())){throw new SaveException("Expenses cannot change bank holdings.");}
 		if(!FinancialEngine.advance(before.getFinancial(),after.getBalances(),audit).equals(after.getFinancial())){throw new SaveException("Financial checkpoint does not match durable event evidence.");}
+		GeState exchange=before.getExchange();GeUpdate evidence=GeUpdate.empty();
+		if(audit.getKind()==BankAudit.Kind.EXCHANGE)
+		{
+			if(audit.getExchange().getObservation()==null){throw new SaveException("Missing GE observation evidence.");}
+			GeEngine.Result result=GeEngine.observe(exchange,audit.getExchange().getObservation(),before.getRunId());exchange=result.getState();evidence=result.getEvidence();
+		}
+		else if(audit.getKind()==BankAudit.Kind.AUTOMATIC){GeEngine.Result result=GeEngine.bank(exchange,audit.getId(),audit.getPhysicalChanges(),audit.getAt());exchange=result.getState();evidence=result.getEvidence();}
+		if(!exchange.equals(after.getExchange())||!evidence.equals(audit.getExchange())){throw new SaveException("GE checkpoint does not match its durable observations/attributions.");}
 	}
 	/** Read only enough immutable segments for one page; never run from the EDT/client thread. */
+	public GeHistory.Page exchangeHistory(Filepath root,BankRun run,BankHistory.Cursor cursor,boolean buy) throws IOException
+	{
+		return locked(root,run.getCharacter(),d ->
+		{
+			UUID head=cursor==null?run.getRevision():cursor.getRevision();int offset=cursor==null?0:cursor.getOffset(),examined=0;List<GeTrade> rows=new ArrayList<>();
+			if(offset<0){throw new SaveException("Invalid GE history page.");}
+			while(head!=null&&rows.size()<25&&examined++<64)
+			{
+				JsonObject batch=codec.payload(BankStorageFiles.readText(d.joinSegment("bank-ledger-"+head+".json")),1);
+				if(!run.getCharacter().equals(BankRunCodec.str(batch,"character"))||!run.getRunId().toString().equals(BankRunCodec.nullable(batch,"run"))){head=null;break;}
+				BankAudit audit=codec.readAudit(batch.getAsJsonObject("audit"));if(!head.equals(audit.getId())){throw new SaveException("GE history identity mismatch.");}
+				List<GeTrade> trades=audit.getExchange().getTrades();for(int i=offset;i<trades.size();i++)
+				{
+					GeTrade trade=trades.get(i);if(trade.isBuy()==buy){rows.add(trade);}if(rows.size()==25){return new GeHistory.Page(rows,new BankHistory.Cursor(head,i+1),"");}
+				}
+				String previous=BankRunCodec.nullable(batch,"previous");head=previous==null?null:UUID.fromString(previous);offset=0;
+			}
+			return new GeHistory.Page(rows,head==null?null:new BankHistory.Cursor(head,offset),rows.isEmpty()?"No matching GE activity on this page.":"");
+		});
+	}
+	/** Read only enough immutable segments for one bank page; never run from the EDT/client thread. */
 	public BankHistory.Page history(Filepath root, BankRun run, BankHistory.Cursor cursor, boolean manual) throws IOException
 	{
 		return locked(root, run.getCharacter(), d ->
@@ -142,7 +182,7 @@ public final class BankRepository
 	{
 		if (!run.isActive() || !run.isAnchored() || !run.getBalances().isEmpty() || !run.getInitialBank().getQuantities().equals(run.getPhysical())
 			|| !run.getRecent().get(0).getBalanceChanges().isEmpty() || !run.getRecent().get(0).getPhysicalChanges().isEmpty()
-			|| !run.getRecent().get(0).getValuations().isEmpty() || !FinancialState.baseline(Collections.emptyMap(),run.getStartedAt(),false).equals(run.getFinancial()))
+			|| !run.getRecent().get(0).getValuations().isEmpty() || !FinancialState.baseline(Collections.emptyMap(),run.getStartedAt(),false).equals(run.getFinancial()) || !run.getExchange().equals(GeState.empty()))
 		{ throw new SaveException("A new run must start from its complete bank with zero progress."); }
 	}
 	private void commit(Filepath d, BankRun before, BankRun after) throws IOException
@@ -177,6 +217,7 @@ public final class BankRepository
 			if (seq != 0 || !seen.containsAll(run.getRecent().stream().map(BankAudit::getId).collect(Collectors.toSet())) || (run.getHostSummary() != null && !seen.contains(run.getHostSummary().getId()))) { throw new IllegalArgumentException("Missing bank journal history"); }
 			if (run.getMigrationArchive() != null) { verifyArchive(d.joinSegment(run.getMigrationArchive())); }
 			if(run.getFinancial().getImportArchive()!=null){verifyArchive(d.joinSegment(run.getFinancial().getImportArchive()));}
+			if(run.getExchange().getArchive()!=null){verifyArchive(d.joinSegment(run.getExchange().getArchive()));}
 		}
 		catch (RuntimeException ex) { throw new SaveException("Bank history or migration archive is incomplete or corrupt. Files were preserved; restore the matching checkpoint and journals."); }
 	}

@@ -12,6 +12,7 @@ import javax.inject.*;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.util.Filepath;
 import com.fromscratch.wealth.*;
+import com.fromscratch.ge.*;
 
 /** Client-thread coordinator with serialized background storage and lifecycle/identity guarded callbacks. */
 @Singleton
@@ -35,7 +36,14 @@ public final class BankController implements BankActions
 	private String notice;
 	private final Map<Integer, String> names = new TreeMap<>();
 	private BankView last;
-	private final Deque<BankObservation> pending = new ArrayDeque<>();
+	private final Deque<Pending> pending = new ArrayDeque<>();
+	private final Map<Integer,GeObservation> exchangeBaseline=new TreeMap<>();
+	private final Map<Integer,GeObservation> latestOffers=new TreeMap<>();
+	private static final class Pending
+	{
+		final BankObservation bank;final GeObservation offer;
+		Pending(BankObservation bank,GeObservation offer){this.bank=bank;this.offer=offer;}
+	}
 	private boolean automatic;
 	private BankTimings.Trace committedTrace;
 	private final PriceService prices;
@@ -56,7 +64,7 @@ public final class BankController implements BankActions
 	public void start(DirectoryProvider directory, ExecutorService worker)
 	{
 		this.directory = directory; this.worker = worker; enabled = true; long token = epoch.incrementAndGet();
-			dispatch.accept(() -> { if (!enabled || epoch.get() != token) { return; } character = null; run = null; busy = false; error = false; automatic = false; committedTrace = null; notice = null; pending.clear(); observation = null; last = null; context++; valuation=null;valuationQueued=false;valuedRevision=null;valuedPrices=-1; names.clear(); publish(); tick(); });
+			dispatch.accept(() -> { if (!enabled || epoch.get() != token) { return; } character = null; run = null; busy = false; error = false; automatic = false; committedTrace = null; notice = null; pending.clear(); exchangeBaseline.clear(); latestOffers.clear(); observation = null; last = null; context++; valuation=null;valuationQueued=false;valuedRevision=null;valuedPrices=-1; names.clear(); publish(); tick(); });
 	}
 	public void stop() { enabled = false; epoch.incrementAndGet(); if (worker != null) { worker.shutdownNow(); } }
 	public void tick()
@@ -65,12 +73,13 @@ public final class BankController implements BankActions
 		String key = source.characterKey();
 		if (!Objects.equals(character, key))
 		{
-			character = key; context++; run = null; observation = null; busy = false; error = false; automatic = false; pending.clear(); notice = null; committedTrace = null; names.clear();
+			character = key; context++; run = null; observation = null; busy = false; error = false; automatic = false; pending.clear(); exchangeBaseline.clear(); latestOffers.clear(); notice = null; committedTrace = null; names.clear();
 			valuation=null;valuationQueued=false;valuedRevision=null;valuedPrices=-1;
 			if (key == null) { message = "Log in to load this character's local progress."; publish(); }
 			else { load(); } return;
 		}
 		if (character == null || error || (busy && !automatic)) { return; }
+		flushExchangeBaseline();
 		observation = source.observe();
 		try
 		{
@@ -87,36 +96,63 @@ public final class BankController implements BankActions
 	/** Queue complete tick snapshots, not raw container events. A slow disk never blocks or reorders client events. */
 	private void enqueue(BankObservation observed)
 	{
-		BankObservation tail = pending.peekLast();
-		if (tail != null && tail.getSession().equals(observed.getSession()) && tail.getBank().getQuantities().equals(observed.getBank().getQuantities())) { return; }
+		Pending tail = pending.peekLast();
+		if (tail != null && tail.bank!=null && tail.bank.getSession().equals(observed.getSession()) && tail.bank.getBank().getQuantities().equals(observed.getBank().getQuantities())) { return; }
 		if (pending.size() >= 256) { error = true; message = "Bank storage cannot keep up. Progress was preserved; retry loading before continuing."; publish(); return; }
-		pending.addLast(observed); drain();
+		pending.addLast(new Pending(observed,null)); drain();
+	}
+	/** Passive copied GE packets share the same durable FIFO as bank snapshots, never a second quantity ledger. */
+	public void exchange(GeObservation observed)
+	{
+		if(!enabled){return;}String key=source.characterKey();if(!Objects.equals(character,key)){tick();}
+		if(key==null||!key.equals(character)||error){return;}
+		latestOffers.put(observed.getSlot(),observed);
+		if(run==null||!run.isActive()){exchangeBaseline.put(observed.getSlot(),observed);return;}
+		// Keep room for ordinary bank snapshots during an extreme offer burst. The latest
+		// cumulative value per slot survives overload; omitted intermediate fills remain uncertain.
+		if(pending.size()>=128||exchangeBaseline.containsKey(observed.getSlot()))
+		{
+			exchangeBaseline.put(observed.getSlot(),new GeObservation(observed.getEventId(),observed.getSession(),observed.getAt(),observed.getSlot(),observed.getItemId(),observed.getName(),observed.getState(),observed.getTotal(),observed.getFilled(),observed.getLimitPrice(),observed.getReportedGp(),true,observed.isBeforeStart()));
+			notice="GE updates arrived faster than storage. Their latest totals were retained; intermediate trade details may be incomplete.";publish();return;
+		}
+		pending.addLast(new Pending(null,observed));drain();
+	}
+	public void exchangeGap()
+	{if(enabled){notice="Some GE history could not be observed. Bank progress continues automatically; trade details may be incomplete.";publish();}}
+	private void flushExchangeBaseline()
+	{
+		if(run==null||!run.isActive()||exchangeBaseline.isEmpty()||pending.size()>=128){return;}
+		List<GeObservation> baseline=new ArrayList<>(exchangeBaseline.values());exchangeBaseline.clear();baseline.sort(Comparator.comparing(GeObservation::getAt));
+		for(GeObservation offer:baseline){exchange(offer);}
 	}
 	private void drain()
 	{
 		if (busy || error || run == null) { return; }
 		while (!pending.isEmpty())
 		{
-			BankObservation next = pending.removeFirst();
-			if (run.getPhysical().equals(next.getBank().getQuantities()) && run.getHostSummary() != null && run.getHostSummary().getSession().equals(next.getSession())) { continue; }
+			Pending update=pending.removeFirst();BankObservation next=update.bank;
+			if (next!=null && run.getPhysical().equals(next.getBank().getQuantities()) && run.getHostSummary() != null && run.getHostSummary().getSession().equals(next.getSession())) { continue; }
 			BankRun expected = run; busy = true; automatic = true;
 			publish();
 			// No speculative balances are projected; accounting/JSON/disk work all happen on this worker.
 			submit(root ->
 			{
-				BankRun candidate = BankEngine.observe(expected, next.getBank(), next.getSession(), next.getAt(), next.getTrace(),prices.snapshot(next.getBank().getQuantities().keySet()));
-				BankTimings.mark(next.getTrace(), BankTimings.Phase.WRITE_START);
+				BankRun candidate = next==null?BankEngine.exchange(expected,update.offer):BankEngine.observe(expected, next.getBank(), next.getSession(), next.getAt(), next.getTrace(),prices.snapshot(next.getBank().getQuantities().keySet()));
+				BankTimings.Trace trace=next==null?null:next.getTrace();BankTimings.mark(trace, BankTimings.Phase.WRITE_START);
 				BankRun saved;
 				try { saved = candidate == expected ? expected : repository.save(root, expected, candidate); }
-				catch (IOException | RuntimeException ex) { if (next.getTrace() != null) { next.getTrace().failed(); } throw ex; }
-				BankTimings.mark(next.getTrace(), BankTimings.Phase.WRITE_END); return saved;
+				catch (IOException | RuntimeException ex) { if (trace != null) { trace.failed(); } throw ex; }
+				BankTimings.mark(trace, BankTimings.Phase.WRITE_END); return saved;
 			}, saved ->
 			{
-				run = saved; busy = false; automatic = false; committedTrace = next.getTrace(); notice = null; message = "Bank progress saved.";
+				run = saved; busy = false; automatic = false; committedTrace = next==null?null:next.getTrace(); notice = null; message = "Bank progress saved.";
+				if(saved.getRecent().get(0).getExchange().getMatches().stream().anyMatch(m->m.isDeposit()&&m.getOrigin()==GeOffer.Origin.PREEXISTING))
+				{notice="Possible return from a preexisting GE offer. Use Manual Bank Corrections if these bank counts should remain legacy.";}
 				BankTimings.mark(committedTrace, BankTimings.Phase.PUBLISHED); publish(); drain();
 			});
 			return;
 		}
+		flushExchangeBaseline();
 	}
 	private void load()
 	{
@@ -132,6 +168,7 @@ public final class BankController implements BankActions
 			BankObservation fresh = requireBank();
 			if (observation == null || !observation.isReady() || !observation.getBank().getQuantities().equals(fresh.getBank().getQuantities())) { throw new IllegalArgumentException("Your bank changed. Review the fresh bank before starting."); }
 			BankRun candidate = BankEngine.start(character, run == null ? null : run.getPreviousRunId(), fresh.getBank(), attested, fresh.getSession(), Instant.now());
+			latestOffers.forEach((slot,offer)->exchangeBaseline.put(slot,offer.beforeStart()));
 			if (run != null)
 			{
 				candidate = new BankRun(candidate.getCharacter(), candidate.getRunId(), run.getPreviousRunId(), candidate.getStartedAt(), candidate.getRevision(), Math.incrementExact(run.getSequence()), candidate.getInitialBank(), candidate.getPhysical(), candidate.getBalances(), true, null, null, candidate.getRecent(), null);
@@ -179,7 +216,25 @@ public final class BankController implements BankActions
 		});
 	}
 	private void requireRevision(UUID revision)
-	{ if (run == null || !run.isActive() || !run.getRevision().equals(revision)) { throw new IllegalArgumentException("Progress changed. Reopen this tool before applying changes."); } }
+	{
+		if (run == null || !run.isActive() || !run.getRevision().equals(revision)) { throw new IllegalArgumentException("Progress changed. Reopen this tool before applying changes."); }
+	}
+	public void exchangeHistory(boolean buy,BankHistory.Cursor cursor,Consumer<GeHistory.Page> callback)
+	{
+		dispatch.accept(() ->
+		{
+			if(!enabled||run==null||!run.isActive()){callback.accept(new GeHistory.Page(Collections.emptyList(),null,"No active GE history."));return;}
+			BankRun captured=run;long token=epoch.get(),capturedContext=context;DirectoryProvider provider=directory;
+			try{worker.execute(() ->
+			{
+				GeHistory.Page page;try{page=repository.exchangeHistory(provider.get(),captured,cursor,buy);}catch(IOException|RuntimeException ex){page=new GeHistory.Page(Collections.emptyList(),null,"GE history could not be read; existing records were preserved.");}
+				GeHistory.Page result=page;dispatch.accept(() ->
+				{
+					if(!enabled||epoch.get()!=token||context!=capturedContext||run==null||!Objects.equals(run.getRunId(),captured.getRunId())||!captured.getCharacter().equals(source.characterKey())){callback.accept(new GeHistory.Page(Collections.emptyList(),null,"Character or run changed. Reopen GE history."));return;}callback.accept(result);
+				});
+			});}catch(RejectedExecutionException ex){callback.accept(new GeHistory.Page(Collections.emptyList(),null,"History is busy. Retry shortly."));}
+		});
+	}
 	private BankObservation requireBank()
 	{
 		if (character == null || !character.equals(source.characterKey())) { throw new IllegalArgumentException("Character changed. Wait for local progress to reload."); }
@@ -189,7 +244,7 @@ public final class BankController implements BankActions
 	{
 		if (next == run) { publish(); return; }
 		BankRun expected = run; busy = true; automatic = false; message = "Saving bank progress…"; publish();
-		submit(root -> repository.save(root, expected, next), saved -> { run = saved; busy = false; notice = null; message = "Bank progress saved."; publish(); });
+		submit(root -> repository.save(root, expected, next), saved -> { run = saved; busy = false; notice = null; message = "Bank progress saved."; publish(); flushExchangeBaseline();drain(); });
 	}
 	private void act(Runnable action)
 	{

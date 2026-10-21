@@ -1,19 +1,19 @@
 # Architecture
 
-M1–M4 are user accepted. **M5 bank wealth/GP/valuation and specified UI corrections are authorized; manual acceptance is pending.** GE accounting, buybacks and personal-container tracking remain outside scope. The previous multi-container design is preserved only in [historical documentation](docs/history/ARCHITECTURE_MULTI_CONTAINER.md) and test fixtures, not live plugin wiring.
+M1–M5 are user accepted; M5 is preserved at **v0.5.0-wealth**. **M6 GE observation/history and conservative attribution are implemented for manual acceptance.** Buybacks, personal-container ownership and cloud remain outside scope. The previous multi-container design is preserved only in [historical documentation](docs/history/ARCHITECTURE_MULTI_CONTAINER.md) and test fixtures, not live plugin wiring.
 
 ## Production responsibilities
 
 | Component | Responsibility |
 | --- | --- |
-| FromScratchPlugin | Supported bank events, lifecycle, configuration and DI; no menu/action observation |
+| FromScratchPlugin | Supported bank/GE events, lifecycle, configuration and DI; no menu/action observation |
 | bank/RuneLiteBankSource | Client-thread identity validation, mounted normal bank/PIN checks, full InventoryID.BANK copy; no personal-container reads |
 | bank/BankItems | Exact-ID aggregation, empty slots/placeholders/fillers excluded, null/partial rejected |
 | bank/BankObserver | Complete bank capture at the next GameTick after invalidation; cached until bank/interface events; unavailable vs empty |
 | bank/BankEngine | Pure checked signed bank deltas, bounded corrections, explicit migration anchor, reset |
 | bank/BankRun, BankAudit | Immutable physical anchor, signed progress, original bank, run metadata, recent audit and retained host-return summary |
 | bank/BankController | Client/worker coordination, CAS-bound intents, automatic updates, lifecycle/identity rejection of stale callbacks |
-| persistence/BankRunCodec, FinancialCodec | Explicit validated format-6 quantity/financial JSON trees/envelope hashes; no domain reflection/deserialization |
+| persistence/BankRunCodec, FinancialCodec, GeCodec | Explicit format-7 quantity/financial/GE JSON, verified old-schema decoding/envelope hashes; no reflective domain deserialization |
 | persistence/BankRepository, BankStorageFiles | Background-only Filepath locking, verified archives, immutable journal/checkpoint, recoverable publication |
 | bank/BankSidebar, BankPanel, BankCorrections | Reusable EDT tiles, BankIcons, BankDialogs, BankCorrectionDialog, lazy BankHistoryDialog, bottom typed-reset danger area |
 | overlay/* | Accepted M3 draw-only item geometry/tint/clip, now reading signed bank progress |
@@ -28,7 +28,7 @@ BankPlugin in the actual resolved RuneLite **1.13.3** uses `InterfaceID.BANKMAIN
 
 GameTick retries a mounted, visible normal bank excluding PIN interfaces. Interface/BANK events invalidate the cache. The next GameTick (API 1.13.3: after packet processing) captures it once. There is no first-scan restart or two-more-tick debounce. Unchanged ticks reuse the immutable snapshot. Already-open banks work through mounted interface checks. Zero-length complete arrays are valid; null arrays/containers, null slots and negative quantities never become zero observations. A stable API bank has no additional server completeness flag; the public observation boundary cannot prove hidden future packets will not arrive. Later events invalidate/retry it.
 
-Exact API IDs and aggregate quantities are authoritative. Widget item layout/search/tab filters never enter accounting. Rearrangement with equal aggregates writes nothing. Personal and game menu events are not subscribed. Closing before a stable observation defers the net comparison until next opening. Outside-bank events have no accounting path. Ordinary world loading/hopping does not introduce an approval gate; identity/logout/plugin boundaries reset session observation safely.
+Exact API IDs and aggregate quantities are authoritative. Widget item layout/search/tab filters never enter accounting. Rearrangement with equal aggregates writes nothing. Personal and game menu events are not subscribed. Closing before a stable observation defers the net comparison until next opening. Outside-bank events never change P/B; M6 GE audit/attribution uses the separate path below. Ordinary world loading/hopping does not introduce an approval gate; identity/logout/plugin boundaries reset session observation safely.
 
 ## Commit path
 
@@ -96,3 +96,17 @@ VirtualBankOverlay caches both placeholder status and the original balance ID fo
 BankItems already excludes placeholders from physical P; BankEngine's old/new ID union already applies the final P=0 delta. Neither component nor persistence changes in this fix. Without a native placeholder, no slot exists to paint; saved negative B remains available to valuation and Manual Bank Corrections. The cached-definition fix adds no disk access, price requests, per-frame aggregation or new slots. Accepted clipping/drag geometry is unchanged.
 
 Setup has a 14-pixel effective gap before its centered green Start button, with the attestation still adjacent to step 2. The optional storage/GE note is placed below Start to keep that short action sequence together; it adds no observation or gate. Played Elsewhere explicitly describes automatic updates. No format-6 financial or storage change occurs. See [final correction evidence](docs/MILESTONE_5_FINAL_CORRECTIONS.md).
+
+## M6 passive exchange extension
+
+`ge/RuneLiteGeSource` copies the public offer fields on the client thread, ignores unverified initial EMPTY and nonlive environments, seeds nonempty current offers once after login, and resets its connection context on login/hop/loss. Offer events enqueue immediately; GameTick also seeds/drains any available snapshots before bank observation. No personal containers, GE widgets, menus or native actions are inspected/changed. Missing GE information never becomes a bank prerequisite.
+
+`GeObservation` carries immutable input, event/session identity and explicit pre-start lifecycle evidence. The latter avoids inferring known legacy provenance from equal/coarse/adjusted timestamps. `GeEngine` derives local generations from run/slot/input identity, checks offer fingerprint and monotonic cumulative quantities/GP, records only increments and preserves initial-snapshot/offline/reuse uncertainty. Unchanged resumes update connection metadata without fills, allowing later legitimate clears/reuse. EMPTY records a cleared slot with unknown destination, not a cancellation. Terminal-state regression cannot recreate refunds. `GeTrade` keeps reported totals/derived-average evidence, original item/name, observation time, origin and fee method; profit remains unknown.
+
+BankController serializes GE and complete bank observations in one FIFO with existing durable acknowledgment guards. Under an extreme burst it retains the latest cumulative snapshot per slot with uncertainty, leaving queue capacity for bank snapshots. Metadata-only GE commits reuse immutable preformatted overlay labels. GeEngine's bounded matching state has at most eight offers, 256 credits, 128 unmatched withdrawals and 30 recent trade rows; full history remains in immutable journals. Possible matching consumes units/GP once, including coins/platinum equivalents, and cannot independently change P/B.
+
+An automatic bank operation derives its matching evidence before FinancialEngine recognizes new high-water gain. Possible conversion amounts are excluded from that operation's gain estimate; the high-water ceiling still rises. Persistence independently recomputes both reducers to validate the same exclusions, GE state and financial totals atomically. Estimated seller fee totals live in GE state and are combined with explicit expense totals only in the dashboard read model, with an estimated marker. Neither changes Bank GP. Old M5 estimates/quotes remain unchanged, even when trade evidence arrives too late to classify an earlier operation.
+
+Format 7 adds required GE state and optional per-audit GE evidence. Format-6 load verifies the old full chain, forces/verifies an exact-byte archive, then appends EXCHANGE_BASELINE to the linked journal without modifying identity/start/initial bank/P/B/financial history. Older financial/legacy migrations retain their original guarantees. Current/journal/checkpoint hashes and archive manifests remain checked; missing/newer/corrupt/interrupted state cannot become default empty progress. There is no separate external database/backend.
+
+BankRepository pages at most 25 GE rows / 64 segments per request off the client/EDT, with run/character/context validation. GeHistoryView provides page-local name search, numeric sorting and activity/uncertainty filters, cached RuneLite sprites and readable exact details. It disables HTML parsing in item labels. Main UI constructs two matching GE tiles once between Bank History and Played Elsewhere. See [M6 limits and validation](docs/MILESTONE_6.md).

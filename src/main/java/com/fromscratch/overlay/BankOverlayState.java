@@ -30,7 +30,7 @@ public final class BankOverlayState
 	{
 		com.fromscratch.bank.BankRun run = view.getRun();
 		if (!enabled || view.isError() || run == null || !run.isActive() || !run.isAnchored()) { projection = null; }
-		else if (projection == null || !projection.revision.equals(run.getRevision())) { projection = new Projection(run, view.getTrace()); }
+		else if (projection == null || !projection.revision.equals(run.getRevision())) { projection = new Projection(run, view.getTrace(),projection); }
 	}
 
 	@Getter
@@ -41,10 +41,13 @@ public final class BankOverlayState
 		private final Map<Integer, Long> bankBalances;
 		private final java.util.UUID revision;
 		private final com.fromscratch.bank.BankTimings.Trace trace;
-		private Projection(com.fromscratch.bank.BankRun run, com.fromscratch.bank.BankTimings.Trace trace)
+		private Projection(com.fromscratch.bank.BankRun run, com.fromscratch.bank.BankTimings.Trace trace,Projection previous)
 		{
 			this.revision = run.getRevision(); this.trace = trace;
 			characterKey = run.getCharacter(); bankBalances = run.getBalances();
+			// A GE/history-only commit changes revision, not bank quantities. Reuse the
+			// immutable labels rather than reformatting a large bank on the client thread.
+			if(previous!=null&&characterKey.equals(previous.characterKey)&&bankBalances.equals(previous.bankBalances)){labels=previous.labels;return;}
 			Map<Integer, String> formatted = new HashMap<>(); bankBalances.forEach((id, n) -> formatted.put(id, VirtualQuantityFormatter.signed(n)));
 			labels = Collections.unmodifiableMap(formatted);
 		}

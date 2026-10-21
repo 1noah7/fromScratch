@@ -30,7 +30,11 @@ public final class BankEngine
 		delta.forEach((id, n) -> balances.put(id, Math.addExact(old.balance(id), n)));
 		BankAudit change = audit(session, at, delta.isEmpty() ? BankAudit.Kind.SESSION_CHECK : BankAudit.Kind.AUTOMATIC, delta, delta,
 			first ? "Bank changes detected on return to this PC." : "Bank quantities updated.");
-		if(!delta.isEmpty()){change=new BankAudit(change.getId(),session,at,change.getKind(),delta,delta,change.getReason(),FinancialEngine.recognize(old.getFinancial(),balances,change.getId(),prices,at));}
+		if(!delta.isEmpty())
+		{
+			com.fromscratch.ge.GeUpdate attribution=com.fromscratch.ge.GeEngine.bank(old.getExchange(),change.getId(),delta,at).getEvidence();
+			change=new BankAudit(change.getId(),session,at,change.getKind(),delta,delta,change.getReason(),FinancialEngine.recognize(old.getFinancial(),balances,change.getId(),prices,at,attribution.getGainExclusions()),attribution);
+		}
 		BankRun next = next(old, bank.getQuantities(), balances, true, change, first ? change : old.getHostSummary());
 		BankTimings.mark(trace, BankTimings.Phase.PREPARED); return next;
 	}
@@ -66,6 +70,9 @@ public final class BankEngine
 	}
 	static BankRun next(BankRun old, Map<Integer, Long> physical, Map<Integer, Long> balances, boolean anchored, BankAudit change, BankAudit summary)
 	{
+		com.fromscratch.ge.GeState exchange=old.getExchange();
+		if(change.getKind()==BankAudit.Kind.EXCHANGE){exchange=com.fromscratch.ge.GeEngine.observe(exchange,change.getExchange().getObservation(),old.getRunId()).getState();}
+		else if(change.getKind()==BankAudit.Kind.AUTOMATIC){exchange=com.fromscratch.ge.GeEngine.bank(exchange,change.getId(),change.getPhysicalChanges(),change.getAt()).getState();}
 		List<BankAudit> recent = new ArrayList<>();
 		for(BankAudit previous:old.getRecent())
 		{
@@ -75,12 +82,21 @@ public final class BankEngine
 		}
 		recent.add(0, change); if (recent.size() > 30) { recent.remove(30); }
 		return new BankRun(old.getCharacter(), old.getRunId(), old.getPreviousRunId(), old.getStartedAt(), change.getId(), Math.incrementExact(old.getSequence()), old.getInitialBank(), physical, balances, anchored,
-			old.getLegacyDocument(), old.getMigrationArchive(), recent, summary(summary),FinancialEngine.advance(old.getFinancial(),balances,change));
+			old.getLegacyDocument(), old.getMigrationArchive(), recent, summary(summary),FinancialEngine.advance(old.getFinancial(),balances,change),exchange);
 	}
 	private static BankAudit summary(BankAudit audit)
 	{
 		return audit!=null&&audit.getKind()==BankAudit.Kind.AUTOMATIC&&!audit.getValuations().isEmpty()
-			?new BankAudit(audit.getId(),audit.getSession(),audit.getAt(),audit.getKind(),audit.getPhysicalChanges(),audit.getBalanceChanges(),audit.getReason()):audit;
+			?new BankAudit(audit.getId(),audit.getSession(),audit.getAt(),audit.getKind(),audit.getPhysicalChanges(),audit.getBalanceChanges(),audit.getReason(),Collections.emptyList(),audit.getExchange()):audit;
+	}
+	/** GE changes are observational audit operations; P/B and the immutable initial bank stay unchanged. */
+	public static BankRun exchange(BankRun old,com.fromscratch.ge.GeObservation observation)
+	{
+		if(!old.isActive()){return old;}
+		com.fromscratch.ge.GeEngine.Result result=com.fromscratch.ge.GeEngine.observe(old.getExchange(),observation,old.getRunId());
+		if(result.getEvidence().emptyEvidence()){return old;}
+		BankAudit audit=new BankAudit(com.fromscratch.ge.GeEngine.id(old.getRunId()+":"+observation.getEventId()),observation.getSession(),observation.getAt(),BankAudit.Kind.EXCHANGE,Collections.emptyMap(),Collections.emptyMap(),"Grand Exchange observation recorded.",Collections.emptyList(),result.getEvidence());
+		return next(old,old.getPhysical(),old.getBalances(),old.isAnchored(),audit,old.getHostSummary());
 	}
 	/** A recorded statistical expense never changes bank quantities or the bank coin balance. */
 	public static BankRun expense(BankRun old,long gp,String reason,UUID session,Instant at)

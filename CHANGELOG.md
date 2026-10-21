@@ -1,5 +1,15 @@
 # Changelog
 
+## Milestone 6 — Grand Exchange integration (unreleased; manual acceptance pending)
+
+- Preserve accepted M5 checkpoint v0.5.0-wealth and bank-only P/B authority. GE events never independently debit/credit bank coins/items or include uncollected offers in bank worth.
+- Add passive RuneLite 1.13.3 offer observation, local slot generations, incremental quantity/reported-GP records, partial fills, completion/cancellation and uncertainty for initial/offline/reused offers. Ignore login-time EMPTY clears; refresh connection context without replaying fills.
+- Associate compatible trades/refunds/returns with bank changes once using bounded, explicitly possible matches. Exclude that portion from new high-water estimates while preserving the ceiling and all earlier history; do not invent realized profit or exact collection destinations.
+- Record clearly estimated seller fees once, using 2% average-price flooring, per-item 5M cap and published tool/bond/Mind exemptions. Keep estimated fees separate from manual expenses and physical Bank GP; unsupported exemptions/rates/gross-net semantics remain disclosed.
+- Add Purchases/Sales tiles and read-only searched/sorted/filtered paginated histories, with reported GP/average, estimated tax, observed time and provenance. Retain accepted dashboard, separate Diary/partyhat manual icons and overlays.
+- Extend forced local journal/checkpoint/CAS recovery to format 7; verify and archive original M5 files byte-for-byte before migration, keeping run/start/legacy bank/P/B/financial history unchanged. Preserve the latest per-slot totals under extreme event bursts and reuse unchanged overlay labels.
+- See [M6 implementation, limits, tests and manual procedure](docs/MILESTONE_6.md). No M7, commit, publication, reset, cloud or personal-container ownership.
+
 ## Milestone 5 — Final withdrawal and UI corrections (unreleased; manual acceptance pending)
 
 - Fix native placeholder counters resolving the placeholder variant rather than the original item's saved balance. Final withdrawals retain/render the full signed deficit; absent slots keep their saved balance in valuation and Manual Bank Corrections. Physical aggregation, signed arithmetic, historical values and format 6 are unchanged.

@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.GrandExchangeOfferChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
@@ -56,6 +57,7 @@ public class FromScratchPlugin extends Plugin
 	@Inject private BankOverlayRegistration bankOverlay;
 	@Inject private BankOverlayState bankOverlayState;
 	@Inject private com.fromscratch.wealth.PriceService prices;
+	@Inject private com.fromscratch.ge.RuneLiteGeSource exchangeObserver;
 
 	@Override
 	protected void startUp()
@@ -66,7 +68,7 @@ public class FromScratchPlugin extends Plugin
 		prices.start();
 		// Queue UI work without blocking the client thread. Lifecycle operations
 		// share the EDT queue, so rapid enable/disable sequences retain their order.
-		clientThread.invokeLater(observer::resetSession);
+		clientThread.invokeLater(() -> {observer.resetSession();exchangeObserver.resetSession();});
 		setupController.start(this::getPluginDirectory);
 		SwingUtilities.invokeLater(() ->
 		{
@@ -82,7 +84,7 @@ public class FromScratchPlugin extends Plugin
 		bankOverlay.stop();
 		setupController.stop();
 		prices.stop();
-		clientThread.invokeLater(observer::resetSession);
+		clientThread.invokeLater(() -> {observer.resetSession();exchangeObserver.resetSession();});
 		SwingUtilities.invokeLater(sidebar::hide);
 		log.debug("From Scratch stopped");
 	}
@@ -90,6 +92,7 @@ public class FromScratchPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
+		flushExchangeObservations();
 		observer.gameTick();
 		setupController.tick();
 	}
@@ -98,6 +101,7 @@ public class FromScratchPlugin extends Plugin
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		GameState state = event.getGameState();
+		if(state==GameState.LOGGING_IN||state==GameState.HOPPING||state==GameState.CONNECTION_LOST||state==GameState.LOGIN_SCREEN){exchangeObserver.resetSession();}
 		// Region loading and a normal world hop do not establish a new host login.
 		// The renderer already hides itself outside LOGGED_IN. Clearing a valid
 		// projection here could strand it when unchanged state is restored.
@@ -108,6 +112,19 @@ public class FromScratchPlugin extends Plugin
 			setupController.tick();
 		}
 		else if (state == GameState.LOGGED_IN) { setupController.tick(); }
+	}
+
+	@Subscribe public void onGrandExchangeOfferChanged(GrandExchangeOfferChanged event)
+	{
+		exchangeObserver.changed(event.getSlot(),event.getOffer());
+		// The API event already represents a completed offer update. Queue its value copy
+		// immediately; no filesystem work runs here and logout need not wait for another tick.
+		flushExchangeObservations();
+	}
+	private void flushExchangeObservations()
+	{
+		for(com.fromscratch.ge.GeObservation offer:exchangeObserver.drain()){setupController.exchange(offer);}
+		if(exchangeObserver.takeObservationGap()){setupController.exchangeGap();}
 	}
 
 	@Subscribe
