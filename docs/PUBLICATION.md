@@ -1,6 +1,6 @@
 # Publication preparation
 
-This is an early checklist, not a release candidate or submission. M1 passed user acceptance. M2 initial snapshot/persistence is implemented and awaits its manual acceptance; M3-M10 remain unimplemented.
+This is an early checklist, not a release candidate or submission. M1/M2 passed user acceptance. M3 ownership, save migration and bank visuals await manual acceptance; M4-M10 remain unimplemented.
 
 ## Foundation prepared
 

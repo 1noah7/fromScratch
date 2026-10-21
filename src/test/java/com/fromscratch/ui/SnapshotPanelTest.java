@@ -114,7 +114,7 @@ public class SnapshotPanelTest
 	}
 
 	@Test
-	public void activeSummaryIncludesThreeLegacyLocationsAndRealStartTime() throws Exception
+	public void activeDashboardHidesLegacyTotalsButKeepsRealStartTime() throws Exception
 	{
 		SwingUtilities.invokeAndWait(() ->
 		{
@@ -123,10 +123,10 @@ public class SnapshotPanelTest
 			List<String> labels = text(panel);
 			assertTrue(labels.contains("Status: Active"));
 			assertTrue(labels.contains("Run started"));
-			assertTrue(labels.contains("Legacy bank"));
-			assertTrue(labels.contains("Legacy inventory"));
-			assertTrue(labels.contains("Legacy equipment"));
-			assertTrue(labels.stream().anyMatch(value -> value.contains("2,000,000 GP")));
+			assertFalse(labels.contains("Legacy bank"));
+			assertFalse(labels.contains("Legacy inventory"));
+			assertFalse(labels.contains("Legacy equipment"));
+			assertFalse(labels.stream().anyMatch(value -> value.contains("2,000,000 GP") || value.contains("Legacy coins")));
 			assertTrue(labels.contains("Not tracked yet"));
 			assertNotNull(button(panel, "Reset From Scratch"));
 			assertEquals(4, labels.stream().filter("0 GP"::equals).count());

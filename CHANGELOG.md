@@ -1,5 +1,19 @@
 # Changelog
 
+## Milestone 3 — Unreleased
+
+M1/M2 passed user acceptance; M2 was committed as `9e6b757`. M3 passed functional acceptance; the revised lock appearance awaits visual acceptance. No commit or publication was performed by the agent.
+
+- Add immutable exact-ID virtual totals and independent bank/inventory/equipment/future-GE allocations, checked longs, sparse zeros and validation independent of physical legacy quantities.
+- Add persistence envelope format 2; migrate verified M2 saves only after a forced exact-byte backup, preserving run identity, dates, immutable baseline and older recovery files. Reject corrupt/incomplete/future data intact.
+- Register one manual normal-bank Overlay with purple bottom-right counts and clipped draw-only fading. Keep original quantity values readable without modifying items, sprites, menus or click zones. Placeholders display zero; fillers/empty slots/BLANKOBJECT are skipped.
+- Correct partially visible rows: RuneLite 1.13.3's callback list requires the item's origin inside the clip. Read the actual bank item widgets instead, using their bounds intersecting the content viewport. Clip both viewport edges precisely, preserve full-bounds label coordinates and use RuneLite-provided drag rectangles where available. A clipped-origin drag without supplied bounds temporarily omits its effect rather than painting a ghost.
+- Refine locked visuals: the original partial black mask became a full-bounds 30% gray tint; the latest request uses darker #505050 at approximately 48% opacity, closer to the bank background. Ordinary quantity glyphs retain approximately 52% contrast and purple counters are painted last. No sprite regeneration/caching is introduced. Add overlay-pass regressions for partial rows, controls/viewport exclusion, scrolling, searches, resizing, graphics state and lifecycle, plus a background-contrast regression. Ownership, accounting and persistence are unchanged by these refinements.
+- Add live quantity/dimming toggles and text color. Remove detailed legacy summaries and temporary milestone/debug cards from active dashboards; preserve initialization previews, errors and dashboard metrics.
+- Add model, migration/recovery, Java2D and overlay lifecycle/configuration tests while retaining prior M1/M2 cases. Details and exact final totals are in docs/MILESTONE_3.md.
+
+No acquisition/transfer engine, mobile reconciliation, buyback/GE/valuation engine or grant-items control was added. Storage remains local-only on the designated host. Existing metadata, license, author Pilots r kwl, icons, Java 11 Wrapper and CI are preserved.
+
 ## Milestone 2 — Unreleased
 
 M1 passed user-run acceptance. The user isolated the remaining M2 failure to empty inventory/equipment. The empty-state correction below awaits live retesting. No publication or release tag has been created.

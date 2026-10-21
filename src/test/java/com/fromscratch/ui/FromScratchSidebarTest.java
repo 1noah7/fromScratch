@@ -66,7 +66,7 @@ public class FromScratchSidebarTest
 	}
 
 	@Test
-	public void helpSettingNeverHidesTheMilestoneLimit() throws Exception
+	public void helpSettingOnlyChangesSetupTooltip() throws Exception
 	{
 		SwingUtilities.invokeAndWait(() ->
 		{
@@ -77,8 +77,7 @@ public class FromScratchSidebarTest
 			List<String> text = visibleText(panel);
 			assertTrue(text.contains("Setup"));
 			assertNull(panel.getToolTipText());
-			assertTrue(text.contains("Milestone 2"));
-			assertTrue(text.stream().anyMatch(s -> s.contains("not implemented yet")));
+			assertFalse(text.contains("Milestone 2"));
 			panel.setFoundationHelpVisible(true);
 			assertTrue(visibleText(panel).contains("Setup"));
 			assertNotNull(panel.getToolTipText());

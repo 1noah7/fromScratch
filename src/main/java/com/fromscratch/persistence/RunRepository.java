@@ -41,7 +41,23 @@ public final class RunRepository
 
 	public Optional<RunRecord> load(Filepath root, String character) throws IOException
 	{
-		return locked(root, character, directory -> readCurrent(directory, character));
+		return locked(root, character, directory ->
+		{
+			Optional<RunRecord> existing = readCurrent(directory, character);
+			if (!existing.isPresent()) { return existing; }
+			Filepath current = directory.joinSegment("current.json");
+			if (readDocument(current, character).version == RunRecordCodec.FORMAT_VERSION) { return existing; }
+			// A known M2 save has no virtual assets. Archive the exact validated
+			// bytes before adding empty ownership; never repair an invalid save.
+			Filepath backup = directory.joinSegment("migration-v1-" + UUID.randomUUID() + ".json");
+			current.copyTo(backup);
+			force(backup);
+			if (!read(backup, character).equals(existing.get())) { throw new SaveException("Migration backup verification failed. Existing files were preserved."); }
+			RunRecord old = existing.get();
+			RunRecord migrated = new RunRecord(old.getState(), UUID.randomUUID(), old.getPreviousRunId(), old.getSnapshot(), old.getOwnership());
+			commit(directory, migrated);
+			return Optional.of(migrated);
+		});
 	}
 
 	public RunRecord activate(Filepath root, RunRecord candidate) throws IOException
@@ -86,7 +102,8 @@ public final class RunRepository
 		try (Stream<Filepath> files = directory.walk(1))
 		{
 			if (files.anyMatch(path -> path.getFileName().startsWith("checkpoint-")
-				|| path.getFileName().startsWith("pending-") || path.getFileName().startsWith("archive-")))
+				|| path.getFileName().startsWith("pending-") || path.getFileName().startsWith("archive-")
+				|| path.getFileName().startsWith("migration-")))
 			{
 				throw new SaveException("Current save is missing, but recovery files exist. Files were preserved; restore a checkpoint before starting.");
 			}
@@ -125,6 +142,11 @@ public final class RunRepository
 
 	private RunRecord read(Filepath file, String character) throws IOException
 	{
+		return readDocument(file, character).record;
+	}
+
+	private RunRecordCodec.DecodedSave readDocument(Filepath file, String character) throws IOException
+	{
 		if (file.size() > MAX_SAVE_BYTES) { throw new SaveException("Save exceeds the supported size. It was not modified."); }
 		StringBuilder data = new StringBuilder();
 		try (Reader reader = file.openReader())
@@ -137,7 +159,7 @@ public final class RunRepository
 				data.append(buffer, 0, length);
 			}
 		}
-		return codec.decode(data.toString(), character);
+		return codec.decodeSave(data.toString(), character);
 	}
 
 	private static void writeNew(Filepath file, String data) throws IOException

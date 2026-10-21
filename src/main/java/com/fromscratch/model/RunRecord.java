@@ -15,13 +15,20 @@ public final class RunRecord
 	private final UUID revision;
 	private final UUID previousRunId;
 	private final LegacySnapshot snapshot;
+	private final VirtualOwnership ownership;
 
 	public RunRecord(RunState state, UUID revision, UUID previousRunId, LegacySnapshot snapshot)
+	{
+		this(state, revision, previousRunId, snapshot, VirtualOwnership.empty());
+	}
+
+	public RunRecord(RunState state, UUID revision, UUID previousRunId, LegacySnapshot snapshot, VirtualOwnership ownership)
 	{
 		this.state = Objects.requireNonNull(state);
 		this.revision = Objects.requireNonNull(revision);
 		this.previousRunId = previousRunId;
 		this.snapshot = snapshot;
+		this.ownership = Objects.requireNonNull(ownership, "Virtual ownership is required");
 		if (state.getStatus() == RunStatus.ACTIVE)
 		{
 			Objects.requireNonNull(snapshot, "An active run requires its complete baseline");
@@ -30,9 +37,9 @@ public final class RunRecord
 				throw new IllegalArgumentException("Invalid activation checkpoint");
 			}
 		}
-		else if (state.getStatus() != RunStatus.NOT_STARTED || snapshot != null || previousRunId == null)
+		else if (state.getStatus() != RunStatus.NOT_STARTED || snapshot != null || previousRunId == null || !ownership.getItems().isEmpty())
 		{
-			throw new IllegalArgumentException("Only activation or an explicit reset can be saved in M2");
+			throw new IllegalArgumentException("Only active runs or empty explicit resets can be saved");
 		}
 	}
 
@@ -54,6 +61,12 @@ public final class RunRecord
 
 	public VirtualEconomy getEconomy()
 	{
-		return new VirtualEconomy();
+		return new VirtualEconomy(ownership);
+	}
+
+	/** New immutable revision; the run header and permanent legacy baseline stay unchanged. */
+	public RunRecord withOwnership(VirtualOwnership ownership)
+	{
+		return new RunRecord(state, UUID.randomUUID(), previousRunId, snapshot, ownership);
 	}
 }

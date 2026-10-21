@@ -6,6 +6,9 @@ import com.fromscratch.model.RunRecord;
 import com.fromscratch.model.RunState;
 import com.fromscratch.model.RunStatus;
 import com.fromscratch.model.SnapshotLocation;
+import com.fromscratch.model.VirtualOwnership;
+import com.fromscratch.model.VirtualItemOwnership;
+import com.fromscratch.model.VirtualLocation;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -15,6 +18,7 @@ import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.HashMap;
 import java.util.UUID;
 import javax.inject.Inject;
 
@@ -24,7 +28,7 @@ import javax.inject.Inject;
  */
 public final class RunRecordCodec
 {
-	public static final int FORMAT_VERSION = 1;
+	public static final int FORMAT_VERSION = 2;
 	private static final String[] BALANCES = {"spendableGp", "netWorth", "totalValueGained", "itemsUnlocked"};
 	private final Gson gson;
 
@@ -46,6 +50,17 @@ public final class RunRecordCodec
 		for (String balance : BALANCES) { economy.addProperty(balance, 0L); }
 		economy.add("items", new JsonObject());
 		payload.add("virtualEconomy", economy);
+		JsonObject ownership = new JsonObject();
+		new TreeMap<>(record.getOwnership().getItems()).forEach((id, item) ->
+		{
+			JsonObject encoded = new JsonObject();
+			encoded.addProperty("total", item.getTotal());
+			JsonObject locations = new JsonObject();
+			for (VirtualLocation location : VirtualLocation.values()) { locations.addProperty(location.name(), item.at(location)); }
+			encoded.add("locations", locations);
+			ownership.add(id.toString(), encoded);
+		});
+		payload.add("ownership", ownership);
 		if (record.getSnapshot() == null)
 		{
 			payload.add("snapshot", com.google.gson.JsonNull.INSTANCE);
@@ -78,11 +93,18 @@ public final class RunRecordCodec
 
 	public RunRecord decode(String text, String expectedCharacter) throws SaveException
 	{
+		return decodeSave(text, expectedCharacter).record;
+	}
+
+	/** Preserve source version so the repository can back up before durably migrating. */
+	DecodedSave decodeSave(String text, String expectedCharacter) throws SaveException
+	{
 		try
 		{
 			JsonObject envelope = gson.fromJson(text, JsonObject.class);
 			keys(envelope, "formatVersion", "sha256", "payload");
-			if (number(envelope.get("formatVersion")) != FORMAT_VERSION)
+			long version = number(envelope.get("formatVersion"));
+			if (version != 1 && version != FORMAT_VERSION)
 			{
 				throw new SaveException("This save version is not supported. Update the plugin; existing files were preserved.");
 			}
@@ -92,8 +114,16 @@ public final class RunRecordCodec
 				throw new SaveException("Save checksum mismatch. The save and recovery checkpoints were preserved.");
 			}
 			JsonObject data = gson.fromJson(payloadText, JsonObject.class);
-			keys(data, "headerSchema", "characterKey", "revision", "status", "runId", "previousRunId",
-				"startedAt", "virtualEconomy", "snapshot");
+			if (version == 1)
+			{
+				keys(data, "headerSchema", "characterKey", "revision", "status", "runId", "previousRunId",
+					"startedAt", "virtualEconomy", "snapshot");
+			}
+			else
+			{
+				keys(data, "headerSchema", "characterKey", "revision", "status", "runId", "previousRunId",
+					"startedAt", "virtualEconomy", "snapshot", "ownership");
+			}
 			if (!expectedCharacter.equals(string(data.get("characterKey"))))
 			{
 				throw new SaveException("Save belongs to a different character. No data was changed.");
@@ -105,6 +135,23 @@ public final class RunRecordCodec
 				if (number(economy.get(balance)) != 0) { throw new IllegalArgumentException("Unsupported nonzero economy"); }
 			}
 			keys(economy.getAsJsonObject("items"));
+			VirtualOwnership ownership = VirtualOwnership.empty();
+			if (version == FORMAT_VERSION)
+			{
+				Map<Integer, VirtualItemOwnership> items = new HashMap<>();
+				for (Map.Entry<String, JsonElement> entry : data.getAsJsonObject("ownership").entrySet())
+				{
+					int id = itemId(entry.getKey());
+					JsonObject item = entry.getValue().getAsJsonObject();
+					keys(item, "total", "locations");
+					JsonObject encodedLocations = item.getAsJsonObject("locations");
+					keys(encodedLocations, "BANK", "INVENTORY", "EQUIPMENT", "GRAND_EXCHANGE");
+					Map<VirtualLocation, Long> locations = new EnumMap<>(VirtualLocation.class);
+					for (VirtualLocation location : VirtualLocation.values()) { locations.put(location, number(encodedLocations.get(location.name()))); }
+					items.put(id, new VirtualItemOwnership(number(item.get("total")), locations));
+				}
+				ownership = new VirtualOwnership(items);
+			}
 			LegacySnapshot snapshot = null;
 			if (!data.get("snapshot").isJsonNull())
 			{
@@ -118,8 +165,7 @@ public final class RunRecordCodec
 					Map<Integer, Long> quantities = new TreeMap<>();
 					for (Map.Entry<String, JsonElement> item : container.getAsJsonObject("quantities").entrySet())
 					{
-						if (!item.getKey().matches("0|[1-9][0-9]*")) { throw new IllegalArgumentException("Invalid item ID"); }
-						quantities.put(Integer.parseInt(item.getKey()), number(item.getValue()));
+						quantities.put(itemId(item.getKey()), number(item.getValue()));
 					}
 					containers.put(location, new ContainerSnapshot(quantities, Math.toIntExact(number(container.get("occupiedSlots")))));
 				}
@@ -127,13 +173,26 @@ public final class RunRecordCodec
 			}
 			RunState state = RunState.restore(Math.toIntExact(number(data.get("headerSchema"))), expectedCharacter,
 				uuid(data.get("runId")), RunStatus.valueOf(string(data.get("status"))), instant(data.get("startedAt")), null);
-			return new RunRecord(state, uuid(data.get("revision")), uuid(data.get("previousRunId")), snapshot);
+			return new DecodedSave(new RunRecord(state, uuid(data.get("revision")), uuid(data.get("previousRunId")), snapshot, ownership), (int) version);
 		}
 		catch (SaveException ex) { throw ex; }
 		catch (RuntimeException ex)
 		{
 			throw new SaveException("Save is corrupt, incomplete, or incompatible. Existing files were preserved; initialization is blocked.");
 		}
+	}
+
+	private static int itemId(String text)
+	{
+		if (!text.matches("0|[1-9][0-9]*")) { throw new IllegalArgumentException("Invalid item ID"); }
+		return Integer.parseInt(text);
+	}
+
+	static final class DecodedSave
+	{
+		final RunRecord record;
+		final int version;
+		DecodedSave(RunRecord record, int version) { this.record = record; this.version = version; }
 	}
 
 	private static void keys(JsonObject object, String... expected)

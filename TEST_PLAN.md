@@ -1,6 +1,77 @@
 # Test plan
 
-## Milestone 2 evidence
+## Milestone 3 evidence
+
+M1/M2 passed user acceptance; the clean M3 starting commit was `9e6b757`. M3 passed functional acceptance. Its initial visual refinement had 268 passing tests but did not cover the upstream callback-list omission of a top-clipped row. The final viewport/darker-shading correction adds 16 actual overlay-pass cases and a background-contrast regression. Previous cases remain, with appearance thresholds adjusted for the requested 48% opacity. Final build evidence is recorded in docs/MILESTONE_3.md. Revised appearance, hosted CI and real-client performance remain pending.
+
+| New suite | Tests | Evidence |
+| --- | ---: | --- |
+| VirtualOwnershipTest | 14 | Zero/sparse ownership, exact variants, stack/unstackable copies, independent locations/totals, negatives/overflow/over-allocation, immutable inputs and unchanged legacy baseline |
+| OwnershipPersistenceTest | 16 | Nonzero/maximum-long round-trip, isolation, frozen independent format-1 fixtures, active/reset migration, exact backups, preserved old checkpoints, repeated restart, interrupted migration, unsupported/corrupt/incomplete data preserved |
+| BankItemPainterTest | 29 | Compact long labels, bottom-right coordinates, moved bounds, readable quantity glyphs, uniform full-height 48% tint, subdued bank background, tall/colored items, unfaded purple pixels, unchanged positive/disabled pixels, clipping/offscreen, graphics restoration, integer/fractional scale, component/empty/filler/BLANKOBJECT/placeholder handling |
+| BankOverlayStateTest | 8 | Bank rather than total labels, inactive/error/logout/disabled guards, defaults/live configuration, one registration, bank-only hook, wrong-character/closed-bank gates |
+| VirtualBankOverlayTest | 16 | Real overlay-pass pixels with synthetic widget observations: first/full/middle/partial top and bottom rows, precise viewport/control exclusion, unshifted counters, resize, repeated scrolling, tabs/search/empty results, closure, disable/re-enable, positive balances, missing viewport, nonrectangular clip restoration and cached/offscreen definition reads |
+
+### M3 requested coverage mapping
+
+| Requirement | Automated evidence / manual boundary |
+| --- | --- |
+| 1 Zero initial ownership | VirtualOwnershipTest.initializationLeavesAllLegacyTypesVirtuallyZero |
+| 2 Stackable records | stacksUseLongQuantitiesWithoutPhysicalBounds; maximumLongVirtualStackSurvivesSaveAndReload |
+| 3 Unstackable records | unstackableCopiesRemainAggregateQuantities |
+| 4 Distinct IDs | distinctRawVariantIdsAreNeverMerged (normal/noted whip) |
+| 5 Positive fixtures | fixture-backed projection, round-trip and positive-paint tests; no production grant path |
+| 6 No negative quantities | negative total/allocation, overflow and codec rejection tests |
+| 7 Legacy unchanged | ownershipUpdatesNeverModifyLegacySnapshotOrOriginalRun; migration baseline equality |
+| 8 Physical independence | legacy quantity plus independently replaced ownership, maximum virtual stack independent of physical stack |
+| 9 Bank vs total | bankAllocationIsIndependentOfTotalAndOtherLocations; projectionUsesBankQuantityInsteadOfTotal |
+| 10 Formatting | compactLabelsCoverThousandsMillionsAndBillions; exact zero and Long.MAX_VALUE |
+| 11 Bottom-right | textIsRightAlignedToCurrentItemBounds; custom color pixels in lower-right region |
+| 12 Original labels | ordinaryQuantityGlyphsRemainReadableThroughTint; neutralTintMutesItemsAndPreservesQuantityContrast; real client labels need manual verification |
+| 13 Bank only | onlyNormalBankItemComponentsAreEligible; onlyTheNormalBankLayerIsRegistered |
+| 14 Closed bank | closedBankAndWrongCharacterNeverReachRendering |
+| 15 Disabled plugin | disabledPluginRejectsLateCallbacksAndClearsOwnership; gated render |
+| 16 Tabs/search | ID-based projection and moved-bounds tests plus prior full-container search tests; actual tabs/empty search/locked tabs are manual |
+| 17 Scroll/clipping | VirtualBankOverlayTest partial-origin/viewport/scroll/resize cases; parentViewportClipIsPreserved; completelyOffscreenItemPaintsNothing; graphics-transform scale test; real widget lifecycle is manual |
+| 18 Placeholders | placeholdersDisplayZeroEvenWithVirtualCopiesElsewhere; eligible zero-quantity slot |
+| 19 Empty slots | emptySlotsAndFillersAreExcludedButPlaceholdersAreEligible |
+| 20 Lock/unlock appearance | zeroOwnedSpriteAreaIsDimmed; positiveBankOwnershipLeavesSpriteAreaNormal |
+| 21 Single registration | repeatedEnableDisableHasExactlyOneRegistration |
+| 22 Virtual save/reload | nonzeroVirtualAssetsRoundTripThroughRestart; maximum-long round-trip |
+| 23 Legacy persistence | activeMilestoneTwoSaveMigratesWithoutChangingRunOrLegacyData; prior repository/codec tests |
+| 24 Isolation | virtualStateCannotCrossCharacterNamespaces; previous identity and stale-callback tests |
+| 25 M2 migration | active/reset frozen format-1 fixtures, forced exact-byte backup assertion, restart/idempotence |
+| 26 Corruption | corruptOwnershipIsPreservedAndNeverReplacedWithZeros; malformed location/total tests |
+| 27 Restart Active | nonzero restart test and prior controller disable/logout/restart cases |
+| 28 No failed-load zeros | corrupt ownership, unsupported M2 currency, missing current with migration evidence and interrupted migration |
+| 29 Toggle settings | configurationChangesReplaceSettingsWithoutReloadingOwnership; bothDisabledFeaturesLeavePixelsUnchanged |
+| 30 Color | defaultsEnableBothFeaturesWithPurpleColor; customQuantityColorIsActuallyDrawnAtBottomRight |
+| 31 Hide legacy totals | Updated SnapshotPanelTest.activeDashboardHidesLegacyTotalsButKeepsRealStartTime |
+| 32 Dashboard usability | Existing six-metric/sidebar/EDT/setup/error/reset coverage retained |
+
+### M3 manual acceptance — user only
+
+Launch `.\gradlew.bat run` and follow [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts). Agents must not control RuneScape. Use the existing accepted M2 run; do not reset or delete it. Backups/migration are automatic on that designated host. See docs/MILESTONE_3.md for exact migration and rollback behavior.
+
+1. Wait for Active: same run/start time, dashboard present, no original bank/inventory/equipment counts or legacy GP. No initialization dialog should be needed for the existing run.
+2. Open the normal bank manually. Check the first full row and middle rows: every occupied real item should show purple zero at bottom-right, ordinary quantity values unchanged and glyphs readable. Locked items use darker #505050 at approximately 48% opacity uniformly from top to bottom, without the old horizontal split. A subtle background tint is expected with this fallback; true sprite grayscale is not claimed. Check tall/colorful equipment and yellow/white/green quantity labels. Placeholders show zero; fillers and empty/BLANKOBJECT slots have no counter. Bank-tab/header icons and inventory/equipment/shared storage have no effect.
+3. Scroll slowly until the top row is only partly visible just below the tabs, then examine a partly visible bottom row. Both visible fragments must be tinted identically to middle rows; nothing may draw on the tabs, search area or outside the content viewport. Counters keep their normal item-relative positions and may be clipped, never shifted into view. Scroll rapidly up/down, switch normal and locked/unlocked tabs, search matching and no-match terms, resize the client and change UI scale. No stale rectangles or misalignment may remain. Test other bank layouts/plugins separately for corner conflicts.
+4. Manually drag from a full row and a clipped top row, hover, right-click and deposit/withdraw if desired. Interactions/tooltips/ordinary physical quantities must work normally; all virtual counts stay zero in M3. Supplied drag rectangles are used; when RuneLite omits a clipped-origin drag rectangle, its floating effect is temporarily omitted rather than misplaced, and returns on release. The plugin must perform no game action itself.
+5. Toggle quantities and dimming independently in From Scratch configuration, then change text color. Verify immediate changes without restart. Close/reopen the bank, including PIN UI where applicable; no overlays may remain on the closed bank.
+6. Disable/re-enable several times: exactly one overlay/nav button, no leftover effect. Relog/restart and switch characters/configuration profiles; only the verified character's Active run renders, and its original run/start time remains. No reset/new snapshot is required after migration.
+7. Report version, UI mode/scale, enabled bank plugins, observations and redacted errors. Do not edit saves or grant positive test balances. Positive live accounting is deferred; automated fixtures cover nonzero painting/storage.
+
+Stop after M3. A build, synthetic pixels or clean JVM start cannot establish real-client layout/performance behavior or Plugin Hub approval.
+
+### Locked-item refinement regressions
+
+The original mask skipped the first 12 pixels and filled the remainder with 57%-opaque black. Existing painter regressions prevent that split; the intermediate 30% full-item tint fixed it but did not exercise the item source. Installed 1.13.3 renderer inspection identified a separate origin-inside-clip condition before a WidgetItem enters the callback list. Painter-only tests could never detect that omission. The new VirtualBankOverlayTest invokes the real overlay pass through a synthetic widget-observation context, including top origins outside the viewport, and verifies visible intersections, both edges, control exclusion, label positions and lifecycle. It does not simulate the real game widget implementation or game input.
+
+Appearance regressions now require approximately 48% dark-neutral tint, at least half the original contrast, readable small-font yellow/green/white quantity glyphs, a bank-background color remaining close to its original, and full-color purple counters. Uniform/tall/colored sprites, moved bounds, fractional scaling, positive/disabled pixels and graphics restoration remain covered. No live screenshot or reference-image pixel matching was performed by the agent.
+
+The item source makes one linear pass over current bank widgets, with intersection checks before painting or definition lookup. It creates no per-frame item map, sprite image/cache, IO or accounting work; placeholder lookups remain cached. Repeated synthetic scrolling and offscreen/cache tests verify those observable boundaries, not real frame rate. Compare a large bank's scrolling/input response with the effect on/off in-game. Positive balances remain fixture-only until the later engine is authorized.
+
+## Milestone 2 evidence (historical; subsequently accepted)
 
 The requested `.\gradlew.bat clean build` passed on Java 11 / RuneLite 1.13.3: **202 passed, 0 failed, 0 errors, 0 skipped**, preserving all previous 173 and all 27 foundation tests. The user isolated the remaining live failure to empty INV/WORN. The new 29-test suite exercises real reader/verification/preview composition with synthetic containers and complete client-script-shaped widget layouts. Live acceptance and hosted CI remain pending.
 

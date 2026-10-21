@@ -1,0 +1,83 @@
+package com.fromscratch.overlay;
+
+import com.fromscratch.model.VirtualOwnership;
+import com.fromscratch.model.VirtualLocation;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.Shape;
+import java.awt.Paint;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.client.ui.FontManager;
+
+/** Draw-only painting in client coordinates; never writes item/widget/sprite data. */
+public final class BankItemPainter
+{
+	// A dark neutral gray at about 48% opacity mutes the whole item uniformly. Matching
+	// the dark bank background more closely avoids a bright gray tile behind the sprite;
+	// approximately 52% of the original contrast remains, including quantity glyphs.
+	// Do not redraw a generated item sprite: it can cover those glyphs or mismatch the
+	// client's shadow/drag appearance. This fallback needs neither sprite copies nor a cache.
+	private static final Color LOCK_TINT = new Color(80, 80, 80, 122);
+	private static final Font FONT = FontManager.getRunescapeSmallFont();
+	private BankItemPainter() { }
+
+	public static boolean eligible(int component, int itemId, int physicalQuantity)
+	{
+		return component == InterfaceID.Bankmain.ITEMS && itemId >= 0
+			&& itemId != ItemID.BANK_FILLER && itemId != ItemID.BLANKOBJECT && physicalQuantity >= 0;
+	}
+
+	public static int textX(Rectangle bounds, FontMetrics metrics, String label)
+	{
+		return bounds.x + bounds.width - 2 - metrics.stringWidth(label);
+	}
+	public static int textY(Rectangle bounds, FontMetrics metrics)
+	{
+		return bounds.y + bounds.height - 2 - metrics.getDescent();
+	}
+
+	/** Placeholders represent no physical copies available in this bank location. */
+	public static long quantity(VirtualOwnership ownership, int itemId, boolean placeholder)
+	{
+		return placeholder ? 0 : ownership.at(itemId, VirtualLocation.BANK);
+	}
+
+	/** Parent clip is supplied by RuneLite and further intersected by the caller; preserve it exactly. */
+	public static void paint(Graphics2D graphics, Rectangle bounds, long quantity, String label, BankOverlayState.Settings settings)
+	{
+		if (bounds.width <= 0 || bounds.height <= 0 || !graphics.hitClip(bounds.x, bounds.y, bounds.width, bounds.height)) { return; }
+		Shape clip = graphics.getClip();
+		Font font = graphics.getFont();
+		Paint paint = graphics.getPaint();
+		try
+		{
+			graphics.clip(bounds);
+			if (settings.isDimLocked() && quantity == 0)
+			{
+				graphics.setColor(LOCK_TINT);
+				graphics.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+			}
+			if (settings.isQuantities())
+			{
+				graphics.setFont(FONT);
+				FontMetrics metrics = graphics.getFontMetrics();
+				int x = textX(bounds, metrics, label);
+				int y = textY(bounds, metrics);
+				graphics.setColor(Color.BLACK);
+				graphics.drawString(label, x + 1, y + 1);
+				graphics.setColor(settings.getColor());
+				graphics.drawString(label, x, y);
+			}
+		}
+		finally
+		{
+			graphics.setClip(clip);
+			graphics.setFont(font);
+			graphics.setPaint(paint);
+		}
+	}
+}

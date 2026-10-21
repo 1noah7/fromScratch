@@ -1,0 +1,156 @@
+package com.fromscratch.overlay;
+
+import com.fromscratch.observation.RuneLiteSnapshotObserver;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.Shape;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import net.runelite.api.Client;
+import net.runelite.api.GameState;
+import net.runelite.api.WidgetNode;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetItem;
+import net.runelite.api.widgets.WidgetType;
+import net.runelite.client.ui.overlay.Overlay;
+import net.runelite.client.ui.overlay.OverlayLayer;
+import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.ui.overlay.OverlayPosition;
+
+/** Draw-only normal-bank layer; include visible intersections even when RuneLite omits their item callbacks. */
+@Singleton
+public final class VirtualBankOverlay extends Overlay
+{
+	private final Context context;
+	private final BankOverlayState state;
+	private final Map<Integer, Boolean> placeholders = new ConcurrentHashMap<>();
+	private BankOverlayState.Projection frame;
+	private BankOverlayState.Settings settings;
+
+	@Inject
+	public VirtualBankOverlay(Client client, RuneLiteSnapshotObserver observer, BankOverlayState state, OverlayManager overlayManager)
+	{
+		this(new Context()
+		{
+			public String characterKey() { return observer.characterKey(); }
+			public boolean bankVisible()
+			{
+				if (client.getGameState() != GameState.LOGGED_IN) { return false; }
+				Widget items = client.getWidget(InterfaceID.Bankmain.ITEMS_CONTAINER);
+				if (items == null || items.isHidden() || client.getComponentTable() == null) { return false; }
+				boolean bank = false;
+				for (WidgetNode node : client.getComponentTable())
+				{
+					if (node.getId() == InterfaceID.BANKPIN_KEYPAD || node.getId() == InterfaceID.BANKPIN_SETTINGS) { return false; }
+					if (node.getId() == InterfaceID.BANKMAIN) { bank = true; }
+				}
+				return bank;
+			}
+			public boolean placeholder(int id) { return client.getItemDefinition(id).getPlaceholderTemplateId() != -1; }
+			public Rectangle bankViewport()
+			{
+				Widget layer = client.getWidget(InterfaceID.Bankmain.ITEMS);
+				Widget container = client.getWidget(InterfaceID.Bankmain.ITEMS_CONTAINER);
+				if (layer == null || layer.isHidden() || container == null || container.isHidden()) { return null; }
+				// ITEMS is the scrolling content viewport, not the surrounding tab/search area.
+				return layer.getBounds().intersection(container.getBounds());
+			}
+			public void forEachItem(Rectangle viewport, ItemConsumer consumer)
+			{
+				Widget layer = client.getWidget(InterfaceID.Bankmain.ITEMS);
+				if (layer == null || layer.isHidden()) { return; }
+				Widget[] children = layer.getChildren();
+				if (children == null) { return; }
+				WidgetItem dragged = null;
+				Widget draggingWidget = client.isDraggingWidget() ? client.getDraggedWidget() : null;
+				for (WidgetItem item : overlayManager.getWidgetItems())
+				{
+					if (item.getWidget() != null && item.getWidget().getId() == InterfaceID.Bankmain.ITEMS
+						&& item.getDraggingCanvasBounds() != null) { dragged = item; break; }
+				}
+				// The 1.13.3 callback list requires an item's origin inside the clip and omits
+				// a partially visible top row. Read the real item widgets instead; their canvas
+				// bounds are already updated by this draw hook, including the omitted row.
+				// No bank-container indices, fixed grid positions or new visual slots are used.
+				for (Widget child : children)
+				{
+					if (child == null || child.getId() != InterfaceID.Bankmain.ITEMS || child.getParent() != layer || child.getType() != WidgetType.GRAPHIC
+						|| child.isHidden() || !BankItemPainter.eligible(child.getId(), child.getItemId(), child.getItemQuantity())) { continue; }
+					// A clipped-origin drag can also be absent from RuneLite's list. Its drag
+					// offset is not exposed by Widget: omit that transient effect rather than
+					// paint a ghost at its original slot or guess the mouse-to-item offset.
+					if (child == draggingWidget && dragged == null) { continue; }
+					Rectangle bounds = dragged != null && dragged.getWidget() == child ? dragged.getCanvasBounds() : child.getBounds();
+					if (viewport.intersects(bounds)) { consumer.accept(child.getItemId(), child.getItemQuantity(), bounds); }
+				}
+			}
+		}, state);
+	}
+
+	VirtualBankOverlay(Context context, BankOverlayState state)
+	{
+		this.context = context;
+		this.state = state;
+		setPosition(OverlayPosition.DYNAMIC);
+		setPriority(PRIORITY_LOW);
+		setLayer(OverlayLayer.MANUAL);
+		// showOnBank also includes shared group storage. Only the normal bank is in scope.
+		drawAfterLayer(InterfaceID.Bankmain.ITEMS);
+	}
+
+	@Override
+	public Dimension render(Graphics2D graphics)
+	{
+		frame = state.getProjection();
+		settings = state.getSettings();
+		if (!state.isEnabled() || frame == null || (!settings.isQuantities() && !settings.isDimLocked())
+			|| !context.bankVisible() || !frame.getCharacterKey().equals(context.characterKey()))
+		{
+			frame = null;
+			return null;
+		}
+		Rectangle viewport = context.bankViewport();
+		if (viewport == null || viewport.isEmpty()) { frame = null; return null; }
+		Shape originalClip = graphics.getClip();
+		try
+		{
+			graphics.clip(viewport);
+			context.forEachItem(viewport, (itemId, physicalQuantity, bounds) -> renderItem(graphics, viewport, itemId, physicalQuantity, bounds));
+			return null;
+		}
+		finally { graphics.setClip(originalClip); frame = null; }
+	}
+
+	private void renderItem(Graphics2D graphics, Rectangle viewport, int itemId, int physicalQuantity, Rectangle bounds)
+	{
+		if (frame == null || !state.isEnabled() || bounds == null || !viewport.intersects(bounds)
+			|| !graphics.hitClip(bounds.x, bounds.y, bounds.width, bounds.height)
+			|| !BankItemPainter.eligible(InterfaceID.Bankmain.ITEMS, itemId, physicalQuantity)) { return; }
+		boolean placeholder = physicalQuantity == 0 || placeholders.computeIfAbsent(itemId, context::placeholder);
+		long quantity = BankItemPainter.quantity(frame.getOwnership(), itemId, placeholder);
+		// Keep the full item rectangle for label placement. Only its pixels are clipped;
+		// moving the label into the visible fragment would make it jump while scrolling.
+		BankItemPainter.paint(graphics, bounds, quantity, placeholder ? "0" : frame.label(itemId), settings);
+	}
+
+	public void clearCache() { placeholders.clear(); }
+
+	interface Context
+	{
+		String characterKey();
+		boolean bankVisible();
+		boolean placeholder(int itemId);
+		Rectangle bankViewport();
+		void forEachItem(Rectangle viewport, ItemConsumer consumer);
+	}
+
+	/** Synchronous client-thread visitor; no per-item DTO or per-frame ownership map is needed. */
+	interface ItemConsumer
+	{
+		void accept(int itemId, int physicalQuantity, Rectangle bounds);
+	}
+}

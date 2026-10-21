@@ -2,6 +2,8 @@ package com.fromscratch;
 
 import com.fromscratch.controller.SetupController;
 import com.fromscratch.observation.RuneLiteSnapshotObserver;
+import com.fromscratch.overlay.BankOverlayRegistration;
+import com.fromscratch.overlay.BankOverlayState;
 import com.fromscratch.ui.FromScratchSidebar;
 import com.google.inject.Provides;
 import javax.inject.Inject;
@@ -51,10 +53,14 @@ public class FromScratchPlugin extends Plugin
 
 	@Inject
 	private ClientThread clientThread;
+	@Inject private BankOverlayRegistration bankOverlay;
+	@Inject private BankOverlayState bankOverlayState;
 
 	@Override
 	protected void startUp()
 	{
+		bankOverlayState.configure(config);
+		bankOverlay.start();
 		// Queue UI work without blocking the client thread. Lifecycle operations
 		// share the EDT queue, so rapid enable/disable sequences retain their order.
 		clientThread.invokeLater(observer::resetSession);
@@ -70,6 +76,7 @@ public class FromScratchPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		bankOverlay.stop();
 		setupController.stop();
 		clientThread.invokeLater(observer::resetSession);
 		SwingUtilities.invokeLater(sidebar::hide);
@@ -88,6 +95,7 @@ public class FromScratchPlugin extends Plugin
 	{
 		if (event.getGameState() != GameState.LOGGED_IN)
 		{
+			bankOverlayState.clear();
 			observer.resetSession();
 			setupController.tick();
 		}
@@ -96,6 +104,8 @@ public class FromScratchPlugin extends Plugin
 	@Subscribe
 	public void onRuneScapeProfileChanged(RuneScapeProfileChanged event)
 	{
+		// Rendering revalidates character identity each frame. A same-character
+		// configuration-profile change must not strand its valid projection.
 		clientThread.invokeLater(setupController::tick);
 	}
 
@@ -151,6 +161,7 @@ public class FromScratchPlugin extends Plugin
 	{
 		if (FromScratchConfig.GROUP.equals(event.getGroup()))
 		{
+			bankOverlayState.configure(config);
 			SwingUtilities.invokeLater(() -> sidebar.refresh(config.showFoundationHelp()));
 		}
 	}

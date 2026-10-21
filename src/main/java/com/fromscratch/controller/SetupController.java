@@ -7,6 +7,7 @@ import com.fromscratch.model.RunStatus;
 import com.fromscratch.observation.RuneLiteSnapshotObserver;
 import com.fromscratch.observation.SnapshotSource;
 import com.fromscratch.observation.CaptureProgress;
+import com.fromscratch.overlay.BankOverlayState;
 import com.fromscratch.persistence.RunRepository;
 import com.fromscratch.persistence.SaveException;
 import com.fromscratch.ui.FromScratchSidebar;
@@ -53,9 +54,9 @@ public final class SetupController implements SetupActions
 
 	@Inject
 	public SetupController(RuneLiteSnapshotObserver source, RunRepository repository,
-		ClientThread clientThread, FromScratchSidebar sidebar)
+		ClientThread clientThread, FromScratchSidebar sidebar, BankOverlayState bankState)
 	{
-		this(source, repository, clientThread::invokeLater, sidebar::update);
+		this(source, repository, clientThread::invokeLater, view -> { bankState.update(view); sidebar.update(view); });
 	}
 
 	SetupController(SnapshotSource source, RunRepository repository,
@@ -178,7 +179,7 @@ public final class SetupController implements SetupActions
 			{
 				session.committed(saved);
 				source.endInitialization();
-				publish(SetupView.Mode.ACTIVE, "Legacy baseline saved.");
+				publish(SetupView.Mode.ACTIVE, "Run active.");
 			});
 		});
 	}
@@ -237,7 +238,7 @@ public final class SetupController implements SetupActions
 			session = new InitializationSession(selectedCharacter, saved.orElse(null));
 			boolean active = saved.isPresent() && saved.get().getState().getStatus() == RunStatus.ACTIVE;
 			publish(active ? SetupView.Mode.ACTIVE : SetupView.Mode.NOT_STARTED,
-				active ? "Original legacy baseline restored." : "No saved active run.");
+				active ? "Active run restored." : "No saved active run.");
 		});
 	}
 

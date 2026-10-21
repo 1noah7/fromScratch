@@ -3,7 +3,7 @@
 ## From Scratch project scope
 
 - Read `ARCHITECTURE.md`, `ACCOUNTING.md`, and `TEST_PLAN.md` before behavior changes.
-- Implement one authorized milestone at a time. M1 passed user acceptance; M2 snapshot/persistence is authorized. Do not begin M3 without approval.
+- Implement one authorized milestone at a time. M1 and M2 passed user acceptance; M3 ownership/visual bank overlays is authorized. Do not begin M4 without approval.
 - Identity: From Scratch, author Pilots r kwl, package `com.fromscratch`, config `fromscratch`, internal name `from_scratch`.
 - Preserve config/schema compatibility and Git history. No commit, push, publication, or PR without explicit approval.
 - Distinguish automated evidence, pending user acceptance, and unsupported observations in documentation.
@@ -14,6 +14,8 @@
 - Do not assume BANK/INV/WORN are simultaneously available. Personal setup observations must be validated, short-lived, identity/session-bound and invalidated on changes; never substitute empty data for null. Diagnose persistent live failures with throttled DEBUG availability/age/predicate fields, never item lists. Manual acceptance remains required.
 - Empty API containers are valid. Null personal containers may count as empty only after independent verification of every slot in a complete mounted, visible and settled normal inventory/equipment interface. Never infer emptiness from missing children, default widget values, player appearance or an empty item map alone.
 - Storage is permanently local-only on one designated host computer. Do not implement cloud synchronization, cloud credentials or a third-party backend. Mobile/other-computer gameplay must be reconciled on return to that host (future M4).
+- M3 rendering is draw-only on the normal bank item layer. Never mutate item/widget quantities, IDs, sprites, menus or click zones. Keep original quantity labels visible; use bank-available ownership, not aggregate totals. No live acquisition/transfer engine or grant-items control in M3.
+- Persistence envelope format 2 requires virtual ownership. Only verified format-1 M2 saves may migrate to empty ownership, after an exact-byte forced backup; never zero a failed/corrupt/newer save. Header schema 1 is unchanged.
 
 ## Logging
 

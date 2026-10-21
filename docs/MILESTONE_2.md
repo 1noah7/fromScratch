@@ -1,5 +1,7 @@
 # Milestone 2 — Initial snapshot and persistence
 
+**Subsequent acceptance:** the user confirmed M2 passed manual testing and committed it as `9e6b757`. The evidence and correction history below describe M2 development. M3 extends its envelope and hides active legacy summaries; see [MILESTONE_3.md](MILESTONE_3.md).
+
 ## Status and scope
 
 M1 passed user-run in-game acceptance and was committed by the user before this work began. The user has now isolated the remaining live failure: populated inventory/equipment work, empty locations fail. **The empty-state adapter correction awaits user retesting; M2 is not accepted in-game.** Existing progression files, schema and persistence implementation are unchanged. No M3 feature, commit, push, tag, publication, PR, or agent interaction with RuneScape was performed.

@@ -23,7 +23,7 @@ import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.api.gameval.ItemID;
 
-/** Confirmed snapshot setup and summaries. No acquisition, overlay, or valuation engine runs here. */
+/** Setup previews and the progression dashboard. Rendering and accounting stay outside Swing. */
 public final class FromScratchPanel extends PluginPanel
 {
 	static final Color PURPLE = new Color(0xB450FF);
@@ -49,7 +49,6 @@ public final class FromScratchPanel extends PluginPanel
 		add(new JLabel("Dashboard"));
 		setup.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		add(setup);
-		add(message("Milestone 2", "Virtual balances start at zero. Acquisition tracking, overlays and valuation are not implemented yet."));
 
 		add(metric("Total Value Gained", "0 GP", GOLD));
 		add(metric("Current Net Worth", "0 GP", GOLD));
@@ -87,10 +86,9 @@ public final class FromScratchPanel extends PluginPanel
 			setup.add(message("Setup", SETUP_TEXT));
 		}
 		refreshSetupTooltip();
-		LegacySnapshot summary = view.getPreview();
+		LegacySnapshot summary = view.getMode() == SetupView.Mode.INITIALIZING ? view.getPreview() : null;
 		if (view.getSaved() != null && view.getSaved().getSnapshot() != null && view.getMode() != SetupView.Mode.INITIALIZING)
 		{
-			summary = view.getSaved().getSnapshot();
 			String started = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(Locale.getDefault())
 				.withZone(ZoneId.systemDefault()).format(view.getSaved().getState().getStartedAt());
 			setup.add(message("Run started", started));

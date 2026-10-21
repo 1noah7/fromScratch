@@ -1,6 +1,14 @@
 # Accounting policy and invariants
 
-**M2 implements initialization only; the economic engine below remains planned.** Confirmed immutable bank/inventory/equipment quantities, including coins, are legacy. Virtual items, spendable GP, net worth, gained value and unlocked counts remain zero. Initial isolation, character separation, reload and reset preservation are tested. Review the future policy before implementing M5 valuation.
+**M3 implements ownership storage and bank visuals; the economic engine below remains planned.** Confirmed immutable bank/inventory/equipment quantities, including coins, remain legacy. New/accepted-M2 runs have zero virtual ownership; no acquisition/transfer engine can change it yet. Currency/wealth metrics remain zero. Initial isolation, migration, character separation, reload and reset preservation are tested. Review the future policy before implementing M5 valuation.
+
+## M3 ownership contract
+
+For exact item ID i, persist total T(i) separately from allocations A(i,BANK), A(i,INVENTORY), A(i,EQUIPMENT), A(i,GRAND_EXCHANGE). All values are nonnegative long quantities. Checked sum S(i) = sum A(i,l) must satisfy S(i) <= T(i). U(i) = T(i) - S(i) is unallocated ownership; it is not silently bank-available. Missing records/locations mean zero, not corrupt state. No physical quantity, legacy baseline, market price or rendered slot can create virtual ownership.
+
+The purple counter is A(i,BANK), never T(i). A placeholder is a zero-availability display regardless of ownership elsewhere. Fillers own nothing and have no counter. An item physically absent from the bank remains in the immutable ownership model, and no visual slot is invented. Exact notes/variants remain distinct; future canonical mappings must be explicit.
+
+Ownership objects and run revisions are immutable. Future reducers may replace validated records and create a new revision while retaining the same legacy baseline; M3 adds no acquisition, transfer, loss, reconciliation or currency transaction. The format-1 migration can initialize virtual ownership to zero only because valid M2 data explicitly guarantees an empty virtual economy. It must preserve run identity/baseline and back up original bytes first. Missing/corrupt format-2 ownership can never take this default path.
 
 Setup may combine a current complete open-bank container with validated inventory/equipment observations from the same uninterrupted initialization session, at most 60 seconds old. Null never means empty. Personal change events expire the affected observation; a changed previously observed bank invalidates cached personal observations. Incomplete/stale data prevents confirmation. These are setup observations only, not acquisition or transfer accounting. Confirmed baseline data and persistence are unchanged by this correction.
 

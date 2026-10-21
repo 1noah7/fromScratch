@@ -38,7 +38,7 @@ public class RunRecordCodecTest
 	public void unknownSaveFormatCannotBeTreatedAsEmpty() throws Exception
 	{
 		JsonObject envelope = envelope();
-		envelope.addProperty("formatVersion", 2);
+		envelope.addProperty("formatVersion", RunRecordCodec.FORMAT_VERSION + 1);
 		reject(envelope.toString(), "version is not supported");
 	}
 
