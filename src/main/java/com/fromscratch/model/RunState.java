@@ -9,10 +9,10 @@ import lombok.Getter;
 /**
  * Immutable, versioned lifecycle header for a single character's run.
  *
- * <p>This is a domain object, not a Gson deserialization target. A future storage
- * DTO must pass through {@link #restore} after schema migration so malformed data
- * cannot bypass constructor validation. No lifecycle transitions or storage are
- * enabled in the foundation milestone.</p>
+ * <p>This is a domain object, not a Gson deserialization target. The storage
+ * codec must pass through {@link #restore} after schema validation so
+ * malformed data cannot bypass constructor validation. The separate RunRecord
+ * envelope supplies the immutable legacy baseline introduced in Milestone 2.</p>
  */
 @Getter
 @EqualsAndHashCode
@@ -21,7 +21,7 @@ public final class RunState
 	public static final int CURRENT_SCHEMA_VERSION = 1;
 
 	private final int schemaVersion;
-	// Opaque RuneLite RS profile identity; never use a display name as a save key.
+	// Verified opaque character identity; never use a display name as a save key.
 	private final String characterKey;
 	private final UUID runId;
 	private final RunStatus status;

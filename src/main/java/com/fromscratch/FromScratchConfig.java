@@ -12,8 +12,8 @@ public interface FromScratchConfig extends Config
 
 	@ConfigItem(
 		keyName = "showFoundationHelp",
-		name = "Show foundation help",
-		description = "Show the explanation of features planned after the foundation milestone",
+		name = "Detailed setup tooltip",
+		description = "Show extra snapshot details in a tooltip before initialization",
 		position = 0
 	)
 	default boolean showFoundationHelp()

@@ -66,19 +66,22 @@ public class FromScratchSidebarTest
 	}
 
 	@Test
-	public void helpSettingNeverHidesThePlaceholderWarning() throws Exception
+	public void helpSettingNeverHidesTheMilestoneLimit() throws Exception
 	{
 		SwingUtilities.invokeAndWait(() ->
 		{
 			FromScratchPanel panel = new FromScratchPanel(true);
-			assertTrue(visibleText(panel).contains("Milestone 1"));
+			assertTrue(visibleText(panel).contains("Setup"));
+			assertNotNull(panel.getToolTipText());
 			panel.setFoundationHelpVisible(false);
 			List<String> text = visibleText(panel);
-			assertFalse(text.contains("Milestone 1"));
-			assertTrue(text.contains("Foundation preview"));
-			assertTrue(text.stream().anyMatch(s -> s.contains("Values below are placeholders")));
+			assertTrue(text.contains("Setup"));
+			assertNull(panel.getToolTipText());
+			assertTrue(text.contains("Milestone 2"));
+			assertTrue(text.stream().anyMatch(s -> s.contains("not implemented yet")));
 			panel.setFoundationHelpVisible(true);
-			assertTrue(visibleText(panel).contains("Milestone 1"));
+			assertTrue(visibleText(panel).contains("Setup"));
+			assertNotNull(panel.getToolTipText());
 		});
 	}
 

@@ -3,10 +3,17 @@
 ## From Scratch project scope
 
 - Read `ARCHITECTURE.md`, `ACCOUNTING.md`, and `TEST_PLAN.md` before behavior changes.
-- Implement one authorized milestone at a time. M1 is foundation only; later features remain planned.
+- Implement one authorized milestone at a time. M1 passed user acceptance; M2 snapshot/persistence is authorized. Do not begin M3 without approval.
 - Identity: From Scratch, author Pilots r kwl, package `com.fromscratch`, config `fromscratch`, internal name `from_scratch`.
 - Preserve config/schema compatibility and Git history. No commit, push, publication, or PR without explicit approval.
 - Distinguish automated evidence, pending user acceptance, and unsupported observations in documentation.
+- Keep confirmed legacy baselines immutable. Setup previews are never saved automatically; confirmation must revalidate identity and contents.
+- Progression files belong only under the plugin Filepath directory, separated by verified character identity. Preserve corrupt/incompatible data and recovery checkpoints.
+- All storage work runs on the background worker. Reject stale callbacks after character/lifecycle changes, and never acknowledge a reset before its archive succeeds.
+- Bank opening is an interface lifecycle, not a quantity-change guarantee. Support already-open/reopened banks, retry missing setup data on game ticks, reject PIN/null/incomplete data, and read the full API container rather than visible search/tab widgets.
+- Do not assume BANK/INV/WORN are simultaneously available. Personal setup observations must be validated, short-lived, identity/session-bound and invalidated on changes; never substitute empty data for null. Diagnose persistent live failures with throttled DEBUG availability/age/predicate fields, never item lists. Manual acceptance remains required.
+- Empty API containers are valid. Null personal containers may count as empty only after independent verification of every slot in a complete mounted, visible and settled normal inventory/equipment interface. Never infer emptiness from missing children, default widget values, player appearance or an empty item map alone.
+- Storage is permanently local-only on one designated host computer. Do not implement cloud synchronization, cloud credentials or a third-party backend. Mobile/other-computer gameplay must be reconciled on return to that host (future M4).
 
 ## Logging
 

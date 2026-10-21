@@ -1,5 +1,7 @@
 # Milestone 1 review record
 
+**Subsequent update:** The user confirmed M1 passed in-game acceptance and approved M2. The user committed the foundation before M2 began. The remainder records the original M1 handover state; current work is in [MILESTONE_2.md](MILESTONE_2.md).
+
 ## Status
 
 Foundation implementation and automated verification are ready for user review. **Manual RuneLite acceptance is pending; the milestone is not accepted yet.** No later milestone was implemented. No commit, push, publication, PR, or gameplay interaction was performed.

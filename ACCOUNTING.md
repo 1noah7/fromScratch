@@ -1,6 +1,10 @@
 # Accounting policy and invariants
 
-**Design for later milestones. M1 implements no accounting engine.** Its tests cover lifecycle headers/UI boundaries, not the economic invariants below. Review this policy before implementing M5 valuation.
+**M2 implements initialization only; the economic engine below remains planned.** Confirmed immutable bank/inventory/equipment quantities, including coins, are legacy. Virtual items, spendable GP, net worth, gained value and unlocked counts remain zero. Initial isolation, character separation, reload and reset preservation are tested. Review the future policy before implementing M5 valuation.
+
+Setup may combine a current complete open-bank container with validated inventory/equipment observations from the same uninterrupted initialization session, at most 60 seconds old. Null never means empty. Personal change events expire the affected observation; a changed previously observed bank invalidates cached personal observations. Incomplete/stale data prevents confirmation. These are setup observations only, not acquisition or transfer accounting. Confirmed baseline data and persistence are unchanged by this correction.
+
+Zero occupied slots is a valid observed state. If an empty personal location has no API container, a complete mounted/visible normal interface must independently verify every initialized empty slot on two different game ticks before supplying a zero-item observation. Unknown/partial views are not zero. This leaves all three required snapshot locations and explicit confirmation intact. Storage is permanently local-only on one designated host; future mobile/other-computer reconciliation uses that host's trusted baseline, without cloud synchronization or remote save merging.
 
 ## Ownership
 
@@ -84,4 +88,4 @@ Offline reconciliation compares complete reliable combined totals. 100 legacy sh
 | 10 | Uncertain events | Ambiguity never overwrites trusted history or invents earnings | M4/M6 incomplete/offline observations |
 | 11 | No automation | No feature performs normal player actions | Every milestone source/API review and user acceptance |
 
-Only M1's narrow header identity portion is currently tested. Full economic coverage follows its implementation milestones in [TEST_PLAN.md](TEST_PLAN.md).
+M2 tests cover initial legacy isolation/empty virtual economy, immutable quantities, character isolation and baseline persistence/recovery/reset. Movement, debt, buyback atomicity and valuation invariants remain deferred with their engines. See [TEST_PLAN.md](TEST_PLAN.md).

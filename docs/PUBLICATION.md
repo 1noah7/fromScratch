@@ -1,6 +1,6 @@
 # Publication preparation
 
-This is an early checklist, not a release candidate or submission. M2-M10 are unimplemented; M1 manual acceptance is pending.
+This is an early checklist, not a release candidate or submission. M1 passed user acceptance. M2 initial snapshot/persistence is implemented and awaits its manual acceptance; M3-M10 remain unimplemented.
 
 ## Foundation prepared
 

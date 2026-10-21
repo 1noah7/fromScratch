@@ -17,6 +17,25 @@ public final class FromScratchSidebar
 	private final Consumer<NavigationButton> removeNavigation;
 	private NavigationButton navigation;
 	private FromScratchPanel panel;
+	private SetupView view = SetupView.signedOut();
+	private SetupActions actions = SetupActions.NONE;
+
+	public void bind(SetupActions actions)
+	{
+		requireEdt();
+		this.actions = actions;
+		if (panel != null) { panel.render(view, actions); }
+	}
+
+	/** Client callbacks deliver immutable data; Swing never reads game state directly. */
+	public void update(SetupView updated)
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			view = updated;
+			if (panel != null) { panel.render(view, actions); }
+		});
+	}
 
 	@Inject
 	public FromScratchSidebar(ClientToolbar toolbar)
@@ -40,6 +59,7 @@ public final class FromScratchSidebar
 			return;
 		}
 		panel = new FromScratchPanel(showHelp);
+		panel.render(view, actions);
 		navigation = NavigationButton.builder()
 			.tooltip("From Scratch")
 			.icon(ImageUtil.loadImageResource(FromScratchPlugin.class, "icon.png"))
@@ -61,6 +81,7 @@ public final class FromScratchSidebar
 	public void hide()
 	{
 		requireEdt();
+		view = SetupView.signedOut();
 		if (navigation != null)
 		{
 			removeNavigation.accept(navigation);
