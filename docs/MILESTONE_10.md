@@ -1,6 +1,28 @@
 # Milestone 10 — consolidated owner review
 
-**Status: PARTIAL — local candidate prepared; manual acceptance and hosted CI evidence pending.** Gameplay is frozen at accepted M9.2. No production-source/save-format changes, publication, friend distribution or Milestone 11 submission occurred.
+**Status: PARTIAL — local candidate prepared; manual acceptance and hosted Ubuntu confirmation pending.** Gameplay is frozen at accepted M9.2. No production-source/save-format changes, publication, friend distribution or Milestone 11 submission occurred.
+
+## Current polish and CI repair
+
+The owner subsequently committed the first M10 package as `8e252f6e9d86722b08dc494590312e7efbd099ac`. The candidate/build evidence below remains the original preparation record. This section records the current follow-up; gameplay and installer files are unchanged.
+
+Actual diagnostic ZIPs were obtained through the public nightly.link transport and accepted **only after matching GitHub's official artifact SHA-256 digest**. Only logs/JUnit reports were read; no artifact code was executed and no credentials or GitHub CLI were used. Evidence is retained locally under ignored `build/m10-polish/`.
+
+| Hosted evidence | Result and meaningful error |
+| --- | --- |
+| [Previous Windows job](https://github.com/PilotsRKwl/fromScratch/actions/runs/39848151577/job/120078835150) at `a243613` | 937 tests, three failures: BankPanelTest still expected Total Value Gained; FinalCorrectionsUiTest expected three million-GP values despite an unavailable peak; GeDashboardTest expected trailing `20 GP~`. The accepted M9 behavior is Peak Progress Value, two bank-value tiles without an invented peak, and leading `~20 GP`. Those corrections are already in `8e252f6`. |
+| [Latest Windows job](https://github.com/PilotsRKwl/fromScratch/actions/runs/39863927290/job/120121288646) at `8e252f6` | **937 passed, zero failures/errors/skips**. Windows is already repaired and hosted-verified for that commit. |
+| [Latest Ubuntu job](https://github.com/PilotsRKwl/fromScratch/actions/runs/39863927290/job/120121288697) at `8e252f6` | 937 tests, **one failure**: `PostM7UiTest.statisticAndActionHeightsAreCompactButContentsStillFit`, `assertTrue` at line 23. Compilation, dependencies and the other 936 tests succeeded. The Ubuntu migration annotation is informational. |
+
+The Ubuntu test bundled several assertions on one line, including a font-dependent `<132px` cap on the Played Elsewhere row. The accepted UI deliberately expands to fit its host font. The test now requires the **exact 116px minimum or natural content height**, unchanged padding/gaps, equal columns, and all help text fitting. Existing 98px statistic/90px action and label-fit assertions remain. A new case checks Dialog/Monospaced fonts, larger text that legitimately exceeds the former cap, and short content that must stay exactly 116px. Distinct assertion messages identify any remaining host-specific failure. **The old report contains no pixel values or sub-assertion message**, so the cap's role is a source-based diagnosis, not a captured Ubuntu measurement. A hosted Ubuntu rerun must confirm the correction; no Linux runtime is installed locally.
+
+Incremental production/test compilation and **11/11 targeted tests** passed: PostM7UiTest (5) and FinalCorrectionsUiTest (6). No tests were disabled, no no-clipping checks removed, no arbitrary tolerance added, and no full regression repeated. The existing workflow, Java 11 and both operating systems remain intact. A new push/rerun requires owner approval and has not occurred.
+
+Official artifact digests: latest Ubuntu `d65e4a7154298d28df87e3de48374156232769cc2d72d2cfe4f687c9cc6ad600`; previous Windows `f6f88273b3fdc1fa1af7140311bc7aa1bab0cc1a398f2b3f761b7362a3b54bcb`. The latest Windows artifact was separately checked against its official digest and its JUnit totals verified. Direct REST job logs returned 403 and artifact downloads 401; the browser step endpoint returned 404, rather than providing the cause. These access failures were not treated as build errors.
+
+README now targets ordinary OSRS players: the requested hero, simple How to Play steps, gameplay examples/features, saved-progress FAQ and small More Information links. It preserves the original artwork and accurate bank-only/mobile/mixed-stack boundaries without implementation vocabulary. Public releases were checked through GitHub's REST API: **none exist**, so there is no invented installer URL or claim of a public beta. Real captures still follow [SCREENSHOTS.md](SCREENSHOTS.md); no fake screenshots were added. Preview the current README in IntelliJ or `build/m10-polish/README-preview.html` and review the test diff before approval.
+
+## Original M10 preparation record
 
 ## GitHub and frozen baseline
 

@@ -14,7 +14,7 @@ Milestones 1–9.2 are owner-accepted; gameplay is frozen. Milestone 10 prepares
 ## Owner release gates
 
 1. Review [Milestone 10 evidence](MILESTONE_10.md); test actual beta graphical launch, official Jagex authentication and gameplay, preserving real progression. A help smoke alone is insufficient.
-2. Inspect hosted CI diagnostics. The latest master run failed on **both** platforms; do not claim green CI from local tests or blame an informational Ubuntu notice. Approve any later push/rerun only after reviewing changes.
+2. Hosted Windows at `8e252f6` passed all 937 tests. Actual Ubuntu diagnostics identified one layout-test failure; confirm the focused portability correction with an approved push/rerun. Do not claim hosted Ubuntu success from local Windows tests or blame the informational Ubuntu notice. See [current CI evidence](MILESTONE_10.md#current-polish-and-ci-repair).
 3. Capture/redact/approve genuine [screenshots](SCREENSHOTS.md), then insert actual links. Review the rendered README/social preview.
 4. Review the diff and private-data exclusions. After explicit approval to commit, record the real resulting revision, rebuild provenance/checksum and run only validation invalidated by changes. No tag rewriting.
 5. Approve the GitHub Release/assets and About/topics separately. Use actual download links only after publication. A checksum is not a publisher signature. Friend distribution remains unauthorized until approved.
