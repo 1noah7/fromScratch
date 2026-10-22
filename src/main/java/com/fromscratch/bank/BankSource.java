@@ -11,4 +11,5 @@ public interface BankSource
 	/** Fail closed unless the live definition verifies genuine untradeable equipment, never a note/placeholder. */
 	default boolean buybackDefinition(int id) { return false; }
 	default com.fromscratch.pouch.PouchObservation pouch(){return com.fromscratch.pouch.PouchObservation.unknown();}
+	default com.fromscratch.buyback.BagObservation bag(){return com.fromscratch.buyback.BagObservation.unknown();}
 }

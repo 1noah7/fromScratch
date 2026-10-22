@@ -32,4 +32,6 @@ public class GeTrade
 		this.estimatedTax=estimatedTax;this.taxMethod=taxMethod;this.status=status;this.origin=origin;this.evidence=evidence;this.at=at;
 	}
 	public boolean execution(){return evidence==Evidence.FILL||evidence==Evidence.COMPATIBLE_NET_FILL;}
+	/** Only derived completed offers belong in the public history, never raw lifecycle/fill evidence. */
+	public boolean visibleInHistory(){return quantity>0&&(status.equals("Bought")||status.equals("Bought (Partial)")||status.equals("Sold")||status.equals("Sold (Partial)"));}
 }

@@ -26,18 +26,63 @@ public final class RuneLiteBankSource implements BankSource
 	private String verifiedProfile;
 	private volatile boolean diagnostics;
 	private long lastDiagnostic;
+	private UUID bagSession;
+	private String bagCharacter,inspectionCharacter;
+	private int requestedBag=-1,requestedBagTick,bagPacketTick;
+	private UUID inspectionSession;
+	private com.fromscratch.buyback.BagObservation inspectedBag;
 	@Inject public RuneLiteBankSource(Client client, ConfigManager config, BankTimings timings)
 	{
 		this.client = client; this.config = config; this.timings = timings;
 		observer = new BankObserver(new BankObserver.Access()
 		{
-			public boolean normalBankOpen() { return mounted(InterfaceID.BANKMAIN) && visible(InterfaceID.Bankmain.ITEMS_CONTAINER) && !mounted(InterfaceID.BANKPIN_KEYPAD) && !mounted(InterfaceID.BANKPIN_SETTINGS); }
+			public boolean normalBankOpen() { return bankOpen(); }
 			public ContainerSnapshot readBank() { return read(); }
 			public BankTimings.Trace trace() { return timings.current(); }
 		});
 	}
-	public void resetSession() { observer.reset(); character = null; }
-	public void gameTick() { observer.tick(); }
+	public void resetSession() { observer.reset(); character = null; bagUnavailable(); }
+	/** A server contents packet must belong to this bank session, never a retained old container. */
+	public void bagChanged(){bagPacketTick=client.getTickCount();inspectedBag=null;bagCharacter=bankOpen()?characterKey():null;bagSession=bagCharacter==null?null:observer.observe().getSession();}
+	public void bagUnavailable(){bagSession=null;bagCharacter=null;inspectedBag=null;requestedBag=-1;inspectionCharacter=null;inspectionSession=null;}
+	/** Explicit native View/Check only. No inventory container is read or tracked. */
+	public void bagClicked(net.runelite.api.events.MenuOptionClicked event)
+	{
+		String option=event.getMenuOption();if((event.getMenuAction()!=MenuAction.CC_OP&&event.getMenuAction()!=MenuAction.CC_OP_LOW_PRIORITY)||!("View".equals(option)||"Check".equals(option))||!bankOpen()){return;}
+		int id=event.getMenuEntry().getItemId();
+		if(!com.fromscratch.buyback.BuybackCatalog.variants("looting_bag_family").containsKey(id))
+		{Widget parent=client.getWidget(event.getParam1());Widget item=parent==null||event.getParam0()<0?null:parent.getChild(event.getParam0());if(item!=null){id=item.getItemId();}}
+		if(com.fromscratch.buyback.BuybackCatalog.variants("looting_bag_family").containsKey(id))
+		{requestedBag=id;requestedBagTick=client.getTickCount();inspectionCharacter=characterKey();inspectionSession=observer.observe().getSession();inspectedBag=null;}
+		else{requestedBag=-1;}
+	}
+	/** Some empty checks return a native message instead of opening a contents panel. */
+	public void bagMessage(net.runelite.api.events.ChatMessage event)
+	{
+		if(requestedBag<0||event.getType()!=ChatMessageType.GAMEMESSAGE||!bankOpen()||client.getTickCount()>requestedBagTick+3||!Objects.equals(inspectionCharacter,characterKey())){return;}
+		String text=net.runelite.client.util.Text.removeTags(event.getMessage());
+		if("The bag is empty.".equals(text)||"Your looting bag is empty.".equals(text))
+		{inspectedBag=new com.fromscratch.buyback.BagObservation(requestedBag,Collections.emptyMap(),Collections.emptyMap(),java.time.Instant.now());requestedBag=-1;}
+	}
+	private void inspectBag()
+	{
+		if(requestedBag<0||client.getTickCount()<=requestedBagTick||!bankOpen()||!Objects.equals(inspectionCharacter,characterKey())){return;}
+		com.fromscratch.buyback.BagObservation value=new com.fromscratch.buyback.LootingBagReader(client).inspect(observer.observe(),requestedBag,bagPacketTick>=requestedBagTick&&Objects.equals(bagCharacter,inspectionCharacter)&&Objects.equals(bagSession,inspectionSession));
+		if(value.fresh(java.time.Instant.now())){inspectedBag=value;requestedBag=-1;}
+		else if(client.getTickCount()>requestedBagTick+3){requestedBag=-1;}
+	}
+	public com.fromscratch.buyback.BagObservation bag()
+	{
+		BankObservation bank=observer.observe();String key=characterKey();com.fromscratch.buyback.LootingBagReader reader=new com.fromscratch.buyback.LootingBagReader(client);
+		com.fromscratch.buyback.BagObservation packet=reader.read(bank,Objects.equals(key,bagCharacter)?bagSession:null);if(packet.fresh(java.time.Instant.now())){return packet;}
+		inspectBag();
+		if(inspectedBag!=null&&Objects.equals(key,inspectionCharacter)&&bank.isReady()&&bank.getSession().equals(inspectionSession)&&inspectedBag.fresh(java.time.Instant.now()))
+		{long count=0;int form=-1;for(int id:com.fromscratch.buyback.BuybackCatalog.variants("looting_bag_family").keySet()){long n=bank.getBank().quantity(id);count=Math.addExact(count,n);if(n>0){form=id;}}if(count==1){return new com.fromscratch.buyback.BagObservation(form,inspectedBag.getQuantities(),inspectedBag.getNames(),inspectedBag.getAt());}}
+		return com.fromscratch.buyback.BagObservation.unknown();
+	}
+	/** Interface lifetime is distinct from a container awaiting its next complete tick observation. */
+	public boolean bankOpen() { return mounted(InterfaceID.BANKMAIN) && visible(InterfaceID.Bankmain.ITEMS_CONTAINER) && !mounted(InterfaceID.BANKPIN_KEYPAD) && !mounted(InterfaceID.BANKPIN_SETTINGS); }
+	public void gameTick() { observer.tick();if(!bankOpen()){bagUnavailable();}else if(requestedBag>=0){inspectBag();} }
 	public void changed() { timings.event(); observer.changed(); }
 	public void configure(boolean enabled) { diagnostics = enabled; timings.configure(enabled); }
 	public String characterKey()

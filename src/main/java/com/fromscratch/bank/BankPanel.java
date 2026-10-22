@@ -1,9 +1,9 @@
 package com.fromscratch.bank;
 
-import com.fromscratch.ui.RunDuration;
+import com.fromscratch.playtime.Playtime;
+import com.fromscratch.playtime.PlaytimeTracker;
 import com.fromscratch.wealth.*;
 import java.awt.*;
-import java.time.Instant;
 import java.util.Map;
 import javax.swing.*;
 import net.runelite.api.gameval.ItemID;
@@ -44,7 +44,7 @@ public final class BankPanel extends PluginPanel
 	private final BankTile lost;
 	private final JLabel automaticSummary = new JLabel("No changes yet", SwingConstants.CENTER), manualSummary = new JLabel("No corrections yet", SwingConstants.CENTER);
 	private final JLabel purchasesSummary=new JLabel("0 fills",SwingConstants.CENTER),salesSummary=new JLabel("0 fills",SwingConstants.CENTER);
-	private final javax.swing.Timer timer = new javax.swing.Timer(30000, e -> refreshDuration());
+	private PlaytimeTracker.View playtime;
 	private BankView view;
 	private BankActions actions;
 	private String card;
@@ -62,7 +62,9 @@ public final class BankPanel extends PluginPanel
 	{
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS)); setBackground(BACKGROUND); body.setOpaque(false); stats.setOpaque(false); stats.setAlignmentX(LEFT_ALIGNMENT);
 		for (JButton button : new JButton[]{retry, anchor}) { button.setAlignmentX(LEFT_ALIGNMENT); button.setBackground(new Color(55, 46, 63)); button.setForeground(new Color(235, 220, 190)); button.setOpaque(true); button.setContentAreaFilled(false); }
-		JLabel title = new JLabel("From Scratch"); title.setFont(FontManager.getRunescapeBoldFont()); title.setForeground(new Color(0xFFD54F)); add(title);
+		JLabel title = new JLabel("From Scratch"); title.setFont(FontManager.getRunescapeBoldFont()); title.setForeground(new Color(0xFFD54F));
+		JPanel header=new JPanel(new BorderLayout());header.setOpaque(false);header.setAlignmentX(LEFT_ALIGNMENT);header.add(title,BorderLayout.CENTER);
+		JButton files=new JButton("⋮");files.setToolTipText("Progress files");files.getAccessibleContext().setAccessibleName("Progress files");files.setMargin(new Insets(0,6,0,6));files.addActionListener(e->ProgressDialogs.menu(this,()->actions,()->view).show(files,0,files.getHeight()));header.add(files,BorderLayout.EAST);header.setMaximumSize(new Dimension(Integer.MAX_VALUE,header.getPreferredSize().height));add(header);
 		notice.setForeground(new Color(0xFFD54F)); notice.setVisible(false); add(notice); retry.setVisible(false); add(retry);
 		JPanel setup = vertical(); setup.setName("setupPanel"); setup.add(heading("Before Starting"));
 		JLabel intro = setupCopy("1. Bank everything from your inventory.\n2. Unequip and bank all gear."); intro.setName("setupInstructions"); intro.setBorder(BorderFactory.createEmptyBorder(0, 0, 3, 0)); setup.add(intro);
@@ -74,11 +76,11 @@ public final class BankPanel extends PluginPanel
 		body.add(setup, "setup");
 		JPanel active = vertical();
 		stats.setName("statisticTiles");
-		gained=new BankTile("Total Value Gained", "Total Value<br>Gained", ItemID.PLATINUM, icons);stats.add(gained);
+		gained=new BankTile("Peak Progress Value", "Peak Progress<br>Value", ItemID.PLATINUM, icons);stats.add(gained);
 		netWorth=new BankTile("Current Bank Net Worth", "Current Bank<br>Net Worth", ItemID.CASKET, icons);stats.add(netWorth);
 		bankGp=new BankTile("Bank GP", "Bank GP", ItemID.COINS, icons);stats.add(bankGp);
 		unlocked = new BankTile("Items Unlocked", "Items Unlocked", ItemID.CRYSTAL_KEY, icons); stats.add(unlocked);
-		duration = new BankTile("Active Run Duration", "Active Run<br>Duration", ItemID.GIANT_STOPWATCH, icons); stats.add(duration);
+		duration = new BankTile("Time Played", "Time Played", ItemID.GIANT_STOPWATCH, icons); stats.add(duration);
 		lost=new BankTile("Total Value Lost / Spent", "Total Value<br>Lost / Spent", ItemID.ASHES, icons);stats.add(lost);
 		lost.onActivate(this::recordExpense);
 		active.add(stats);
@@ -107,8 +109,6 @@ public final class BankPanel extends PluginPanel
 		reset.addActionListener(e -> { BankView captured = view; if (actions != null && captured != null && captured.getRun() != null && confirmation.show(this, "Reset Progress", "This ends your current challenge and clears its active progress. A recovery archive will be kept. Your real OSRS items are untouched.", "Reset Progress", true)) { reset.setEnabled(false); actions.reset(captured.getRun().getRevision()); } });
 		retry.addActionListener(e -> { if (actions != null) { actions.retry(); } }); anchor.addActionListener(e -> anchor());
 	}
-	@Override public void addNotify() { super.addNotify(); timer.start(); }
-	@Override public void removeNotify() { timer.stop(); super.removeNotify(); }
 	public void render(BankView updated, BankActions actions)
 	{
 		if (updated.getObservation() == null || (view != null && view.getRun() != null && view.getRun().isActive() && (updated.getRun() == null || !updated.getRun().isActive()))) { attested.setSelected(false); }
@@ -120,13 +120,13 @@ public final class BankPanel extends PluginPanel
 		{
 			unlocked.value(Long.toString(run.unlocked()), "Positive bank item types plus durable purchased equipment slots; shared families count once."); refreshDuration();
 			FinancialState financial=run.getFinancial();
-			gained.value(financial.getGainedGp()==0&&!financial.getUnpricedGains().isEmpty()?"Unpriced":GpFormatter.compact(financial.getGainedGp())+(financial.getUnpricedGains().isEmpty()?"":"*"),BankTooltips.gained(financial));
+			gained.value(updated.getValuation()==null||updated.getValuation().getPeakGp()==null?"Unavailable":"~"+GpFormatter.compact(updated.getValuation().getPeakGp()),BankTooltips.html("Peak Progress Value","Highest recorded virtual wealth plus confirmed permanent progression spending. Based on estimated item prices.","Measured since this feature began. Unpriced or stale checkpoints cannot raise the peak."));
 			bankGp.value(GpFormatter.compact(com.fromscratch.buyback.BuybackEngine.available(run)),BankTooltips.bankGp(run));
 			BankValuation market=updated.getValuation();
 			if(market!=null&&market.getRevision().equals(run.getRevision())){netWorth.value(market.label(),BankTooltips.netWorth(market),market.getMissingTypes()>0&&market.getPricedTypes()>0?"Priced subtotal":null);}
 			else{netWorth.value(run.isAnchored()?"Updating…":"Unavailable",BankTooltips.netWorth(null));}
 			long geTax=run.getExchange().getEstimatedTaxGp();String loss;
-			try{loss=financial.getExpenseRecords()==0&&geTax==0&&run.getBuybacks().getCommittedGp()==0?"Not tracked":GpFormatter.compact(Math.addExact(Math.addExact(financial.getExpenseGp(),geTax),run.getBuybacks().getCommittedGp()))+(geTax>0?"~":"");}catch(ArithmeticException ex){loss="Out of range";}
+			try{loss=financial.isImportedBaseline()&&financial.getExpenseRecords()==0&&geTax==0&&run.getBuybacks().getCommittedGp()==0?"History incomplete":(geTax>0?"~":"")+GpFormatter.compact(Math.addExact(Math.addExact(financial.getExpenseGp(),geTax),run.getBuybacks().getCommittedGp()));}catch(ArithmeticException ex){loss="Out of range";}
 			lost.value(loss,BankTooltips.expenses(run));
 			automaticSummary.setText(count(run, false) + " recent"); manualSummary.setText(count(run, true) + " recent");
 			purchasesSummary.setText(run.getExchange().getPurchases()+" fills");salesSummary.setText(run.getExchange().getSales()+" fills");
@@ -145,7 +145,13 @@ public final class BankPanel extends PluginPanel
 	{
 		if(view!=null&&actions!=null&&!view.isBusy()&&!view.isError()&&view.getRun()!=null&&view.getRun().isAnchored()){BankExpenseDialog.show(this,view,actions);}
 	}
-	private void refreshDuration() { if (view != null && view.getRun() != null && view.getRun().isActive()) { duration.value(RunDuration.format(RunDuration.minutes(view.getRun().getStartedAt(), Instant.now())), "Elapsed run age, including offline time."); } }
+	public void playtime(PlaytimeTracker.View time) { playtime=time;refreshDuration(); }
+	private void refreshDuration()
+	{
+		if(view==null||view.getRun()==null||!view.getRun().isActive()) { return; }
+		boolean matches=playtime!=null&&playtime.getRun().equals(view.getRun().getRunId())&&playtime.getCharacter().equals(view.getRun().getCharacter());
+		duration.value(!matches?"Loading…":playtime.getError()!=null?"Unavailable":Playtime.format(playtime.getTicks()),BankTooltips.html("Time Played",matches&&playtime.getError()!=null?playtime.getError():"Time played using RuneLite on this computer since tracking began. Mobile gameplay is not included."));
+	}
 	private void anchor()
 	{
 		BankView captured = view; if (captured == null || !captured.ready()) { return; }

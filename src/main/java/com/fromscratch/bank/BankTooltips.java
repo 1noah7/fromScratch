@@ -59,7 +59,7 @@ final class BankTooltips
 	{
 		if (state == null || state.getExpenseRecords() == 0)
 		{
-			return html("Recorded Losses / Expenses", "Losses and spending are not tracked automatically.", "Click to record a verified expense.");
+			return html("Recorded Losses / Expenses", state==null?"Recorded spending is unavailable.":state.isImportedBaseline()?"Earlier spending history is incomplete.":"No recorded spending yet.", "Withdrawals and legacy offsets are not spending. Click to record a verified expense.");
 		}
 		long count = state.getExpenseRecords();
 		return html("Recorded Losses / Expenses", "Recorded amount: " + GpFormatter.exact(state.getExpenseGp()) + ".",

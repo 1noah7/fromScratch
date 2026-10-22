@@ -27,7 +27,8 @@ public class GePerformanceTest
 		long wall=System.nanoTime(),cpu=ManagementFactory.getThreadMXBean().getCurrentThreadCpuTime();
 		for(int q=1;q<=128;q++){run=repository.save(root,run,BankEngine.exchange(run,new GeObservation(UUID.randomUUID(),session,Instant.now(),0,ItemID.WOODEN_SHIELD,"Wooden shield",GrandExchangeOfferState.BUYING,1000,q,100,q*100L,false)));}
 		double wallMs=(System.nanoTime()-wall)/1e6,cpuMs=(ManagementFactory.getThreadMXBean().getCurrentThreadCpuTime()-cpu)/1e6;
-		assertEquals(128,run.getExchange().getPurchases());assertTrue(run.getExchange().getRecent().size()<=30);assertTrue(run.getExchange().getCredits().size()<=256);assertEquals(25,repository.exchangeHistory(root,run,null,true).getRows().size());assertEquals(run,repository.load(root,run.getCharacter()).get());
+		assertEquals(128,run.getExchange().getPurchases());assertTrue(run.getExchange().getRecent().size()<=30);assertTrue(run.getExchange().getCredits().size()<=256);
+		GeHistory.Page page=repository.exchangeHistory(root,run,null,true);assertTrue(page.isScanning());while(page.isScanning()){page=repository.exchangeHistory(root,run,page.getNext(),true);}assertTrue(page.getRows().isEmpty());assertNull(page.getNext());assertEquals(run,repository.load(root,run.getCharacter()).get());
 		System.out.printf(Locale.ROOT,"GE_1200_ITEMS commits=128 worker_wall_ms=%.3f worker_cpu_ms=%.3f io_scheduling_ms=%.3f retained_rows=%d%n",wallMs,cpuMs,wallMs-cpuMs,run.getExchange().getRecent().size());
 	}
 }

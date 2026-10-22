@@ -80,7 +80,7 @@ public final class BankEngine
 		com.fromscratch.pouch.PouchState pouch=old.getBuybacks().getPouch();
 		if(change.getKind()==BankAudit.Kind.AUTOMATIC){pouch=com.fromscratch.pouch.PouchEngine.bank(pouch,change.getPhysicalChanges());}
 		else if(change.getKind()==BankAudit.Kind.POUCH){pouch=com.fromscratch.pouch.PouchEngine.apply(pouch,change.getPouch(),change.getId());}
-		else if(change.getBuyback()!=null&&change.getBuyback().getPouchItemId()>0){pouch=com.fromscratch.pouch.PouchEngine.purchased(pouch,change.getBuyback().getLegacyRunes());}
+		else if(change.getBuyback()!=null&&change.getBuyback().getCatalogId().equals("rune_pouch_family")&&change.getBuyback().getPouchItemId()>0){pouch=com.fromscratch.pouch.PouchEngine.purchased(pouch,change.getBuyback().getLegacyRunes());}
 		List<BankAudit> recent = new ArrayList<>();
 		for(BankAudit previous:old.getRecent())
 		{
@@ -121,6 +121,16 @@ public final class BankEngine
 		return next(old,old.getPhysical(),balances,true,change,old.getHostSummary());
 	}
 	/** Scoped explicit setup/review; restoring a misidentified deposit recognizes only current high-water progress. */
+	public static BankRun buyBag(BankRun old,UUID purchaseId,UUID session,Instant at,com.fromscratch.buyback.BagObservation contents)
+	{
+		requireAnchored(old);String catalog="looting_bag_family";
+		if(!contents.fresh(at)||old.physical(contents.getItemId())!=1||com.fromscratch.buyback.BuybackCatalog.variants(catalog).keySet().stream().mapToLong(old::physical).reduce(0L,Math::addExact)!=1){throw new IllegalArgumentException(com.fromscratch.buyback.BagObservation.INSTRUCTION);}
+		Map<Integer,Long> adjustments=new TreeMap<>(),balances=new TreeMap<>(old.getBalances());contents.getQuantities().forEach((id,n)->{adjustments.put(id,Math.negateExact(n));balances.put(id,Math.subtractExact(old.balance(id),n));});
+		com.fromscratch.buyback.BuybackEntry entry=com.fromscratch.buyback.BuybackCatalog.entry(catalog);
+		com.fromscratch.buyback.BuybackPurchase purchase=new com.fromscratch.buyback.BuybackPurchase(purchaseId,catalog,entry.getPrice(),at,com.fromscratch.buyback.BuybackEngine.purchaseFloors(old,entry),contents.getItemId(),contents.getQuantities());
+		BankAudit change=new BankAudit(purchaseId,session,at,BankAudit.Kind.BUYBACK,Collections.emptyMap(),adjustments,"Player confirmed legacy buyback: Looting Bag",Collections.emptyList(),com.fromscratch.ge.GeUpdate.empty(),purchase);
+		return next(old,old.getPhysical(),balances,true,change,old.getHostSummary());
+	}
 	public static BankRun pouch(BankRun old,com.fromscratch.pouch.PouchAction action,UUID session,Instant at,Map<Integer,PriceQuote> prices)
 	{
 		requireAnchored(old);boolean present=com.fromscratch.buyback.BuybackCatalog.variants("rune_pouch_family").keySet().stream().anyMatch(id->old.physical(id)>0);

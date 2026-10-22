@@ -1,6 +1,10 @@
 # Bank accounting policy
 
-**Current contract: M1–M6 accepted; M7 curated legacy buybacks await manual acceptance.** The original multi-container ownership policy is historical and lives in [the archived specification](docs/history/ACCOUNTING_MULTI_CONTAINER.md). It is not a source for current acquisition, transfer or session-gate behavior.
+**Current contract: M1–M8 accepted; M9 hardening awaits manual acceptance.** The original multi-container ownership policy is historical and lives in [the archived specification](docs/history/ACCOUNTING_MULTI_CONTAINER.md). It is not a source for current acquisition, transfer or session-gate behavior.
+
+M9 retains the signed bank equation and existing economic history. Restored native filtering never owns quantities; complete bank-container observations remain authoritative. Peak Progress Value replaces only the dashboard gain metric. Explicit local import/recovery never merges or replays histories and preserves prior evidence. See [M9](docs/MILESTONE_9.md).
+
+M8 does not alter the equations below, GP, gains, GE classification, buybacks or pouch offsets. Examine and the native Virtual Bank filter read acknowledged effective bank balances (including paid-copy projections); neither owns quantities or creates transactions. Item History shows physical movements and signed adjustments separately, labels observed GE executions without inventing collection provenance, and never calls a withdrawal consumption/spending. Time Played is a separate host-only logged-in GameTick counter, not an economic event or wall-clock run duration. Its first baseline does not reconstruct earlier gameplay or mobile time. See [M8](docs/MILESTONE_8.md).
 
 ## Quantities and equation
 
@@ -187,8 +191,20 @@ Recorded = remaining + held + retired, per ID, using checked longs. All state is
 
 If contents were moved before recording, quantity and source are unknown. Do not infer a debit. The relevant dialog links Manual Bank Corrections and requires explicit acknowledgment of prior corrections and empty contents. Manual corrections fix known bank counts; this workflow cannot reconstruct or automatically erase old historical gain prices. Preserve that history and disclose the uncertainty. No continuous personal-container accounting or automatic game actions are introduced. See [review procedure and limitations](docs/POST_MILESTONE_7.md).
 
+## M9.1 — Completed GE history is presentation only
+
+Native-tab filtering never supplies physical bank quantities. GE history derives completed offers from original cumulative observations; active partial fills retain their existing immediate internal accounting while remaining hidden from history. Finalization and history reads create no economic events. Completed-offer tax is explicitly an average-price estimate; financial totals retain original per-fill estimates, which can differ with rounding/varying execution prices. No new verified-tax claim, bank delta, gain, spending entry or peak is created by aggregation. Existing audit files and economic save schemas are unchanged.
+
 ## Automatic Rune Pouch buyback adjustments (current workflow)
 
 This supersedes the manual preparation workflow above for new purchases. After a current banked-pouch client/server varbit read and explicit purchase confirmation, the one BUYBACK audit applies B(rune)' = B(rune) - observed pouch quantity while P and the immutable initial bank stay unchanged. It simultaneously records the shared entitlement and exact 1M commitment. Rune debits are purchase-linked **Automatic — Legacy Rune Pouch** adjustments, never consumption/expense or new gains. H is unchanged; ordinary bank deposits restore B toward its prior value without repeat historical gains. Existing earned100 minus legacy500 becomes -400; depositing500 restores100.
 
 New receipts persist the verified pouch form and positive legacy rune quantities; repository validation recomputes all negative deltas from that evidence. Receipt IDs, shared entitlement uniqueness, CAS and atomic acknowledgment prevent replay. Deficits remain signed through restart/refills; no automatic forgiveness or extra GP charge occurs. Current worth includes the signed rune amounts using the existing valuation formula. Existing receipts, entitlements and legitimate old preparation adjustments are preserved without invented historical quantities. Format9 remains in use; old preparation models are retained only for compatibility. Normal UI no longer exposes a preparation action.
+
+## M9 correction: peak and legacy bag
+
+Peak = max(previous peak, current signed virtual net worth + confirmed permanent expenditures). The candidate excludes purchased equipment allowances, includes bank coins once and buyback costs once, and includes explicit verified expenses. Estimated GE fees are not confirmed permanent-spending additions. All nonzero candidate quantities must have fresh known prices; unknown values are not zero. Historical fixed-quote gains remain stored but are no longer the dashboard metric. Initial peak measurements establish a current conservative baseline without claiming earlier maxima.
+
+Looting bag (ItemID.LOOTING_BAG 11941) and open bag (ItemID.LOOTING_BAG_OPEN 22586) share looting_bag_family, one copy and one 10,000 GP payment. The note is excluded. Open/closed projection pools signed family progress without creating copies. An earned copy remains free; it does not unlock another legacy copy.
+
+Verified original contents apply B(item) -= contents(item) atomically with the purchase. P and the initial snapshot never change. Later physical deposits naturally restore B, preserving earlier earned balances; their return below the previous financial high-water mark adds no historical gain. Coins follow the same adjustment: available GP = adjusted raw coin B - committed buybacks. Only the 10K cost is spending, never the contents offset. No automatic forgiveness, reapplication on refill/restart or guessed old debts. The history category is Automatic — Legacy Looting Bag. Banked contents support requires live acceptance; unavailable or mismatching native data blocks the purchase without a manual wizard.

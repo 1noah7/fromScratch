@@ -51,6 +51,18 @@ public final class BankController implements BankActions
 	private boolean valuationQueued;
 	private UUID valuedRevision;
 	private long valuedPrices=-1;
+	private Consumer<BankRun> projectionListener = value -> { };
+	/** Client-thread read of acknowledged state; never exposes another character's cached run. */
+	public BankRun currentRun()
+	{ return enabled&&!error&&run!=null&&run.isActive()&&run.isAnchored()&&Objects.equals(character,source.characterKey())?run:null; }
+	public void informationActions(Consumer<BankRun> listener) { projectionListener=listener; }
+	private BooleanSupplier initialBankView=()->true;
+	public void initialBankView(BooleanSupplier clear){initialBankView=clear;}
+	private Consumer<Runnable> beforeRestore=Runnable::run;
+	private Consumer<Runnable> beforeExport=Runnable::run;
+	private Runnable afterRestore=()->{};
+	public void restoreLifecycle(Consumer<Runnable> before,Runnable after){beforeRestore=before;afterRestore=after;}
+	public void exportLifecycle(Consumer<Runnable> checkpoint){beforeExport=checkpoint;}
 	@Inject public BankController(RuneLiteBankSource source, BankRepository repository, ClientThread clientThread, BankSidebar sidebar, BankOverlayState overlay,PriceService prices)
 	{ this(source, repository, clientThread::invokeLater, v -> { overlay.updateBank(v); sidebar.update(v); },prices); }
 	public BankController(BankSource source, BankRepository repository, Consumer<Runnable> dispatch, Consumer<BankView> display)
@@ -165,6 +177,7 @@ public final class BankController implements BankActions
 		act(() ->
 		{
 			if (run != null && run.isActive()) { throw new IllegalArgumentException("A run is already active."); }
+			if(!initialBankView.getAsBoolean()){throw new IllegalArgumentException("Full Bank could not be verified. Select View all items, then review your bank and try again.");}
 			BankObservation fresh = requireBank();
 			if (observation == null || !observation.isReady() || !observation.getBank().getQuantities().equals(fresh.getBank().getQuantities())) { throw new IllegalArgumentException("Your bank changed. Review the fresh bank before starting."); }
 			BankRun candidate = BankEngine.start(character, run == null ? null : run.getPreviousRunId(), fresh.getBank(), attested, fresh.getSession(), Instant.now());
@@ -211,6 +224,20 @@ public final class BankController implements BankActions
 	}
 	public void recordExpense(UUID revision,long gp,String reason)
 	{ act(()->{requireRevision(revision);save(BankEngine.expense(run,gp,reason,UUID.randomUUID(),Instant.now()));}); }
+	public void bagPreview(Consumer<com.fromscratch.buyback.BagObservation> callback)
+	{dispatch.accept(()->callback.accept(enabled&&Objects.equals(character,source.characterKey())?source.bag():com.fromscratch.buyback.BagObservation.unknown()));}
+	public void buyBag(UUID revision,UUID purchaseId,com.fromscratch.buyback.BagObservation preview,Consumer<com.fromscratch.buyback.BuybackPurchase> committed)
+	{
+		act(()->{
+			requireRevision(revision);BankObservation fresh=requireBank();
+			if(!run.getPhysical().equals(fresh.getBank().getQuantities())){throw new IllegalArgumentException("Your bank changed. Reopen Legacy Buybacks.");}
+			com.fromscratch.buyback.BagObservation contents=source.bag();
+			if(preview==null||!contents.fresh(Instant.now())||preview.getItemId()!=contents.getItemId()||!preview.getQuantities().equals(contents.getQuantities())){throw new IllegalArgumentException(com.fromscratch.buyback.BagObservation.INSTRUCTION);}
+			if(!source.buybackDefinition(contents.getItemId())){throw new IllegalArgumentException("The Looting Bag definition could not be verified. No GP was spent.");}
+			BankRun candidate=BankEngine.buyBag(run,purchaseId,fresh.getSession(),Instant.now(),contents);
+			save(candidate,()->committed.accept(candidate.getBuybacks().getPurchases().get(candidate.getBuybacks().getPurchases().size()-1)));
+		});
+	}
 	/** Read varbits only on a relevant user request, never a personal-container observation loop. */
 	public void pouchPreview(Consumer<com.fromscratch.pouch.PouchObservation> callback)
 	{
@@ -244,20 +271,26 @@ public final class BankController implements BankActions
 	{
 		if (run == null || !run.isActive() || !run.getRevision().equals(revision)) { throw new IllegalArgumentException("Progress changed. Reopen this tool before applying changes."); }
 	}
-	public void exchangeHistory(boolean buy,BankHistory.Cursor cursor,Consumer<GeHistory.Page> callback)
+	public void exchangeHistory(boolean buy,GeHistory.Cursor cursor,Consumer<GeHistory.Page> callback)
 	{
 		dispatch.accept(() ->
 		{
 			if(!enabled||run==null||!run.isActive()){callback.accept(new GeHistory.Page(Collections.emptyList(),null,"No active GE history."));return;}
-			BankRun captured=run;long token=epoch.get(),capturedContext=context;DirectoryProvider provider=directory;
-			try{worker.execute(() ->
+			BankRun captured=run;long token=epoch.get(),capturedContext=context;DirectoryProvider provider=directory;ExecutorService reader=worker;
+			GeHistory.Cursor[] position={cursor};Runnable[] read=new Runnable[1];read[0]=() ->
 			{
-				GeHistory.Page page;try{page=repository.exchangeHistory(provider.get(),captured,cursor,buy);}catch(IOException|RuntimeException ex){page=new GeHistory.Page(Collections.emptyList(),null,"GE history could not be read; existing records were preserved.");}
+				GeHistory.Page page;try{page=repository.exchangeHistory(provider.get(),captured,position[0],buy);}catch(IOException|RuntimeException ex){page=new GeHistory.Page(Collections.emptyList(),null,"GE history could not be read; existing records were preserved.");}
 				GeHistory.Page result=page;dispatch.accept(() ->
 				{
-					if(!enabled||epoch.get()!=token||context!=capturedContext||run==null||!Objects.equals(run.getRunId(),captured.getRunId())||!captured.getCharacter().equals(source.characterKey())){callback.accept(new GeHistory.Page(Collections.emptyList(),null,"Character or run changed. Reopen GE history."));return;}callback.accept(result);
+					if(!enabled||epoch.get()!=token||context!=capturedContext||run==null||!Objects.equals(run.getRunId(),captured.getRunId())||!captured.getCharacter().equals(source.characterKey())){callback.accept(new GeHistory.Page(Collections.emptyList(),null,"Character or run changed. Reopen GE history."));return;}
+					if(result.isScanning())
+					{
+						// Yield the storage FIFO after 64 segments so normal bank commits can proceed.
+						position[0]=result.getNext();try{reader.execute(read[0]);}catch(RejectedExecutionException ex){callback.accept(new GeHistory.Page(Collections.emptyList(),null,"History is busy. Retry shortly."));}return;
+					}
+					callback.accept(result);
 				});
-			});}catch(RejectedExecutionException ex){callback.accept(new GeHistory.Page(Collections.emptyList(),null,"History is busy. Retry shortly."));}
+			};try{reader.execute(read[0]);}catch(RejectedExecutionException ex){callback.accept(new GeHistory.Page(Collections.emptyList(),null,"History is busy. Retry shortly."));}
 		});
 	}
 	private BankObservation requireBank()
@@ -284,29 +317,32 @@ public final class BankController implements BankActions
 	}
 	private void publish()
 	{
+		projectionListener.accept(currentRun());
 		if(run!=null){prices.register(com.fromscratch.buyback.BuybackEngine.balances(run).keySet(),source::priceId);}if(observation!=null&&observation.isReady()){prices.register(observation.getBank().getQuantities().keySet(),source::priceId);}
 		refreshValuation();
-		String visibleMessage = notice == null ? message : notice;
-		boolean ready = !busy && !error && observation != null && observation.isReady();
-		boolean previewChanged = (run == null || !run.isAnchored()) && last != null && observation != null && observation.isReady()
-			&& (last.getObservation() == null || !last.getObservation().isReady() || !last.getObservation().getBank().getQuantities().equals(observation.getBank().getQuantities()));
+		boolean setupBlocked=(run==null||!run.isActive())&&!initialBankView.getAsBoolean();
+		String visibleMessage = setupBlocked?"Full Bank is required before starting. If the virtual filter remains, select View all items and try again.":notice == null ? message : notice;
+		BankObservation presented=setupBlocked?null:observation;
+		boolean ready = !busy && !error && presented != null && presented.isReady();
+		boolean previewChanged = (run == null || !run.isAnchored()) && last != null && presented != null && presented.isReady()
+			&& (last.getObservation() == null || !last.getObservation().isReady() || !last.getObservation().getBank().getQuantities().equals(presented.getBank().getQuantities()));
 		if (last != null && Objects.equals(last.getRun(), run) && last.isBusy() == busy && last.isError() == error && last.ready() == ready
 			&& last.getMessage().equals(visibleMessage) && Objects.equals(last.getValuation(),valuation) && !previewChanged) { return; }
 		Set<Integer> ids = new TreeSet<>();
 		if (run != null) { ids.addAll(run.getPhysical().keySet()); ids.addAll(run.getBalances().keySet()); if (run.getInitialBank() != null) { ids.addAll(run.getInitialBank().getQuantities().keySet()); } run.getRecent().forEach(a -> { ids.addAll(a.getBalanceChanges().keySet()); ids.addAll(a.getPhysicalChanges().keySet()); }); }
 		if (observation != null && observation.isReady()) { ids.addAll(observation.getBank().getQuantities().keySet()); }
 		for (int id : ids) { names.computeIfAbsent(id, key -> { String name = source.itemName(key); return name == null || name.isEmpty() ? "Item #" + key : name; }); }
-		BankView view = new BankView(run, observation, names, busy, error, visibleMessage, committedTrace,valuation);
+		BankView view = new BankView(run, presented, names, busy, error, visibleMessage, committedTrace,valuation);
 		// Tick/time changes alone need not rebuild the entire Swing panel every game tick.
 		if (last == null || !Objects.equals(last.getRun(), view.getRun()) || !last.getNames().equals(view.getNames()) || last.isBusy() != busy || last.isError() != error
 			|| !last.getMessage().equals(visibleMessage) || !Objects.equals(last.getValuation(),valuation) || last.ready() != view.ready() || previewChanged) { last = view; display.accept(view); }
 	}
-	/** Derived values use the storage worker's ordering, but never perform network/disk work or create a save. */
+	/** Derived values use the storage worker; only a new verified peak writes its small checkpoint. */
 	private void refreshValuation()
 	{
 		if(busy||error||run==null||!run.isActive()||!run.isAnchored()||valuationQueued||(run.getRevision().equals(valuedRevision)&&prices.version()==valuedPrices)){return;}
 		BankRun captured=run;long priceVersion=prices.version(),token=epoch.get(),capturedContext=context;valuationQueued=true;
-		try{worker.execute(()->{BankValuation result=BankValuation.calculate(captured,prices.snapshot(com.fromscratch.buyback.BuybackEngine.balances(captured).keySet()));dispatch.accept(()->{
+		try{worker.execute(()->{Set<Integer> ids=new HashSet<>(captured.getBalances().keySet());ids.addAll(com.fromscratch.buyback.BuybackEngine.balances(captured).keySet());Map<Integer,PriceQuote> quotes=prices.snapshot(ids);BankValuation calculated=BankValuation.calculate(captured,quotes);Long peak=null;try{peak=repository.peak(directory.get(),captured,com.fromscratch.persistence.PeakProgressRepository.candidate(captured,quotes));}catch(IOException|RuntimeException ex){/* Peak unavailable; verified economic progression remains usable. */}BankValuation result=calculated.withPeak(peak);dispatch.accept(()->{
 			if(!enabled||epoch.get()!=token||context!=capturedContext){return;}valuationQueued=false;
 			if(run!=null&&run.getRevision().equals(captured.getRevision())&&captured.getCharacter().equals(source.characterKey())){valuation=result;valuedRevision=captured.getRevision();valuedPrices=priceVersion;publish();}
 		});});}catch(RejectedExecutionException ex){valuationQueued=false;}
@@ -334,5 +370,77 @@ public final class BankController implements BankActions
 		catch (RejectedExecutionException ex) { busy = false; error = true; message = "Bank storage is busy. Retry loading progress."; publish(); }
 	}
 	@FunctionalInterface public interface DirectoryProvider { Filepath get() throws IOException; }
+	public void exportProgress(Filepath file,Consumer<String> result)
+	{
+		dispatch.accept(()->
+		{
+			BankRun captured=currentRun();if(captured==null){result.accept("Load an active run before exporting.");return;}
+			beforeExport.accept(()->backupTask(root->{repository.backups().exportProgress(root,captured,file);return true;},saved->result.accept("Progress exported. Keep this file private and safe."),result));
+		});
+	}
+	public void previewImport(Filepath file,Consumer<com.fromscratch.persistence.ProgressBackup.Candidate> result,Consumer<String> failure)
+	{
+		dispatch.accept(()->{if(character==null||busy){failure.accept("Log in and wait for local saves to finish before importing.");return;}String key=character;backupTask(root->repository.backups().preview(root,key,file),result,failure);});
+	}
+	public void cancelImport(com.fromscratch.persistence.ProgressBackup.Candidate candidate)
+	{ try{worker.execute(()->{try{repository.backups().discard(candidate);}catch(IOException ex){/* Unselected temporary files cannot affect progression. */}});}catch(RejectedExecutionException ex){/* Shutdown retains staging, never selects it. */} }
+	public void previewRecovery(Consumer<com.fromscratch.persistence.ProgressBackup.Candidate> result,Consumer<String> failure)
+	{dispatch.accept(()->{if(character==null||busy){failure.accept("Log in and wait for storage before recovering.");return;}String key=character;backupTask(root->repository.backups().previous(root,key),result,failure);});}
+	public void importProgress(com.fromscratch.persistence.ProgressBackup.Candidate candidate,Consumer<String> result)
+	{
+		dispatch.accept(()->
+		{
+			if(!enabled||busy||character==null||!character.equals(candidate.getRun().getCharacter())||!character.equals(source.characterKey())){result.accept("Character or progress changed. Reopen Import Progress.");return;}
+			busy=true;automatic=false;publish();long token=epoch.get(),capturedContext=context;
+			beforeRestore.accept(()->
+			{
+				if(!enabled||epoch.get()!=token||context!=capturedContext){afterRestore.run();result.accept("Character changed. Nothing was imported.");return;}
+				backupTask(root->repository.backups().restore(root,candidate),restored->
+				{
+					context++;run=restored;busy=false;error=false;notice=null;pending.clear();exchangeBaseline.clear();latestOffers.clear();observation=null;last=null;valuation=null;valuedRevision=null;valuedPrices=-1;
+					message="Progress imported. Open your bank to update it automatically.";afterRestore.run();publish();cancelImport(candidate);result.accept("Progress imported. Previous local files were retained in a backup.");
+				},failure->{afterRestore.run();if(enabled&&epoch.get()==token&&context==capturedContext){busy=false;publish();}result.accept(failure);});
+			});
+		});
+	}
+	private <T>void backupTask(Storage<T> work,Consumer<T> success,Consumer<String> failure)
+	{
+		long token=epoch.get(),capturedContext=context;String key=character;DirectoryProvider provider=directory;
+		try{worker.execute(()->
+		{
+			try{T value=work.run(provider.get());dispatch.accept(()->{if(enabled&&epoch.get()==token&&context==capturedContext&&Objects.equals(key,source.characterKey())){success.accept(value);}else{if(value instanceof com.fromscratch.persistence.ProgressBackup.Candidate){cancelImport((com.fromscratch.persistence.ProgressBackup.Candidate)value);}failure.accept("Character changed. Reopen the progress tools.");}});}
+			catch(IOException|RuntimeException ex){dispatch.accept(()->failure.accept(ex instanceof IOException?ex.getMessage():"Backup could not be verified. Current progression was preserved."));}
+		});}catch(RejectedExecutionException ex){failure.accept("Storage is busy. Try again shortly.");}
+	}
+	/** Names for item-history search only, including absent previously progressed types. No ledger scan. */
+	public void historyItems(Consumer<Map<Integer,String>> callback)
+	{
+		dispatch.accept(()->
+		{
+			BankRun captured=currentRun();if(captured==null) { callback.accept(Collections.emptyMap());return; }
+			Set<Integer> ids=new TreeSet<>(names.keySet());ids.addAll(captured.getFinancial().getHighWater().keySet());
+			Map<Integer,String> choices=new TreeMap<>();for(int id:ids) { choices.put(id,names.computeIfAbsent(id,source::itemName)); }
+			callback.accept(Collections.unmodifiableMap(choices));
+		});
+	}
+	/** Paged item evidence shares the existing guarded history worker, without any accounting write. */
+	public void itemHistory(int itemId,BankHistory.Cursor cursor,Consumer<ItemHistory.Page> callback)
+	{
+		dispatch.accept(()->
+		{
+			BankRun captured=currentRun();
+			if(captured==null) { callback.accept(new ItemHistory.Page(Collections.emptyList(),null,"Log in to view this run's item history."));return; }
+			long token=epoch.get(),capturedContext=context;DirectoryProvider provider=directory;
+			try { worker.execute(()->
+			{
+				ItemHistory.Page page;
+				try { page=repository.itemHistory(provider.get(),captured,cursor,itemId); }
+				catch(IOException|RuntimeException ex) { page=new ItemHistory.Page(Collections.emptyList(),null,"Item history could not be read. Existing records were preserved."); }
+				ItemHistory.Page result=page;
+				dispatch.accept(()->callback.accept(enabled&&epoch.get()==token&&context==capturedContext&&currentRun()!=null&&Objects.equals(run.getRunId(),captured.getRunId())?result:new ItemHistory.Page(Collections.emptyList(),null,"Character or run changed. Reopen item history.")));
+			}); }
+			catch(RejectedExecutionException ex) { callback.accept(new ItemHistory.Page(Collections.emptyList(),null,"History is busy. Retry shortly.")); }
+		});
+	}
 	@FunctionalInterface private interface Storage<T> { T run(Filepath root) throws IOException; }
 }

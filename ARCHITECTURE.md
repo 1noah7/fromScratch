@@ -1,19 +1,35 @@
 # Architecture
 
-M1–M6 are user accepted; M6 is preserved at **v0.6.0-grand-exchange**. **M7 curated buybacks await manual acceptance.** Personal-container ownership and cloud remain outside scope. The previous multi-container design is preserved only in [historical documentation](docs/history/ARCHITECTURE_MULTI_CONTAINER.md) and test fixtures, not live plugin wiring.
+M1–M8 are user accepted. **M9 awaits manual acceptance.** Personal-container ownership and cloud remain outside scope. The previous multi-container design is preserved only in [historical documentation](docs/history/ARCHITECTURE_MULTI_CONTAINER.md) and test fixtures, not live plugin wiring.
+
+## M9 hardening
+
+Interactive native Bank Tags filtering is restored, default on without overriding explicit saved off preferences. A cached immutable membership set makes contains() a pure lookup. Coalesced client-thread tasks guard lifecycle re-entry and clear ownership before synchronous core operations. Relayout occurs only on changed positive membership. Full physical-container observations remain independent; initialization never filters. See the latest M9 restoration notes and live-acceptance limitations.
+
+`persistence/ProgressBackup` writes bounded version-1 `.fsp` ZIPs with exact-byte hashes and economic schema 9 metadata. Import validates in an unselected staging tree, checks current-head fingerprint, archives prior files and atomically publishes one character-local directory selector. Both repositories resolve that checksummed selector, so bank and playtime switch together; old trees survive. Playtime drains/pauses only for confirmed restore. IO and history validation remain on the storage worker; context guards reject stale callbacks. Economic/playtime schemas and reducers do not change. Before current replacement, a forced previous published head is kept; unsupported atomic moves fail without overwriting current. Explicit previous-save recovery uses the same verified import path, never guessed orphan replay. See [M9 evidence, limits and CI blocker](docs/MILESTONE_9.md).
+
+## M8 informational components
+
+`examine/NativeExamine` uses the core 1.13.3 Examine action/widget pattern, a bounded expiring FIFO of item requests and ITEM_EXAMINE responses. Its priority -1 subscriber queues one GAMEMESSAGE after core Examine (priority 0) queues its optional GE/HA line. Core "Price of" supplements are ignored for correlation; unknown widget requests consume a sentinel response. Lifecycle and verified run/character changes reject stale requests. `ExamineFormatter` centralizes escaped item names, signed virtual bank counts, checked GE/HA totals and catalog/receipt-backed locked or purchased buyback information. Prefix/numbers alone use the live existing virtualQuantityColor setting; balanced closing tags restore native/RuneLite normal chat text. Native chat interprets the first literal pipe as a name/body separator, so output uses semicolons and sanitizes pipes in names. Whole optional price fields have a 160-visible-character readability budget; required opening/status/payment are never sliced. See [native-script regression evidence](docs/MILESTONE_8.md#missing-prefix-regression). No HTTP, disk IO or accounting changes run here.
+
+`bank/VirtualBankMode` registers the supported core dynamic tag only for an active anchored run, respects native/user-tag selections, restores the friendly/native title, and cleans up its own tag. Failure latches avoid retry loops. No fake bank, layout deletion or native action interception.
+
+`ItemHistory` projects existing immutable audit evidence; `BankRepository.itemHistory` filters before bounded 25-row/64-segment pages. It runs on the existing guarded background history path. Search uses known bank/legacy/high-water item names and does not scan the full ledger on each keystroke. Observed GE executions are included as independent evidence; current possible matches never become a claim of verified bank origin.
+
+`playtime/PlaytimeTracker` counts deduplicated logged-in GameTick callbacks only for a verified loaded active run, using 600ms per tick. Its dedicated FIFO worker checkpoints every 100 ticks (about one minute), and flushes partial batches on interruption/context change/disable. Shutdown queues final work then terminates at the FIFO tail without blocking. `PlaytimeRepository` uses a separate character/playtime directory, run UUID, checksum envelope, forced candidate, exact prior backup and atomic replacement. Its CAS discards overlapping stale-client intervals rather than counting them twice. Error/unknown files never become a blank zero; recovery evidence is retained. No bank schema bump or economic journal entries. The EDT updates only the Time Played tile, with no wall-clock timer or panel reconstruction. See [validation/limitations](docs/MILESTONE_8.md).
 
 ## Production responsibilities
 
 | Component | Responsibility |
 | --- | --- |
-| FromScratchPlugin | Supported bank/GE events, lifecycle, configuration and DI; no menu/action observation |
+| FromScratchPlugin | Supported bank/GE events, native Examine correlation, lifecycle, configuration and DI; no gameplay action execution |
 | bank/RuneLiteBankSource | Client-thread identity validation, mounted normal bank/PIN checks, full InventoryID.BANK copy; no personal-container reads |
 | bank/BankItems | Exact-ID aggregation, empty slots/placeholders/fillers excluded, null/partial rejected |
 | bank/BankObserver | Complete bank capture at the next GameTick after invalidation; cached until bank/interface events; unavailable vs empty |
 | bank/BankEngine | Pure checked signed bank deltas, bounded corrections, explicit migration anchor, reset |
 | bank/BankRun, BankAudit | Immutable physical anchor, signed progress, original bank, run metadata, recent audit and retained host-return summary |
 | bank/BankController | Client/worker coordination, CAS-bound intents, automatic updates, lifecycle/identity rejection of stale callbacks |
-| persistence/BankRunCodec, FinancialCodec, GeCodec, BuybackCodec | Explicit format-8 quantity/financial/GE/buyback JSON, verified old-schema decoding/envelope hashes; no reflective domain deserialization |
+| persistence/BankRunCodec, FinancialCodec, GeCodec, BuybackCodec, PouchCodec | Explicit format-9 quantity/financial/GE/buyback/pouch JSON, verified old-schema decoding/envelope hashes; no reflective domain deserialization |
 | persistence/BankRepository, BankStorageFiles | Background-only Filepath locking, verified archives, immutable journal/checkpoint, recoverable publication |
 | bank/BankSidebar, BankPanel, BankCorrections | Reusable EDT tiles, BankIcons, BankDialogs, BankCorrectionDialog, lazy BankHistoryDialog, bottom typed-reset danger area |
 | overlay/* | Accepted M3 draw-only item geometry/tint/clip, now reading signed bank progress |
@@ -91,6 +107,8 @@ Swing's legacy HTML renderer expands CSS px widths; logical pt widths are verifi
 
 ## M5 final-withdrawal and presentation corrections
 
+M9.2 adds one scoped presentation exception to the original draw-only counter policy: before native rendering, the public Widget item-quantity display mode is temporarily NEVER for eligible bank counters. Actual item IDs, physical quantities, geometry and input remain untouched. Original modes restore on inactive/setup/closed/reset/disabled states and client-thread shutdown cleanup. The existing after-layer overlay redraws only the suppressed physical text in #A0A0A0 after tinting; virtual labels are unchanged. Cached labels update only with physical quantities, and no generated sprites or background masks are drawn. Dragged counters retain native rendering. See [M9.2](docs/MILESTONE_9_2.md).
+
 VirtualBankOverlay caches both placeholder status and the original balance ID for each visible item definition. RuneLite 1.13.3 ItemComposition.getPlaceholderId is bidirectional: use it only when getPlaceholderTemplateId != -1. The native placeholder widget/sprite/bounds remain untouched; only the balance lookup resolves to the original ID. A zero-quantity widget without a variant keeps its own ID. Positive progress cannot appear on a placeholder while a previous frame awaits acknowledgment. Labels come from the same preformatted committed projection, including negative balances.
 
 BankItems already excludes placeholders from physical P; BankEngine's old/new ID union already applies the final P=0 delta. Neither component nor persistence changes in this fix. Without a native placeholder, no slot exists to paint; saved negative B remains available to valuation and Manual Bank Corrections. The cached-definition fix adds no disk access, price requests, per-frame aggregation or new slots. Accepted clipping/drag geometry is unchanged.
@@ -132,3 +150,15 @@ Statistic cards use a 98px natural-content minimum instead of 112px, 4px vertica
 `PouchEngine` isolates finite reservations, release and retirement from physical observations and rendering. BankEngine applies its scoped legacy-transfer delta before GE conversion matching and financial high-water recognition. Repository independently recomputes the reservation/state/evidence at the atomic boundary. Existing worker FIFO/CAS and lifecycle guards apply; no per-frame pouch work, price requests, new threads or filesystem calls on client/EDT.
 
 Format 9 requires explicit PouchCodec state inside BuybackState and optional typed pouch action/transfer evidence in BankAudit. Format-8 load verifies the complete prior chain, makes forced exact-byte archives with a verified manifest, and appends POUCH_BASELINE. Existing payments, copy floors, entitlement tiers, identity/start/initial/P/B/financial/GE history remain unchanged. Old paid pouches become UNREVIEWED without invented rune quantities, GP charges or revocation. Failed writes keep trusted authority; stale reviews reject. Earlier verified migrations remain supported. See [post-M7 report](docs/POST_MILESTONE_7.md).
+
+### M9 corrections
+
+PeakProgressRepository maintains one forced, checksummed run-scoped maximum on the existing storage worker under run.lock. It checks the acknowledged economic revision, refuses incomplete/stale price sets and writes only a greater maximum. Exact previous bytes and interrupted candidates survive. Export/import includes these checkpoints and rejects previews made stale by a price-only new peak. No economic schema migration or old gain rewrite is performed.
+
+LootingBagReader reads container 516 only on the user's purchase request. A current bank-session packet, one qualifying banked bag, and a visible matching native Bankside contents view are required. No inventory/equipment ownership or continuous contents loop is introduced. One buyback journal/checkpoint commits payment, shared role and all contents offsets together; receipt parsing supports an additive bag evidence object in format 9. Catalog cards delegate eligibility to BuybackEngine and retain cached item sprites.
+
+### M9.1 — Native tabs and completed GE history
+
+VirtualBankMode uses RuneLite 1.13.3's `bankBuildTab` and `bankSearchFilter` callbacks after core Bank Tags closes its selected tag on a native-tab click. Cached eligible IDs intersect authoritative bank-slot ranges from BANK_TAB_1–9 and BANK_CURRENTTAB. Item callbacks only deny nonmembers; native tab changes never reopen the dynamic tag. The existing dynamic tag remains the initial activation path. Search/user-tag selections explicitly exit to Full Bank; native search is incompatible with the required single-tab build mode. Physical accounting still reads the complete API container.
+
+GeHistory derives finalized rows from durable cumulative observations and generation identities. It never mutates GeState or writes financial records. Query-only cursors retain generation deduplication and one-row lookahead; reads yield the storage FIFO after 64 segments, and the controller delivers only complete finalized pages. No schema change. See [Milestone 9.1](docs/MILESTONE_9_1.md).

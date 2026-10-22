@@ -16,6 +16,7 @@ public final class BankSidebar
 	private BankPanel panel;
 	private BankActions actions;
 	private BankIcons icons;
+	private com.fromscratch.playtime.PlaytimeTracker.View playtime;
 	private final java.util.concurrent.atomic.AtomicReference<BankView> latest = new java.util.concurrent.atomic.AtomicReference<>();
 	private final java.util.concurrent.atomic.AtomicBoolean scheduled = new java.util.concurrent.atomic.AtomicBoolean();
 	private BankView view = new BankView(null, null, java.util.Collections.emptyMap(), false, false, "Log in to load local progress.");
@@ -25,7 +26,7 @@ public final class BankSidebar
 	public void show()
 	{
 		if (navigation != null) { return; }
-		panel = icons == null ? new BankPanel() : new BankPanel(icons); panel.render(view, actions);
+		panel = icons == null ? new BankPanel() : new BankPanel(icons); panel.render(view, actions);panel.playtime(playtime);
 		navigation = NavigationButton.builder().tooltip("From Scratch").icon(ImageUtil.loadImageResource(FromScratchPlugin.class, "icon.png")).priority(6).panel(panel).build(); add.accept(navigation);
 	}
 	public void update(BankView view)
@@ -41,5 +42,7 @@ public final class BankSidebar
 			scheduled.set(false); if (latest.get() != null) { schedule(); }
 		});
 	}
-	public void hide() { latest.set(null); if (navigation != null) { remove.accept(navigation); navigation = null; panel = null; } view = new BankView(null, null, java.util.Collections.emptyMap(), false, false, "Log in to load local progress."); }
+	public void playtime(com.fromscratch.playtime.PlaytimeTracker.View time)
+	{ SwingUtilities.invokeLater(()->{playtime=time;if(panel!=null) { panel.playtime(time); }}); }
+	public void hide() { latest.set(null);playtime=null; if (navigation != null) { remove.accept(navigation); navigation = null; panel = null; } view = new BankView(null, null, java.util.Collections.emptyMap(), false, false, "Log in to load local progress."); }
 }

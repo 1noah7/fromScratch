@@ -24,7 +24,8 @@ public class BuybackPurchase
 		this.gp=gp;this.at=Objects.requireNonNull(at);
 		if(!bankFloors.keySet().equals(BuybackCatalog.entry(catalogId).getRoles().keySet())||bankFloors.values().stream().anyMatch(n->n==null||n>0||n==Long.MIN_VALUE)){throw new IllegalArgumentException("Invalid paid-copy bank anchor");}
 		this.bankFloors=Collections.unmodifiableMap(new TreeMap<>(bankFloors));
-		this.pouchItemId=pouchItemId;this.legacyRunes=com.fromscratch.pouch.PouchState.quantities(legacyRunes);
-		if(pouchItemId!=-1&&(!catalogId.equals("rune_pouch_family")||!BuybackCatalog.variants("rune_pouch_family").containsKey(pouchItemId))||pouchItemId==-1&&!this.legacyRunes.isEmpty()){throw new IllegalArgumentException("Invalid pouch purchase evidence");}
+		// Retain the historical accessor/receipt representation for pouch compatibility.
+		this.pouchItemId=pouchItemId;this.legacyRunes=catalogId.equals("looting_bag_family")?BagObservation.quantities(legacyRunes):com.fromscratch.pouch.PouchState.quantities(legacyRunes);
+		if(pouchItemId!=-1&&(!(catalogId.equals("rune_pouch_family")||catalogId.equals("looting_bag_family"))||!BuybackCatalog.variants(catalogId).containsKey(pouchItemId))||pouchItemId==-1&&!this.legacyRunes.isEmpty()){throw new IllegalArgumentException("Invalid storage purchase evidence");}
 	}
 }

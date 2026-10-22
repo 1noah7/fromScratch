@@ -27,6 +27,9 @@ public class WealthPerformanceTest
 		for(int i=0;i<96;i++){physical.put(100000,(long)i+2);next=BankEngine.observe(run,new ContainerSnapshot(physical,1200),session,SnapshotFixtures.TIME.plusSeconds(i+1),null,prices.snapshot(physical.keySet()));repository.save(root,run,next);run=next;}
 		double writeMs=(System.nanoTime()-begin)/1e6,writeCpu=(ManagementFactory.getThreadMXBean().getCurrentThreadCpuTime()-cpu)/1e6;BankRun saved=repository.load(root,SnapshotFixtures.CHARACTER_A).get();assertEquals(1296,saved.getFinancial().getEventCount());assertEquals(129600,saved.getFinancial().getGainedGp());
 		System.out.printf(Locale.ROOT,"WEALTH_1200_ITEMS value_100_wall_ms=%.3f value_cpu_ms=%.3f financial_commits=96 worker_wall_ms=%.3f worker_cpu_ms=%.3f io_scheduling_ms=%.3f durable_events=%d%n",valueMs,valueCpu,writeMs,writeCpu,Math.max(0,writeMs-writeCpu),saved.getFinancial().getEventCount());
+		begin=System.nanoTime();cpu=ManagementFactory.getThreadMXBean().getCurrentThreadCpuTime();
+		for(int i=0;i<100;i++){Long candidate=com.fromscratch.persistence.PeakProgressRepository.candidate(saved,prices.snapshot(physical.keySet()));assertEquals(Long.valueOf(129600),repository.peak(root,saved,candidate));}
+		System.out.printf(Locale.ROOT,"PEAK_1200_ITEMS history_operations=98 durable_events=1296 checkpoints=100 counter_replacements=1 worker_wall_ms=%.3f worker_cpu_ms=%.3f%n",(System.nanoTime()-begin)/1e6,(ManagementFactory.getThreadMXBean().getCurrentThreadCpuTime()-cpu)/1e6);
 	}
 	@Test public void actualPriceSchedulerUsesItsOwnWorkerAndStops()throws Exception
 	{

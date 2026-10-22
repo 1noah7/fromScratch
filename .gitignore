@@ -27,6 +27,10 @@ bank-checkpoint-*.json
 bank-pending-*.json
 bank-migration-*/
 *.jfr
+*.fsp
+progress-import-*/
+restored-*/
+before-import-*/
 .env
 .env.*
 !.env.example

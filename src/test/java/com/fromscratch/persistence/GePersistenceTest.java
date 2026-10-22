@@ -56,10 +56,19 @@ public class GePersistenceTest
 	@Test public void journalHistoryIsPagedAndDoesNotRewriteOlderSegments()throws Exception
 	{
 		BankRun run=saveOffer(active(),0,0);String first=BankStorageFiles.readText(directory.joinSegment("bank-ledger-"+run.getRevision()+".json"));UUID firstId=run.getRevision();
+		UUID session=UUID.randomUUID();
+		// The same generation's full-fill and later terminal evidence span two public pages.
+		run=repository.save(root,run,BankEngine.exchange(run,new GeObservation(UUID.randomUUID(),session,Instant.now(),7,SHIELD,"Wooden shield",GrandExchangeOfferState.SELLING,10,10,100,1000,false)));
 		for(int n=1;n<=40;n++)
 		{
-			GeObservation o=new GeObservation(UUID.randomUUID(),UUID.randomUUID(),Instant.now(),0,SHIELD,"Wooden shield",GrandExchangeOfferState.SELLING,100,n,100,n*100L,false);run=repository.save(root,run,BankEngine.exchange(run,o));
+			if(n>1)
+			{
+				run=repository.save(root,run,BankEngine.exchange(run,new GeObservation(UUID.randomUUID(),session,Instant.now(),0,SHIELD,"Wooden shield",GrandExchangeOfferState.EMPTY,0,0,0,0,false)));
+				run=repository.save(root,run,BankEngine.exchange(run,new GeObservation(UUID.randomUUID(),session,Instant.now(),0,SHIELD,"Wooden shield",GrandExchangeOfferState.SELLING,10,0,100,0,false)));
+			}
+			GeObservation o=new GeObservation(UUID.randomUUID(),session,Instant.now(),0,SHIELD,"Wooden shield",GrandExchangeOfferState.SOLD,10,10,100,1000+n,false);run=repository.save(root,run,BankEngine.exchange(run,o));
 		}
-		GeHistory.Page page=repository.exchangeHistory(root,run,null,false);assertEquals(25,page.getRows().size());assertNotNull(page.getNext());GeHistory.Page second=repository.exchangeHistory(root,run,page.getNext(),false);assertFalse(second.getRows().isEmpty());Set<UUID> ids=new HashSet<>();page.getRows().forEach(r->assertTrue(ids.add(r.getId())));second.getRows().forEach(r->assertTrue(ids.add(r.getId())));assertEquals(first,BankStorageFiles.readText(directory.joinSegment("bank-ledger-"+firstId+".json")));
+		run=repository.save(root,run,BankEngine.exchange(run,new GeObservation(UUID.randomUUID(),session,Instant.now(),7,SHIELD,"Wooden shield",GrandExchangeOfferState.SOLD,10,10,100,1000,false)));
+		BankRun before=load();GeHistory.Page page=repository.exchangeHistory(root,run,null,false);assertTrue("Raw segments must yield before a finalized page is ready",page.isScanning());while(page.isScanning()){page=repository.exchangeHistory(root,run,page.getNext(),false);}assertEquals(25,page.getRows().size());assertNotNull(page.getNext());GeHistory.Page second=repository.exchangeHistory(root,run,page.getNext(),false);while(second.isScanning()){second=repository.exchangeHistory(root,run,second.getNext(),false);}assertEquals(16,second.getRows().size());assertNull(second.getNext());Set<UUID> ids=new HashSet<>();page.getRows().forEach(r->assertTrue(ids.add(r.getId())));second.getRows().forEach(r->assertTrue(ids.add(r.getId())));assertEquals(41,ids.size());assertEquals(before,load());assertEquals(first,BankStorageFiles.readText(directory.joinSegment("bank-ledger-"+firstId+".json")));
 	}
 }

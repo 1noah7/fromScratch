@@ -12,11 +12,15 @@ final class BuybackCodec
 	private BuybackCodec(){}
 	static JsonObject purchase(BuybackPurchase p)
 	{
-		JsonObject j=new JsonObject(),floors=new JsonObject();p.getBankFloors().forEach(floors::addProperty);j.add("floors",floors);j.addProperty("id",p.getId().toString());j.addProperty("catalog",p.getCatalogId());j.addProperty("gp",p.getGp());j.addProperty("at",p.getAt().toString());if(p.getPouchItemId()>0){JsonObject pouch=new JsonObject();pouch.addProperty("item",p.getPouchItemId());pouch.add("runes",map(p.getLegacyRunes()));j.add("pouch",pouch);}return j;
+		JsonObject j=new JsonObject(),floors=new JsonObject();p.getBankFloors().forEach(floors::addProperty);j.add("floors",floors);j.addProperty("id",p.getId().toString());j.addProperty("catalog",p.getCatalogId());j.addProperty("gp",p.getGp());j.addProperty("at",p.getAt().toString());if(p.getPouchItemId()>0){JsonObject pouch=new JsonObject();pouch.addProperty("item",p.getPouchItemId());pouch.add("runes",map(p.getLegacyRunes()));j.add(p.getCatalogId().equals("looting_bag_family")?"bag":"pouch",pouch);}return j;
 	}
 	static BuybackPurchase purchase(JsonObject j)
 	{
-		if(j.has("pouch")){keys(j,"id","catalog","gp","at","floors","pouch");keys(j.getAsJsonObject("pouch"),"item","runes");}else{keys(j,"id","catalog","gp","at","floors");}Map<String,Long> floors=new TreeMap<>();j.getAsJsonObject("floors").entrySet().forEach(e->floors.put(e.getKey(),number(e.getValue())));return new BuybackPurchase(UUID.fromString(str(j,"id")),str(j,"catalog"),number(j.get("gp")),Instant.parse(str(j,"at")),floors,j.has("pouch")?Math.toIntExact(number(j.getAsJsonObject("pouch").get("item"))):-1,j.has("pouch")?readMap(j.getAsJsonObject("pouch").getAsJsonObject("runes")):Collections.emptyMap());
+		String content=j.has("bag")?"bag":"pouch";
+		if(j.has(content)){keys(j,"id","catalog","gp","at","floors",content);keys(j.getAsJsonObject(content),"item","runes");}else{keys(j,"id","catalog","gp","at","floors");}
+		if(j.has("bag")&&!str(j,"catalog").equals("looting_bag_family")||j.has("pouch")&&str(j,"catalog").equals("looting_bag_family")){throw new IllegalArgumentException("Wrong storage receipt category");}
+		Map<String,Long> floors=new TreeMap<>();j.getAsJsonObject("floors").entrySet().forEach(e->floors.put(e.getKey(),number(e.getValue())));
+		return new BuybackPurchase(UUID.fromString(str(j,"id")),str(j,"catalog"),number(j.get("gp")),Instant.parse(str(j,"at")),floors,j.has(content)?Math.toIntExact(number(j.getAsJsonObject(content).get("item"))):-1,j.has(content)?readMap(j.getAsJsonObject(content).getAsJsonObject("runes")):Collections.emptyMap());
 	}
 	static JsonObject state(BuybackState s)
 	{

@@ -1,5 +1,40 @@
 # Changelog
 
+## Milestone 9.2 — Subdued physical bank counters (manual acceptance pending)
+
+- Draw physical bank quantities in #A0A0A0 after locked-item shading. Use the public quantity-display mode to suppress the original counter before native drawing and restore it when inactive; no sprite masks, quantity changes or new setting. Keep virtual counters and their configurable color unchanged.
+- Preserve native physical stack thresholds, clipping, Full Bank/Virtual Bank behavior and native counters during dragging. Incremental compilation and 61 focused tests passed, including seven new visual cases; live font/scaling acceptance remains required. See `docs/MILESTONE_9_2.md`.
+
+## Milestone 9.1 — Native tabs and finalized GE history (manual acceptance pending)
+
+- Intersect native item tabs with cached positive virtual eligibility through RuneLite's bank-build/filter callbacks; preserve native banking and lifecycle guards. Native search and other user tags explicitly return to Full Bank.
+- Derive one completed/partial-cancelled GE row per durable offer generation, using cumulative execution quantities/GP. Hide active, zero-fill and lifecycle rows without rewriting audit evidence or replaying accounting. Paginate finalized trades with bounded background reads.
+- Incremental compilation and 63 distinct focused tests passed; full regression and live-client acceptance remain separate. See `docs/MILESTONE_9_1.md`.
+
+## Milestone 9 — Hardening (manual acceptance pending)
+
+- Hide zero-value GE slot-clears without deleting lifecycle evidence; center numeric columns and group average GP amounts.
+- Replace the gain tile with durable Peak Progress Value; preserve old gains. New-run spending starts at 0 GP and estimated fees use a leading tilde.
+- Fix fresh banked-bag observation without an inventory-side panel; retain explicit native inspection/empty evidence when needed and show a clear empty confirmation. Add the 10K shared open/closed Looting Bag legacy buyback, verified native contents offsets (including coins), earned-copy status and categorized responsive catalog cards. Unknown contents block purchase. Include peak checkpoints in local export/import.
+
+- Restore native Virtual Bank, default on/first setting with saved off retained. Cache immutable membership/placeholder aliases; defer and guard native operations, respect Full Bank and user tags, and latch failures instead of retry loops. Live freeze acceptance remains pending.
+- Show exact grouped signed quantities in Examine; keep compact overlays and accepted chat ordering/colors/statuses. Hide the remaining public developer-diagnostics setting.
+- Add local checksummed Export/Import Progress, explicit verified previous-save recovery, stale-preview rejection, retained pre-import files and a single atomic restore selector for bank/history/playtime. Keep schemas 9/1; fail safely when atomic replacement is unsupported.
+- Preserve both CI platforms/Java 11/cache; avoid redundant successful exact-commit tag builds and retain detailed failure artifacts. Ubuntu root cause remains blocked on authenticated logs, not attributed to migration notices or permissions.
+
+## Milestone 8 — Native information and playtime (manual acceptance pending)
+
+- Fix disappearing Examine prefixes: native game chat treats the first pipe as a name/body delimiter. Use semicolons, balanced numeric highlights, compact GE/HA labels and whole optional-field limits; retain required name/quantity/status/payment. Add final-payload/native-split regression checks for all five reported items. No economic or persistence changes.
+- Examine polish: queue after RuneLite's optional price line; use the item-price style with signed virtual bank counts, GE/HA totals, live quantity-color numerical highlights and normal-color escaped words/names. Catalog receipts distinguish locked prices from paid/shared/set/upgrade entitlements, without new accounting.
+- Replace the earlier sidebar Virtual Bank button with default-off **Enable Virtual Bank View**. Supported native Bank Tags filtering opens automatically, respects active user tags and unregisters on close/disable. No fake bank or user layout edits.
+- Correction validation: 15 directly affected tests passed; incremental production/test compile passed. Time Played, item history, persistence and financial logic are unchanged in this correction.
+
+- Append a single bank-balance/GE/HA line after a correlated native item Examine response, without a new menu option or altering core Examine output. Skip uncertain/expired contexts.
+- Add an optional native Bank Tags Virtual Bank filter for committed positive effective balances, with normal bank actions and preserved mixed physical stacks. No fake bank or withdrawal restrictions.
+- Add paged item-specific evidence from Bank History, including manual/automatic adjustments, pouch offsets, buybacks and observed GE trades without claiming verified bank provenance.
+- Replace wall-clock Active Run Duration with Time Played: logged-in host GameTicks, truncated minutes/hours/days, independent checked/Filepath checkpoints and conservative concurrent-client CAS. Existing run start, quantities, entitlements and financial records are unchanged.
+- Twenty focused feature tests plus directly affected bank/sidebar/persistence regressions; full release regression and live acceptance remain separate.
+
 ## Rune Pouch simplification and sidebar rename (manual acceptance pending)
 
 - Replace manual pouch preparation UI with fresh opened-pouch/display/varbit verification and one atomic 1M family purchase plus signed legacy-rune deficits. Ordinary bank deposits restore balances without repeating gains; failed/stale/duplicate purchases cannot partially charge or unlock.

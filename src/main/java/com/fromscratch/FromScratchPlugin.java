@@ -16,6 +16,8 @@ import net.runelite.api.events.GrandExchangeOfferChanged;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.WidgetClosed;
 import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.callback.ClientThread;
@@ -58,6 +60,11 @@ public class FromScratchPlugin extends Plugin
 	@Inject private BankOverlayState bankOverlayState;
 	@Inject private com.fromscratch.wealth.PriceService prices;
 	@Inject private com.fromscratch.ge.RuneLiteGeSource exchangeObserver;
+	@Inject private com.fromscratch.examine.NativeExamine examine;
+	@Inject private com.fromscratch.bank.VirtualBankMode virtualBank;
+	@Inject private com.fromscratch.playtime.PlaytimeTracker playtime;
+	@Inject private net.runelite.api.Client client;
+	@Inject private ConfigManager configManager;
 
 	@Override
 	protected void startUp()
@@ -68,8 +75,22 @@ public class FromScratchPlugin extends Plugin
 		prices.start();
 		// Queue UI work without blocking the client thread. Lifecycle operations
 		// share the EDT queue, so rapid enable/disable sequences retain their order.
-		clientThread.invokeLater(() -> {observer.resetSession();exchangeObserver.resetSession();});
+		clientThread.invokeLater(() ->
+		{
+			observer.resetSession();exchangeObserver.resetSession();
+			virtualBank.setEnabled(config.virtualBankView());
+			virtualBank.fullBankSelected(()->SwingUtilities.invokeLater(()->configManager.setConfiguration(FromScratchConfig.GROUP,"virtualBankView",false)));
+			setupController.informationActions(this::updateVirtualBank);
+			setupController.initialBankView(virtualBank::fullBankForSetup);
+		});
 		setupController.start(this::getPluginDirectory);
+		clientThread.invokeLater(()->
+		{
+			examine.start(setupController::currentRun);
+			playtime.start(this::getPluginDirectory);
+			setupController.restoreLifecycle(playtime::beforeRestore,playtime::afterRestore);
+			setupController.exportLifecycle(playtime::checkpoint);
+		});
 		SwingUtilities.invokeLater(() ->
 		{
 			sidebar.bind(setupController);
@@ -84,6 +105,7 @@ public class FromScratchPlugin extends Plugin
 		bankOverlay.stop();
 		setupController.stop();
 		prices.stop();
+		clientThread.invokeLater(()->{examine.stop();virtualBank.stop();playtime.stop();});
 		clientThread.invokeLater(() -> {observer.resetSession();exchangeObserver.resetSession();});
 		SwingUtilities.invokeLater(sidebar::hide);
 		log.debug("From Scratch stopped");
@@ -95,12 +117,17 @@ public class FromScratchPlugin extends Plugin
 		flushExchangeObservations();
 		observer.gameTick();
 		setupController.tick();
+		playtime.tick(setupController.currentRun(),client.getGameState()==GameState.LOGGED_IN,client.getTickCount());
 	}
 
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		GameState state = event.getGameState();
+		if(state!=GameState.LOGGED_IN&&state!=GameState.LOADING){virtualBank.update(null,false);}
+		if(state!=GameState.LOGGED_IN){observer.bagUnavailable();}
+		examine.clear();
+		if(state!=GameState.LOGGED_IN) { playtime.interrupted(); }
 		if(state==GameState.LOGGING_IN||state==GameState.HOPPING||state==GameState.CONNECTION_LOST||state==GameState.LOGIN_SCREEN){exchangeObserver.resetSession();}
 		// Region loading and a normal world hop do not establish a new host login.
 		// The renderer already hides itself outside LOGGED_IN. Clearing a valid
@@ -112,6 +139,38 @@ public class FromScratchPlugin extends Plugin
 			setupController.tick();
 		}
 		else if (state == GameState.LOGGED_IN) { setupController.tick(); }
+	}
+	@Subscribe public void onMenuOptionClicked(MenuOptionClicked event)
+	{
+		examine.clicked(event);observer.bagClicked(event);
+		// invokeLater defers reconciliation until core Bank Tags has handled this same click.
+		if(event.getMenuOption().startsWith("View tab")||event.getMenuOption().equals("View all items")){virtualBank.nativeTabSelected();}else{virtualBank.viewChanged();}
+	}
+	@Subscribe public void onBeforeRender(net.runelite.api.events.BeforeRender event) { bankOverlay.beforeRender(); }
+	@Subscribe(priority=-1) public void onScriptCallbackEvent(net.runelite.api.events.ScriptCallbackEvent event)
+	{String name=event.getEventName();if("bankBuildTab".equals(name)||"bankSearchFilter".equals(name)){virtualBank.script(name,client.getIntStack(),client.getIntStackSize());}}
+	@Subscribe(priority=1) public void onScriptPreFired(net.runelite.api.events.ScriptPreFired event)
+	{if(event.getScriptId()==net.runelite.api.ScriptID.BANKMAIN_SEARCH_TOGGLE){virtualBank.searchSelected();}}
+	@Subscribe(priority=-1) public void onScriptPostFired(net.runelite.api.events.ScriptPostFired event)
+	{
+		if(event.getScriptId()==net.runelite.api.ScriptID.BANKMAIN_FINISHBUILDING){virtualBank.bankBuilt();virtualBank.title(config.virtualQuantityColor());}
+	}
+	private void updateVirtualBank(com.fromscratch.bank.BankRun run)
+	{
+		try
+		{
+			boolean open=client.getGameState()==GameState.LOGGED_IN&&observer.bankOpen();
+			if(run==null||!open){virtualBank.update(null,open);return;}
+			virtualBank.update(run,true,observer.observe());
+		}
+		catch(RuntimeException ex){virtualBank.failed(ex);}
+	}
+	// Core Examine runs at priority 0 and queues its price line first; queue our line afterward.
+	@Subscribe(priority=com.fromscratch.examine.NativeExamine.RESPONSE_PRIORITY) public void onChatMessage(ChatMessage event) { examine.response(event);observer.bagMessage(event); }
+	@Subscribe public void onPluginChanged(net.runelite.client.events.PluginChanged event)
+	{
+		if(event.getPlugin() instanceof net.runelite.client.plugins.banktags.BankTagsPlugin)
+		{ clientThread.invokeLater(()->{virtualBank.availabilityChanged();updateVirtualBank(setupController.currentRun());}); }
 	}
 
 	@Subscribe public void onGrandExchangeOfferChanged(GrandExchangeOfferChanged event)
@@ -139,8 +198,10 @@ public class FromScratchPlugin extends Plugin
 	public void onItemContainerChanged(ItemContainerChanged event)
 	{
 		int id = event.getContainerId();
+		if(id==InventoryID.LOOTING_BAG){observer.bagChanged();}
 		if (id == InventoryID.BANK)
 		{
+			virtualBank.itemsChanged();
 			observer.changed();
 		}
 	}
@@ -155,11 +216,12 @@ public class FromScratchPlugin extends Plugin
 		}
 	}
 
-	@Subscribe
+	@Subscribe(priority=1)
 	public void onWidgetClosed(WidgetClosed event)
 	{
 		if (event.getGroupId() == InterfaceID.BANKMAIN)
 		{
+			if(event.isUnload()) { virtualBank.bankClosed(); observer.bagUnavailable(); }
 			observer.changed();
 		}
 		else if (event.getGroupId() == InterfaceID.BANKPIN_KEYPAD || event.getGroupId() == InterfaceID.BANKPIN_SETTINGS)
@@ -175,6 +237,7 @@ public class FromScratchPlugin extends Plugin
 		{
 			bankOverlayState.configure(config);
 			observer.configure(config.developmentItemTrace());
+			clientThread.invokeLater(()->{virtualBank.setEnabled(config.virtualBankView());updateVirtualBank(setupController.currentRun());virtualBank.title(config.virtualQuantityColor());});
 		}
 	}
 

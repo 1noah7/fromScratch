@@ -18,11 +18,31 @@ public final class BankItemPainter
 {
 	// A configurable dark neutral tint (default #333333 / 50%) mutes the whole item uniformly. Matching
 	// the dark bank background more closely avoids a bright gray tile behind the sprite;
-	// approximately 50% of original contrast remains at the default, including quantity glyphs.
+	// approximately 50% of original sprite contrast remains. Physical counters are drawn after tinting.
 	// Do not redraw a generated item sprite: it can cover those glyphs or mismatch the
 	// client's shadow/drag appearance. This fallback needs neither sprite copies nor a cache.
 	private static final Font FONT = FontManager.getRunescapeSmallFont();
+	public static final Color PHYSICAL_COLOR = new Color(0xA0A0A0);
 	private BankItemPainter() { }
+
+	/** Native item-icon thresholds differ from From Scratch's compact virtual labels. */
+	static String physicalLabel(int quantity)
+	{
+		if (quantity < 0) { throw new IllegalArgumentException("Invalid physical quantity"); }
+		return quantity < 100_000 ? Integer.toString(quantity) : quantity < 10_000_000 ? quantity / 1_000 + "K" : quantity / 1_000_000 + "M";
+	}
+	/** Draw after the tint, only when the native counter was suppressed before rendering. No mask. */
+	static void paintPhysical(Graphics2D graphics, Rectangle bounds, String label)
+	{
+		Shape clip = graphics.getClip(); Font font = graphics.getFont(); Paint paint = graphics.getPaint();
+		try
+		{
+			graphics.clip(bounds); graphics.setFont(FONT);
+			graphics.setColor(Color.BLACK); graphics.drawString(label, bounds.x + 1, bounds.y + 10);
+			graphics.setColor(PHYSICAL_COLOR); graphics.drawString(label, bounds.x, bounds.y + 9);
+		}
+		finally { graphics.setClip(clip); graphics.setFont(font); graphics.setPaint(paint); }
+	}
 
 	public static boolean eligible(int component, int itemId, int physicalQuantity)
 	{

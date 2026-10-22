@@ -23,6 +23,7 @@ public final class BuybackCatalog
   role("salve_ei",1,ItemID.NZONE_SALVE_AMULET_E,ItemID.SW_SALVE_AMULET_E);
   role("ancient_sceptre",1,ItemID.ANCIENT_SCEPTRE,ItemID.ANCIENT_SCEPTRE_TROUVER);
   role("rune_pouch_family",1,ItemID.BH_RUNE_POUCH,ItemID.BH_RUNE_POUCH_TROUVER,ItemID.DIVINE_RUNE_POUCH,ItemID.DIVINE_RUNE_POUCH_TROUVER);
+	role("looting_bag_family",1,ItemID.LOOTING_BAG,ItemID.LOOTING_BAG_OPEN);
   role("void_melee",1,ItemID.GAME_PEST_MELEE_HELM,ItemID.GAME_PEST_MELEE_HELM_TROUVER,ItemID.LEAGUE_3_VOID_MELEE_HELM,ItemID.LEAGUE_3_VOID_MELEE_HELM_TROUVER);
   role("void_ranger",1,ItemID.GAME_PEST_ARCHER_HELM,ItemID.GAME_PEST_ARCHER_HELM_TROUVER,ItemID.LEAGUE_3_VOID_RANGE_HELM,ItemID.LEAGUE_3_VOID_RANGE_HELM_TROUVER);
   role("void_mage",1,ItemID.GAME_PEST_MAGE_HELM,ItemID.GAME_PEST_MAGE_HELM_TROUVER,ItemID.LEAGUE_3_VOID_MAGE_HELM,ItemID.LEAGUE_3_VOID_MAGE_HELM_TROUVER);
@@ -69,7 +70,8 @@ public final class BuybackCatalog
   single("torso","Fighter Torso",2000000,"torso");
   single("salve_ei","Salve Amulet (ei)",500000,"salve_ei");
   single("ancient_sceptre","Ancient Sceptre",500000,"ancient_sceptre");
-  single("rune_pouch_family","Rune Pouch / Divine Rune Pouch",1000000,"rune_pouch_family");
+	item("rune_pouch_family","Rune Pouch / Divine Rune Pouch","Utility & Storage",1000000,1,"rune_pouch_family");
+	item("looting_bag_family","Looting Bag","Utility & Storage",10000,1,"looting_bag_family");
   item("void_melee","Void Melee Helm","Void Knight",300000,1,"void_melee");
   item("void_ranger","Void Ranger Helm","Void Knight",300000,1,"void_ranger");
   item("void_mage","Void Mage Helm","Void Knight",300000,1,"void_mage");

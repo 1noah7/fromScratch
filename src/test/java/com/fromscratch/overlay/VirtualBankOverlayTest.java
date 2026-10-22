@@ -14,6 +14,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import net.runelite.api.gameval.ItemID;
+import net.runelite.client.ui.FontManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -189,6 +190,68 @@ public class VirtualBankOverlayTest
 		assertEquals(2, view.definitionReads);
 	}
 
+	@Test public void activeRunDrawsOneGrayPhysicalCountAndRetainsTheVirtualCount()
+	{
+		view.items.add(new Item(ItemID.SHARK,new Rectangle(30,50,36,32),110));physicalFrame();
+		assertTrue(pixels(BankItemPainter.PHYSICAL_COLOR,new Rectangle(30,50,36,11))>0);
+		assertTrue(pixels(BankOverlayState.DEFAULT_COLOR,new Rectangle(30,66,36,16))>0);
+		assertEquals(0,pixels(Color.YELLOW,view.viewport));assertEquals("110",view.lastPhysical);
+	}
+	@Test public void beforeStartingLeavesTheNativeCounterUntouched()
+	{
+		view.items.add(new Item(ItemID.SHARK,new Rectangle(30,50,36,32),110));state.clear();physicalFrame();
+		assertFalse(view.physicalStyle);assertTrue(pixels(Color.YELLOW,view.viewport)>0);assertEquals(0,pixels(BankItemPainter.PHYSICAL_COLOR,view.viewport));
+	}
+	@Test public void physicalGrayIsDrawnAfterLockedTintWithoutAnExtraBackgroundMask()
+	{
+		view.items.add(new Item(ItemID.COINS,new Rectangle(30,50,36,32),110));physicalFrame();
+		assertTrue(pixels(new Color(0xA0A0A0),new Rectangle(30,50,36,11))>0);assertTrue(purplePixels()>0);
+		assertEquals(0,pixels(Color.YELLOW,view.viewport));assertEquals(image.getRGB(59,52),image.getRGB(59,64));assertTinted(59,52);
+	}
+	@Test public void changingVirtualColorDoesNotChangePhysicalGrayOrCounterPosition()
+	{
+		view.items.add(new Item(ItemID.SHARK,new Rectangle(30,50,36,32),110));
+		state.configure(new FromScratchConfig(){public Color virtualQuantityColor(){return Color.CYAN;}});physicalFrame();
+		assertTrue(pixels(Color.CYAN,new Rectangle(30,66,36,16))>0);assertEquals(0,pixels(Color.CYAN,new Rectangle(30,50,36,11)));
+		assertTrue(pixels(BankItemPainter.PHYSICAL_COLOR,new Rectangle(30,50,36,11))>0);assertEquals(0,purplePixels());
+	}
+	@Test public void physicalLabelsKeepNativeThresholdsWithoutChangingVirtualFormatting()
+	{
+		int[] quantities={0,110,9999,10000,99999,100000,9999999,10000000,Integer.MAX_VALUE};
+		String[] labels={"0","110","9999","10000","99999","100K","9999K","10M","2147M"};
+		for(int i=0;i<quantities.length;i++){assertEquals(labels[i],BankItemPainter.physicalLabel(quantities[i]));}
+		assertEquals("10K",VirtualQuantityFormatter.format(10000));
+		view.items.add(new Item(ItemID.SHARK,new Rectangle(30,50,36,32),Integer.MAX_VALUE));physicalFrame();assertEquals("2147M",view.lastPhysical);
+		assertTrue(pixels(BankItemPainter.PHYSICAL_COLOR,new Rectangle(30,50,36,11))>0);assertTrue(purplePixels()>0);
+	}
+	@Test public void fullAndFilteredTabLayoutsUseCurrentBoundsAndKeepCountersClipped()
+	{
+		view.items.add(new Item(ItemID.SHARK,new Rectangle(30,50,36,32),110));locked(85);physicalFrame();
+		int full=pixels(BankItemPainter.PHYSICAL_COLOR,new Rectangle(30,50,36,11));
+		view.items.clear();view.items.add(new Item(ItemID.SHARK,new Rectangle(85,50,36,32),110));physicalFrame();
+		assertEquals(full,pixels(BankItemPainter.PHYSICAL_COLOR,new Rectangle(85,50,36,11)));assertUntouched(30,50);
+		view.items.clear();view.items.add(new Item(ItemID.SHARK,new Rectangle(85,35,36,32),110));physicalFrame();assertUntouched(85,39);
+	}
+	@Test public void resetShutdownAndDisabledOverlaysRestoreNativeCounterMode()
+	{
+		view.items.add(new Item(ItemID.SHARK,new Rectangle(30,50,36,32),110));physicalFrame();assertTrue(view.physicalStyle);
+		state.clear();physicalFrame();assertFalse(view.physicalStyle);assertTrue(pixels(Color.YELLOW,view.viewport)>0);
+		com.fromscratch.overlay.LegacyOverlayFixture.update(state,active());physicalFrame();assertTrue(view.physicalStyle);
+		state.disable();overlay.clearCache();assertFalse(view.physicalStyle);physicalFrame();assertTrue(pixels(Color.YELLOW,view.viewport)>0);
+		state.enable();com.fromscratch.overlay.LegacyOverlayFixture.update(state,active());
+		state.configure(new FromScratchConfig(){public boolean bankVirtualQuantities(){return false;}public boolean lockedBankItems(){return false;}});
+		physicalFrame();assertFalse(view.physicalStyle);assertTrue(pixels(Color.YELLOW,view.viewport)>0);
+	}
+	/** Simulate the native pass before our overlay; suppressed text must not leave a second color. */
+	private void physicalFrame()
+	{
+		clearFrame();overlay.preparePhysicalQuantities();Shape clip=graphics.getClip();graphics.clip(view.viewport);
+		if(!view.physicalStyle){graphics.setFont(FontManager.getRunescapeSmallFont());graphics.setColor(Color.YELLOW);for(Item item:view.items){graphics.drawString(BankItemPainter.physicalLabel(item.physical),item.bounds.x,item.bounds.y+9);}}
+		graphics.setClip(clip);overlay.render(graphics);
+	}
+	private int pixels(Color color,Rectangle area)
+	{int count=0;for(int y=area.y;y<area.y+area.height;y++){for(int x=area.x;x<area.x+area.width;x++){if(image.getRGB(x,y)==color.getRGB()){count++;}}}return count;}
+
 	private int purplePixels()
 	{
 		int count = 0;
@@ -206,15 +269,18 @@ public class VirtualBankOverlayTest
 		private boolean visible = true;
 		private int visits;
 		private int definitionReads;
+		private boolean physicalStyle;
+		private String lastPhysical;
 		private final List<Item> items = new ArrayList<>();
 		public String characterKey() { return SnapshotFixtures.CHARACTER_A; }
 		public boolean bankVisible() { return visible; }
 		public boolean placeholder(int itemId) { definitionReads++; return false; }
+		public void physicalQuantities(boolean enabled) { physicalStyle=enabled; }
 		public Rectangle bankViewport() { return viewport; }
 		public void forEachItem(Rectangle clip, VirtualBankOverlay.ItemConsumer consumer)
 		{
 			visits++;
-			for (Item item : items) { consumer.accept(item.id, 1, item.bounds); }
+			for (Item item : items) { lastPhysical=physicalStyle?BankItemPainter.physicalLabel(item.physical):null;consumer.accept(item.id,item.physical,item.bounds,lastPhysical); }
 		}
 		private void add(int id, Rectangle bounds) { items.add(new Item(id, bounds)); }
 	}
@@ -222,6 +288,8 @@ public class VirtualBankOverlayTest
 	{
 		private final int id;
 		private final Rectangle bounds;
-		private Item(int id, Rectangle bounds) { this.id = id; this.bounds = bounds; }
+		private final int physical;
+		private Item(int id, Rectangle bounds) { this(id,bounds,1); }
+		private Item(int id, Rectangle bounds,int physical) { this.id = id; this.bounds = bounds;this.physical=physical; }
 	}
 }

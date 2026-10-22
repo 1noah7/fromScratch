@@ -20,6 +20,8 @@ public final class BankFixtures
 		public boolean open = true;
 		public boolean pin;
 		public boolean buybackDefinitions=true;
+		public com.fromscratch.buyback.LootingBagReader.Access bagAccess; public UUID bagSession;
+		public com.fromscratch.buyback.BagObservation bag(){return bagAccess==null?com.fromscratch.buyback.BagObservation.unknown():new com.fromscratch.buyback.LootingBagReader(bagAccess).read(observer.observe(),bagSession);}
 		public com.fromscratch.pouch.PouchObservation pouchProof=com.fromscratch.pouch.PouchObservation.unknown();
 		public com.fromscratch.pouch.RuneLitePouchReader.Access pouchAccess;
 		public com.fromscratch.pouch.PouchObservation pouch(){return pouchAccess==null?pouchProof:new com.fromscratch.pouch.RuneLitePouchReader(pouchAccess).banked(observer.observe());}

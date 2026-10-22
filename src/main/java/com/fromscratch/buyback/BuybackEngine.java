@@ -9,6 +9,12 @@ public final class BuybackEngine
 {
 	private BuybackEngine(){}
 	public static long available(BankRun run){return Math.subtractExact(run.balance(ItemID.COINS),run.getBuybacks().getCommittedGp());}
+	public static String catalogStatus(BankRun run,BuybackEntry entry)
+	{
+		String state=status(run,entry);
+		if(state.equals("Already unlocked")){return entry.getRoles().entrySet().stream().allMatch(e->run.getBuybacks().getEntitlements().getOrDefault(e.getKey(),0)>=e.getValue())?"Purchased":"Earned";}
+		return state.equals("Not enough GP")?"Insufficient GP":state;
+	}
 	public static String status(BankRun run,BuybackEntry entry)
 	{
 		if(run==null||!run.isActive()||!run.isAnchored()){return "Start a run first";}
@@ -24,7 +30,7 @@ public final class BuybackEngine
 			}
 			// The difference is still locked legacy stock. A naturally positive copy cannot qualify alone.
 			if(qualifying==0){return entry.getRoles().size()>1?"Missing set pieces":"Not in bank";}
-			if(physical<=Math.max(0,raw)){return entry.getRoles().size()>1?"Missing set pieces":"Already unlocked";}
+			if(physical<=Math.max(0,raw)){return entry.getRoles().size()>1?"Missing set pieces":entry.getId().equals("looting_bag_family")?"Earned":"Already unlocked";}
 			if(owned.containsKey(role.getKey())&&raw<run.getBuybacks().getBankFloors().get(role.getKey())){return "Return unlocked copy";}
 		}
 		return available(run)<BuybackCatalog.cost(entry,owned)?"Not enough GP":"Available";
@@ -33,6 +39,7 @@ public final class BuybackEngine
 	{
 		BuybackEntry entry=BuybackCatalog.entry(purchase.getCatalogId());String status=status(run,entry);
 		if(entry.getId().equals("rune_pouch_family")&&purchase.getPouchItemId()<0){throw new IllegalArgumentException("Rune Pouch data is not available yet. Keep the bank open, wait a game tick and retry.");}
+		if(entry.getId().equals("looting_bag_family")&&purchase.getPouchItemId()<0){throw new IllegalArgumentException(BagObservation.INSTRUCTION);}
 		if(!"Available".equals(status)){throw new IllegalArgumentException(status+". Reopen Legacy Buybacks after banking the required items/GP.");}
 		if(purchase.getGp()!=BuybackCatalog.cost(entry,run.getBuybacks().getEntitlements())){throw new IllegalArgumentException("Buyback price changed. Review the purchase again.");}
 		if(!purchase.getBankFloors().equals(purchaseFloors(run,entry))){throw new IllegalArgumentException("Paid-copy bank observation changed");}
@@ -60,7 +67,7 @@ public final class BuybackEngine
 	 */
 	public static Map<Integer,Long> balances(BankRun run)
 	{
-		if(run.getBuybacks().getEntitlements().isEmpty()){return run.getBalances();}
+		if(run.getBuybacks().getEntitlements().isEmpty()){return BuybackCatalog.variants("looting_bag_family").keySet().stream().noneMatch(run.getBalances()::containsKey)?run.getBalances():naturalBag(run,new TreeMap<>(run.getBalances()));}
 		Map<Integer,Long> result=new TreeMap<>(run.getBalances());
 		for(Map.Entry<String,Integer> entitlement:run.getBuybacks().getEntitlements().entrySet())
 		{
@@ -77,6 +84,14 @@ public final class BuybackEngine
 		}
 		// The coin counter shows unspent challenge GP; the saved raw coin cursor is untouched.
 		long coins=available(run);if(coins==0){result.remove(ItemID.COINS);}else{result.put(ItemID.COINS,coins);}
+		return run.getBuybacks().getEntitlements().containsKey("looting_bag_family")?Collections.unmodifiableMap(result):naturalBag(run,result);
+	}
+	/** Opening/closing the same bag changes its form, never its earned-copy count. */
+	private static Map<Integer,Long> naturalBag(BankRun run,Map<Integer,Long> result)
+	{
+		Set<Integer> ids=BuybackCatalog.variants("looting_bag_family").keySet();long raw=raw(run.getBalances(),"looting_bag_family");ids.forEach(result::remove);
+		if(raw<=0){if(raw<0){int id=ids.stream().filter(i->run.physical(i)>0).findFirst().orElse(net.runelite.api.gameval.ItemID.LOOTING_BAG);result.put(id,raw);}}
+		else{for(int id:ids){long n=Math.min(raw,run.physical(id));if(n>0){result.put(id,n);raw-=n;}}}
 		return Collections.unmodifiableMap(result);
 	}
 	/** Preserve the bank-positive metric and count each durable paid slot once, even while withdrawn. */

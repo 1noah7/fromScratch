@@ -22,8 +22,10 @@ public final class BankRepository
 	private final BankRunCodec codec;
 	private final RunRecordCodec legacy;
 	private final Publication publication;
+	private final ProgressBackup backups;
 	@Inject public BankRepository(BankRunCodec codec, RunRecordCodec legacy) { this(codec, legacy, BankRepository::publish); }
-	BankRepository(BankRunCodec codec, RunRecordCodec legacy, Publication publication) { this.codec = codec; this.legacy = legacy; this.publication = publication; }
+	BankRepository(BankRunCodec codec, RunRecordCodec legacy, Publication publication) { this.codec = codec; this.legacy = legacy; this.publication = publication;this.backups=new ProgressBackup(this,codec); }
+	public ProgressBackup backups() { return backups; }
 	public Optional<BankRun> load(Filepath root, String character) throws IOException
 	{
 		return locked(root, character, d ->
@@ -136,7 +138,7 @@ public final class BankRepository
 			if(!expected.equals(audit.getBalanceChanges())){throw new SaveException("Legacy pouch adjustments do not match their purchase.");}
 			if(audit.getBuyback().getPouchItemId()>0)
 			{
-				long count=0;for(int id:com.fromscratch.buyback.BuybackCatalog.variants("rune_pouch_family").keySet()){count=Math.addExact(count,before.physical(id));}
+				long count=0;for(int id:com.fromscratch.buyback.BuybackCatalog.variants(audit.getBuyback().getCatalogId()).keySet()){count=Math.addExact(count,before.physical(id));}
 				if(count!=1||before.physical(audit.getBuyback().getPouchItemId())!=1){throw new SaveException("Purchased pouch is ambiguous or absent.");}
 			}
 		}
@@ -164,29 +166,31 @@ public final class BankRepository
 		com.fromscratch.pouch.PouchState pouch=before.getBuybacks().getPouch();
 		if(audit.getKind()==BankAudit.Kind.AUTOMATIC){pouch=com.fromscratch.pouch.PouchEngine.bank(pouch,audit.getPhysicalChanges());}
 		else if(audit.getKind()==BankAudit.Kind.POUCH){pouch=com.fromscratch.pouch.PouchEngine.apply(pouch,audit.getPouch(),audit.getId());}
-		else if(audit.getBuyback()!=null&&audit.getBuyback().getPouchItemId()>0){pouch=com.fromscratch.pouch.PouchEngine.purchased(pouch,audit.getBuyback().getLegacyRunes());}
+		else if(audit.getBuyback()!=null&&audit.getBuyback().getCatalogId().equals("rune_pouch_family")&&audit.getBuyback().getPouchItemId()>0){pouch=com.fromscratch.pouch.PouchEngine.purchased(pouch,audit.getBuyback().getLegacyRunes());}
 		buybacks=buybacks.withPouch(pouch);
 		if(!buybacks.equals(after.getBuybacks())){throw new SaveException("Buyback payment and entitlement evidence do not match.");}
 	}
 	/** Read only enough immutable segments for one page; never run from the EDT/client thread. */
-	public GeHistory.Page exchangeHistory(Filepath root,BankRun run,BankHistory.Cursor cursor,boolean buy) throws IOException
+	public Long peak(Filepath root,BankRun run,Long value) throws IOException {return new PeakProgressRepository(codec).checkpoint(root,run,value);}
+	public GeHistory.Page exchangeHistory(Filepath root,BankRun run,GeHistory.Cursor cursor,boolean buy) throws IOException
 	{
 		return locked(root,run.getCharacter(),d ->
 		{
-			UUID head=cursor==null?run.getRevision():cursor.getRevision();int offset=cursor==null?0:cursor.getOffset(),examined=0;List<GeTrade> rows=new ArrayList<>();
-			if(offset<0){throw new SaveException("Invalid GE history page.");}
-			while(head!=null&&rows.size()<25&&examined++<64)
+			UUID head=cursor==null?run.getRevision():cursor.getRevision();int examined=0;
+			List<GeTrade> rows=new ArrayList<>(cursor==null?Collections.emptyList():cursor.getPending());
+			Set<UUID> seen=new HashSet<>(cursor==null?Collections.emptySet():cursor.getSeen());
+			// One row of lookahead makes pagination count finalized offers, not empty audit chunks.
+			while(head!=null&&rows.size()<26&&examined++<64)
 			{
 				JsonObject batch=codec.payload(BankStorageFiles.readText(d.joinSegment("bank-ledger-"+head+".json")),1);
 				if(!run.getCharacter().equals(BankRunCodec.str(batch,"character"))||!run.getRunId().toString().equals(BankRunCodec.nullable(batch,"run"))){head=null;break;}
 				BankAudit audit=codec.readAudit(batch.getAsJsonObject("audit"));if(!head.equals(audit.getId())){throw new SaveException("GE history identity mismatch.");}
-				List<GeTrade> trades=audit.getExchange().getTrades();for(int i=offset;i<trades.size();i++)
-				{
-					GeTrade trade=trades.get(i);if(trade.isBuy()==buy){rows.add(trade);}if(rows.size()==25){return new GeHistory.Page(rows,new BankHistory.Cursor(head,i+1),"");}
-				}
-				String previous=BankRunCodec.nullable(batch,"previous");head=previous==null?null:UUID.fromString(previous);offset=0;
+				GeTrade trade=GeHistory.finalized(audit.getExchange());if(trade!=null&&trade.isBuy()==buy&&seen.add(trade.getGeneration())){rows.add(trade);}
+				String previous=BankRunCodec.nullable(batch,"previous");head=previous==null?null:UUID.fromString(previous);
 			}
-			return new GeHistory.Page(rows,head==null?null:new BankHistory.Cursor(head,offset),rows.isEmpty()?"No matching GE activity on this page.":"");
+			if(rows.size()==26){return new GeHistory.Page(rows.subList(0,25),new GeHistory.Cursor(head,seen,rows.subList(25,26)),"");}
+			if(head!=null){return new GeHistory.Page(Collections.emptyList(),new GeHistory.Cursor(head,seen,rows),"",true);}
+			return new GeHistory.Page(rows,null,rows.isEmpty()?"No completed Grand Exchange trades recorded.":"");
 		});
 	}
 	/** Read only enough immutable segments for one bank page; never run from the EDT/client thread. */
@@ -211,13 +215,39 @@ public final class BankRepository
 					for (Map.Entry<Integer, Long> entry : audit.getBalanceChanges().entrySet())
 					{
 						if (index++ < offset) { continue; }
-							rows.add(new BankHistory.Row(audit.getAt(), entry.getKey(), "", entry.getValue(),legacyPouch?"Automatic — Legacy Rune Pouch":manual?"Manual":"Automatic",legacyPouch?audit.getId():null)); offset = index;
+							rows.add(new BankHistory.Row(audit.getAt(), entry.getKey(), "", entry.getValue(),legacyPouch?(audit.getBuyback().getCatalogId().equals("looting_bag_family")?"Automatic — Legacy Looting Bag":"Automatic — Legacy Rune Pouch"):manual?"Manual":"Automatic",legacyPouch?audit.getId():null)); offset = index;
 						if (rows.size() == 25) { return new BankHistory.Page(rows, new BankHistory.Cursor(head, offset), ""); }
 					}
 				}
 				String previous = BankRunCodec.nullable(batch, "previous"); head = previous == null ? null : UUID.fromString(previous); offset = 0;
 			}
 			return new BankHistory.Page(rows, head == null ? null : new BankHistory.Cursor(head, offset), rows.isEmpty() ? "No matching bank changes on this page." : "");
+		});
+	}
+	/** Filter before pagination, so an item's older movements are not lost behind unrelated bank rows. */
+	public ItemHistory.Page itemHistory(Filepath root,BankRun run,BankHistory.Cursor cursor,int itemId) throws IOException
+	{
+		if(itemId<0) { throw new SaveException("Choose an item first."); }
+		return locked(root,run.getCharacter(),d ->
+		{
+			UUID head=cursor==null?run.getRevision():cursor.getRevision();int offset=cursor==null?0:cursor.getOffset();
+			if(offset<0) { throw new SaveException("Invalid item history page."); }
+			List<ItemHistory.Row> rows=new ArrayList<>();int examined=0;
+			while(head!=null&&examined++<64)
+			{
+				JsonObject batch=codec.payload(BankStorageFiles.readText(d.joinSegment("bank-ledger-"+head+".json")),1);
+				if(!run.getCharacter().equals(BankRunCodec.str(batch,"character"))||!Objects.equals(run.getRunId().toString(),BankRunCodec.nullable(batch,"run"))) { head=null;break; }
+				BankAudit audit=codec.readAudit(batch.getAsJsonObject("audit"));
+				if(!head.equals(audit.getId())) { throw new SaveException("Item history failed validation."); }
+				List<ItemHistory.Row> matching=ItemHistory.rows(audit,itemId);
+				for(int i=offset;i<matching.size();i++)
+				{
+					rows.add(matching.get(i));
+					if(rows.size()==25) { return new ItemHistory.Page(rows,new BankHistory.Cursor(head,i+1),""); }
+				}
+				String previous=BankRunCodec.nullable(batch,"previous");head=previous==null?null:UUID.fromString(previous);offset=0;
+			}
+			return new ItemHistory.Page(rows,head==null?null:new BankHistory.Cursor(head,offset),rows.isEmpty()?"No recorded changes on this page.":"");
 		});
 	}
 	private static void validateStart(BankRun run) throws SaveException
@@ -236,10 +266,15 @@ public final class BankRepository
 		writeVerified(d.joinSegment("bank-ledger-" + after.getRevision() + ".json"), codec.envelope(batch, 1));
 		writeVerified(d.joinSegment("bank-checkpoint-" + after.getRevision() + ".json"), encoded);
 		Filepath pending = d.joinSegment("bank-pending-" + after.getRevision() + ".json"); writeVerified(pending, encoded);
+		if(before!=null)
+		{
+			Filepath backup=d.joinSegment("previous-pending-"+after.getRevision()+".json");writeVerified(backup,BankStorageFiles.readText(d.joinSegment("current.json")));
+			publish(backup,d.joinSegment("previous.json"));
+		}
 		publication.replace(pending, d.joinSegment("current.json"));
 		if (!codec.decode(BankStorageFiles.readText(d.joinSegment("current.json")), after.getCharacter()).equals(after)) { throw new SaveException("Bank save verification failed; recovery checkpoints were retained."); }
 	}
-	private void verify(Filepath d, BankRun run, boolean fullChain) throws IOException
+	void verify(Filepath d, BankRun run, boolean fullChain) throws IOException
 	{
 		try
 		{
@@ -303,7 +338,7 @@ public final class BankRepository
 	private static void publish(Filepath pending, Filepath current) throws IOException
 	{
 		try { pending.moveTo(current, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
-		catch (AtomicMoveNotSupportedException ex) { pending.copyTo(current, StandardCopyOption.REPLACE_EXISTING); force(current); pending.delete(); }
+		catch (AtomicMoveNotSupportedException ex) { throw new SaveException("This filesystem cannot replace saves atomically. Current progress and recovery files were preserved."); }
 	}
 	private <T> T locked(Filepath root, String character, Task<T> task) throws IOException
 	{
@@ -312,7 +347,7 @@ public final class BankRepository
 		{
 			Filepath d = root.joinSegment("characters").joinSegment(character); d.createDirectories();
 			try (FileChannel c = d.joinSegment("run.lock").openFileChannel(StandardOpenOption.CREATE, StandardOpenOption.WRITE); FileLock lock = c.tryLock())
-			{ if (lock == null) { throw new SaveException("Another client is using this run. Close it and retry."); } return task.run(d); }
+			{ if (lock == null) { throw new SaveException("Another client is using this run. Close it and retry."); } return task.run(ProgressBackup.directory(d,codec)); }
 		}
 		catch (SaveException ex) { throw ex; }
 		catch (OverlappingFileLockException ex) { throw new SaveException("Run storage is busy. Retry after the other operation finishes."); }

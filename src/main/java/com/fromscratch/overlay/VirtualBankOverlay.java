@@ -6,9 +6,11 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.Shape;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.ItemComposition;
@@ -17,13 +19,14 @@ import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.api.widgets.WidgetItem;
 import net.runelite.api.widgets.WidgetType;
+import net.runelite.api.widgets.ItemQuantityMode;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.OverlayPosition;
 
-/** Draw-only normal-bank layer; include visible intersections even when RuneLite omits their item callbacks. */
-@Singleton
+/** Normal-bank layer; item quantities/geometry stay native, only the counter display mode is scoped. */
+@Singleton @Slf4j
 public final class VirtualBankOverlay extends Overlay
 {
 	private final Context context;
@@ -31,12 +34,44 @@ public final class VirtualBankOverlay extends Overlay
 	private final Map<Integer, ItemIdentity> identities = new ConcurrentHashMap<>();
 	private BankOverlayState.Projection frame;
 	private BankOverlayState.Settings settings;
+	private boolean physicalFailed;
 
 	@Inject
 	public VirtualBankOverlay(Client client, RuneLiteBankSource observer, BankOverlayState state, OverlayManager overlayManager)
 	{
 		this(new Context()
 		{
+			private PhysicalCounter[] counters = new PhysicalCounter[0];
+			private final Map<Integer,Boolean> stackable = new HashMap<>();
+			public void physicalQuantities(boolean enabled)
+			{
+				Widget layer = enabled ? client.getWidget(InterfaceID.Bankmain.ITEMS) : null;
+				Widget[] children = layer == null ? null : layer.getChildren();
+				if (children == null || counters.length != children.length)
+				{
+					for (PhysicalCounter counter : counters) { if (counter != null) { counter.restore(); } }
+					if (children == null) { if (counters.length > 0) { counters = new PhysicalCounter[0]; } stackable.clear(); return; }
+					counters = new PhysicalCounter[children.length];
+				}
+				Widget dragging = client.isDraggingWidget() ? client.getDraggedWidget() : null;
+				for (int i = 0; i < children.length; i++)
+				{
+					Widget child = children[i]; PhysicalCounter counter = counters[i];
+					if (counter != null && counter.widget != child) { counter.restore(); counters[i] = counter = null; }
+					if (child == null || child == dragging || child.getId() != InterfaceID.Bankmain.ITEMS || child.getParent() != layer
+						|| child.getType() != WidgetType.GRAPHIC || child.isHidden() || !BankItemPainter.eligible(child.getId(), child.getItemId(), child.getItemQuantity()))
+					{ if (counter != null) { counter.restore(); counters[i] = null; } continue; }
+					int mode = child.getItemQuantityMode();
+					if (mode == ItemQuantityMode.NEVER && counter == null) { continue; } // Respect another plugin's hidden counter.
+					int original = mode == ItemQuantityMode.NEVER ? counter.mode : mode;
+					boolean show = original == ItemQuantityMode.ALWAYS || original == ItemQuantityMode.STACKABLE
+						&& (child.getItemQuantity() != 1 || stackable.computeIfAbsent(child.getItemId(), id -> client.getItemDefinition(id).isStackable()));
+					if (!show) { if (counter != null) { counter.restore(); counters[i] = null; } continue; }
+					if (counter == null) { counter = counters[i] = new PhysicalCounter(child, original); }
+					counter.mode = original; counter.quantity(child.getItemQuantity());
+					if (mode != ItemQuantityMode.NEVER) { child.setItemQuantityMode(ItemQuantityMode.NEVER); }
+				}
+			}
 			public String characterKey() { return observer.characterKey(); }
 			public boolean bankVisible()
 			{
@@ -84,8 +119,9 @@ public final class VirtualBankOverlay extends Overlay
 				// a partially visible top row. Read the real item widgets instead; their canvas
 				// bounds are already updated by this draw hook, including the omitted row.
 				// No bank-container indices, fixed grid positions or new visual slots are used.
-				for (Widget child : children)
+				for (int i = 0; i < children.length; i++)
 				{
+					Widget child = children[i];
 					if (child == null || child.getId() != InterfaceID.Bankmain.ITEMS || child.getParent() != layer || child.getType() != WidgetType.GRAPHIC
 						|| child.isHidden() || !BankItemPainter.eligible(child.getId(), child.getItemId(), child.getItemQuantity())) { continue; }
 					// A clipped-origin drag can also be absent from RuneLite's list. Its drag
@@ -93,10 +129,26 @@ public final class VirtualBankOverlay extends Overlay
 					// paint a ghost at its original slot or guess the mouse-to-item offset.
 					if (child == draggingWidget && dragged == null) { continue; }
 					Rectangle bounds = dragged != null && dragged.getWidget() == child ? dragged.getCanvasBounds() : child.getBounds();
-					if (viewport.intersects(bounds)) { consumer.accept(child.getItemId(), child.getItemQuantity(), bounds); }
+					PhysicalCounter counter = i < counters.length ? counters[i] : null;
+					String physical = counter != null && counter.widget == child && child.getItemQuantityMode() == ItemQuantityMode.NEVER ? counter.label : null;
+					if (viewport.intersects(bounds)) { consumer.accept(child.getItemId(), child.getItemQuantity(), bounds, physical); }
 				}
 			}
 		}, state);
+	}
+	/** Before the native item sprite is drawn: suppress its baked-in counter, not its item/quantity. */
+	public void preparePhysicalQuantities()
+	{
+		if (physicalFailed) { return; }
+		BankOverlayState.Projection projection = state.getProjection(); BankOverlayState.Settings options = state.getSettings();
+		try { context.physicalQuantities(state.isEnabled() && projection != null && (options.isQuantities() || options.isDimLocked())
+			&& context.bankVisible() && projection.getCharacterKey().equals(context.characterKey())); }
+		catch (RuntimeException ex)
+		{
+			physicalFailed = true;
+			try { context.physicalQuantities(false); } catch (RuntimeException cleanup) { ex.addSuppressed(cleanup); }
+			log.warn("From Scratch physical counter styling failed; retaining native quantity rendering.", ex);
+		}
 	}
 
 	VirtualBankOverlay(Context context, BankOverlayState state)
@@ -127,14 +179,14 @@ public final class VirtualBankOverlay extends Overlay
 		try
 		{
 			graphics.clip(viewport);
-			context.forEachItem(viewport, (itemId, physicalQuantity, bounds) -> renderItem(graphics, viewport, itemId, physicalQuantity, bounds));
+			context.forEachItem(viewport, (itemId, physicalQuantity, bounds, physical) -> renderItem(graphics, viewport, itemId, physicalQuantity, bounds, physical));
 			com.fromscratch.bank.BankTimings.mark(frame.getTrace(), com.fromscratch.bank.BankTimings.Phase.OVERLAY);
 			return null;
 		}
 		finally { graphics.setClip(originalClip); frame = null; }
 	}
 
-	private void renderItem(Graphics2D graphics, Rectangle viewport, int itemId, int physicalQuantity, Rectangle bounds)
+	private void renderItem(Graphics2D graphics, Rectangle viewport, int itemId, int physicalQuantity, Rectangle bounds, String physical)
 	{
 		if (frame == null || !state.isEnabled() || bounds == null || !viewport.intersects(bounds)
 			|| !graphics.hitClip(bounds.x, bounds.y, bounds.width, bounds.height)
@@ -145,9 +197,21 @@ public final class VirtualBankOverlay extends Overlay
 		// Keep the full item rectangle for label placement. Only its pixels are clipped;
 		// moving the label into the visible fragment would make it jump while scrolling.
 		BankItemPainter.paint(graphics, bounds, quantity, quantity == 0 ? "0" : frame.label(identity.balanceItemId), settings);
+		if (physical != null) { BankItemPainter.paintPhysical(graphics, bounds, physical); }
 	}
 
-	public void clearCache() { identities.clear(); }
+	public void clearCache() { context.physicalQuantities(false); identities.clear(); physicalFailed = false; }
+
+	/** At most one entry per current child slot; original modes survive rebuilds and restore on exit. */
+	private static final class PhysicalCounter
+	{
+		private final Widget widget;
+		private int mode, amount = -1;
+		private String label;
+		private PhysicalCounter(Widget widget, int mode) { this.widget = widget; this.mode = mode; }
+		private void quantity(int next) { if (amount != next) { amount = next; label = BankItemPainter.physicalLabel(next); } }
+		private void restore() { if (widget.getItemQuantityMode() == ItemQuantityMode.NEVER) { widget.setItemQuantityMode(mode); } }
+	}
 
 	/** Cached definition metadata only. A placeholder never creates an item or changes bank accounting. */
 	private static final class ItemIdentity
@@ -159,6 +223,7 @@ public final class VirtualBankOverlay extends Overlay
 
 	interface Context
 	{
+		default void physicalQuantities(boolean enabled) { }
 		String characterKey();
 		boolean bankVisible();
 		boolean placeholder(int itemId);
@@ -170,6 +235,7 @@ public final class VirtualBankOverlay extends Overlay
 	/** Synchronous client-thread visitor; no per-item DTO or per-frame ownership map is needed. */
 	interface ItemConsumer
 	{
-		void accept(int itemId, int physicalQuantity, Rectangle bounds);
+		void accept(int itemId, int physicalQuantity, Rectangle bounds, String physicalLabel);
+		default void accept(int itemId, int physicalQuantity, Rectangle bounds) { accept(itemId, physicalQuantity, bounds, null); }
 	}
 }

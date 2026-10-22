@@ -34,7 +34,7 @@ public interface FromScratchConfig extends Config
 	default boolean lockedBankItems() { return true; }
 
 	@ConfigItem(keyName = "virtualQuantityColor", name = "Virtual quantity color",
-		description = "Color of the virtual bank quantity", position = 3)
+		description = "Color of virtual bank quantities and From Scratch Examine numbers", position = 3)
 	default Color virtualQuantityColor() { return new Color(0x1DFF00); }
 
 	@ConfigItem(keyName = "lockedItemBackgroundColor", name = "Locked Item Background Color",
@@ -46,8 +46,12 @@ public interface FromScratchConfig extends Config
 		description = "Locked bank tint opacity as a percentage", position = 5)
 	default int lockedItemBackgroundOpacity() { return 50; }
 
+	@ConfigItem(keyName = "virtualBankView", name = "Enable Virtual Bank View",
+		description = "Show only virtually owned item types in your bank. Disable to view your full bank.", position = 0)
+	default boolean virtualBankView() { return true; }
+
 	@ConfigItem(keyName = "developmentItemTrace", name = "Development: bank diagnostics",
-		description = "Opt in to rate-limited local DEBUG bank availability diagnostics; disable after testing", position = 100)
+		description = "Retained developer DEBUG logging preference", hidden = true, position = 100)
 	default boolean developmentItemTrace() { return false; }
 
 	@ConfigItem(keyName = "developmentTraceItemId", name = "Development: traced item ID",
