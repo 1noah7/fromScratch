@@ -1,13 +1,23 @@
 # Contributing
 
-Read [AGENTS.md](AGENTS.md), [ARCHITECTURE.md](ARCHITECTURE.md), and [ACCOUNTING.md](ACCOUNTING.md). Public maintainer identity: **Pilots r kwl**. Work one authorized milestone at a time; label future features as planned.
+From Scratch is by **Pilots r kwl**, under the [BSD 2-Clause license](LICENSE). Milestone 9.2 gameplay is frozen. Milestone 10 prepares documentation and an unpublished beta; official Plugin Hub submission belongs to Milestone 11.
 
-Use Java 11 and the existing Gradle Wrapper: `.\gradlew.bat clean build` or `bash ./gradlew clean build`. Do not add dependencies already supplied by RuneLite, change config keys without migration, commit artifacts, or include private account/progression data. Keep changes focused and avoid unrelated formatting.
+Read [AGENTS.md](AGENTS.md), the [architecture](docs/technical/ARCHITECTURE.md), [accounting policy](docs/technical/ACCOUNTING.md) and [test plan](docs/technical/TEST_PLAN.md) before proposing behavior changes. The [reviewer map](docs/PLUGIN_HUB_REVIEW.md) identifies production code and sensitive APIs. Historical milestone notes are reference evidence, not current scope or installation instructions.
 
-Separate API observations, pure accounting, Filepath storage, and Swing rendering. Use gameval constants, checked long arithmetic, injected Gson/OkHttp where needed, DEBUG diagnostics, and immutable snapshots. Never block the client thread/lifecycle methods. Explain accounting assumptions, API limitations, and uncertain evidence in comments.
+## Development and validation
 
-Add relevant tests and user acceptance instructions for behavior changes. Test code must not log in, click, type, or automate RuneScape. Only the user can confirm behavior in-game. Reject reflection, native access, external processes in plugin code, packets, server-directed menu actions, and gameplay automation during review.
+Use Java 11 and the existing Gradle wrapper. Prefer incremental `compileJava compileTestJava` and actual affected test-class filters. Do not routinely clean or run every gameplay test for documentation/asset changes. Both Windows and Ubuntu CI passed at the current baseline; meaningful production changes require appropriate new validation. See the test plan for exact commands.
 
-Report bugs with versions, reproduction steps, and redacted evidence through the issue template. PR descriptions explain concrete behavior, accounting/compliance decisions, test results, and pending manual acceptance. Preserve license notices; contributions use BSD 2-Clause.
+Keep disk and price IO off the client thread and EDT. Use the complete bank container for quantities, Filepath for progression, checked signed arithmetic and guarded asynchronous acknowledgments. Do not reconnect historical personal-container tracking, add gameplay automation/withdrawal blocking, rename config keys, introduce reflection/native calls or duplicate RuneLite transitive dependencies.
 
-Do not commit, push, publish, or submit without explicit approval. An eventual Plugin Hub PR must follow AGENTS.md attribution requirements and reference an approved release commit after all gates pass.
+## Documentation and previews
+
+[Installation](docs/INSTALLATION.md) is the authoritative beta guide. Player-facing copy belongs in README; technical details belong under `docs/technical` and the reviewer guide. Preserve root AGENTS/CLAUDE discovery, the license and attribution. Check local links with `scripts/Test-Documentation.ps1`.
+
+`scripts/Prepare-UiPreviews.ps1` renders actual Swing components with sample data and official RuneLite sprites. Its separate `src/preview` source set is excluded from production/beta JARs. No game client, real progression or credentials are used. Label previews as sample UI and obtain owner screenshots for genuine gameplay.
+
+## Safety and review
+
+Never use automated input to operate RuneScape. The owner performs actual login/gameplay acceptance. Keep test IO isolated under `build`; never test destructive recovery/reset against real character saves. Do not include artifacts, profiles, secrets, exports or private logs in Git.
+
+No commit, push, tag, upload, distribution, Plugin Hub submission or publishing PR without explicit owner approval. Changes should remain small, reviewable and separate from unrelated formatting. The [beta testing guide](docs/BETA_TESTING.md) contains a privacy-safe report template.

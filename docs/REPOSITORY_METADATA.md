@@ -12,13 +12,13 @@ Prepared locally; no remote repository settings, visibility, release, topics or 
 | Release body | Adapt [RELEASE_DRAFT.md](RELEASE_DRAFT.md); replace repository-relative documentation links with absolute canonical links when pasting into a GitHub Release. Keep beta/unreviewed and actual validation status. |
 | Issues | Keep the existing redaction-focused bug template. Do not request saves/authentication data in public. |
 
-Canonical repository: [PilotsRKwl/fromScratch](https://github.com/PilotsRKwl/fromScratch). Old `traviscarson95` repository links should not be introduced. The local Git author configuration is independent of the canonical URL and public plugin author; no credential/account setting changes were made.
+Canonical repository: [PilotsRKwl/fromScratch](https://github.com/PilotsRKwl/fromScratch). Use this canonical owner in new repository links. The local Git author configuration is independent of the canonical URL and public plugin author; no credential/account setting changes were made.
 
 ## Owner preview before publishing
 
 1. Open root README.md in IntelliJ's Markdown preview (editor/preview split). Follow its local links; inspect the original banner and mobile/narrow-width wrapping.
-2. An optional GitHub-rendered local HTML preview is generated under ignored `build/m10-review/` when the public Markdown API is available. It is a local review aid, not a published page; GitHub theme/layout still merits final owner inspection.
-3. Review seven requested real captures in [SCREENSHOTS.md](SCREENSHOTS.md). None have been fabricated or linked as missing images.
+2. An optional GitHub-rendered local HTML preview is generated under ignored `build/m10-final-review/` when the public Markdown API is available. It is a local review aid, not a published page; GitHub theme/layout still merits final owner inspection.
+3. Review the authentic component previews with disclosed sample data and the remaining real bank/gameplay checklist in [SCREENSHOTS.md](SCREENSHOTS.md). No gameplay images are fabricated or linked as missing files.
 4. After approval to commit/push, inspect README on the canonical repository and set About/topics/social preview manually. This milestone performs none of those remote writes.
 
 Use only a real uploaded release's asset URL for a download button. Until then, README accurately points to the repository's Releases page and states that the candidate is unpublished.

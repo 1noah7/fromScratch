@@ -124,7 +124,7 @@ Commit order:
 
 Reset first copies, forces and validates a unique archive of the active run, then commits a Not Started record. This prevents an old active backup being silently promoted after reset. Original archives/checkpoints are retained without automatic pruning. Missing current data with recovery evidence blocks setup. Corrupt/incompatible current data is preserved and shown as an error with Retry Load. Filesystem/hardware loss is not fully preventable; forcing and retained copies reduce risk rather than guarantee all power-loss scenarios.
 
-Recovery is manual and requires all clients closed plus a private backup of the entire directory. Preserve the damaged current file, deliberately select a valid same-character checkpoint/archive, copy it to current.json and reload. Archive selection can restore an old active run; a reset checkpoint retains Not Started. Do not edit identity/checksum fields or share saves publicly. See [README recovery instructions](../README.md#data-backup-and-reset). No import/export/restore UI or general transaction journal is implemented yet.
+Recovery is manual and requires all clients closed plus a private backup of the entire directory. Preserve the damaged current file, deliberately select a valid same-character checkpoint/archive, copy it to current.json and reload. Archive selection can restore an old active run; a reset checkpoint retains Not Started. Do not edit identity/checksum fields or share saves publicly. See [README recovery instructions](../DATA_AND_PRIVACY.md#what-is-stored). No import/export/restore UI or general transaction journal is implemented yet.
 
 Tests establish Filepath roots through a test-only escape hatch confined to JUnit synthetic temp directories. Production never uses Filepath.Unchecked or raw filesystem paths for run data.
 
@@ -175,7 +175,7 @@ Requested command:
 .\gradlew.bat clean build
 ```
 
-**Final requested clean build passed on Java 11 / RuneLite 1.13.3: 202 passed, 0 failed, 0 errors, 0 skipped.** All 173 previous tests plus 29 empty-container regressions are retained, including all 27 foundation tests. Coverage and correction matrices are mapped in [TEST_PLAN.md](../TEST_PLAN.md). No previous test was removed. Earlier 147/173 passing tests did not establish live correctness.
+**Final requested clean build passed on Java 11 / RuneLite 1.13.3: 202 passed, 0 failed, 0 errors, 0 skipped.** All 173 previous tests plus 29 empty-container regressions are retained, including all 27 foundation tests. Coverage and correction matrices are mapped in [TEST_PLAN.md](../technical/TEST_PLAN.md). No previous test was removed. Earlier 147/173 passing tests did not establish live correctness.
 
 Coverage includes complete empty/populated snapshots, coins/gear/variants/placeholders/copies/long quantities, duplicate/changed/incomplete setup, immutable baselines, save/reload/restart, character isolation, strict corrupted/incompatible-data handling, protected reset, locking, and simulated interruption after checkpoint/archive writes. Controlled queues test stale callbacks and acknowledgement ordering without sleeps or real accounts.
 
@@ -197,7 +197,7 @@ Follow [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Ja
 4. Change tabs/search, including no-match searches: summaries must still cover the whole bank. Check empty-bank behavior if such a character is available; null/incomplete data must show a diagnostic instead of a false empty snapshot.
 5. If a personal getter is unavailable and relying on cached data, leave the bank open over 60 seconds: that location must return to Waiting and disable confirmation; fresh available getters may keep it Ready. Manually change a stack during unconfirmed setup and ensure the preview refreshes or requests recapture. Choose No in the dialog first; no run should activate. Confirm Yes only when satisfied. Wait for Active, verify zero economy and unchanged real items, then relog/restart and verify preservation. Active must hide setup instructions. If still blocked, gather the diagnostic sequence above.
 
-The extended M2 procedure remains in [TEST_PLAN.md](../TEST_PLAN.md#m2-manual-acceptance--user-only). No save deletion, migration, or reset is required for this fix.
+The extended M2 procedure remains in [TEST_PLAN.md](TEST_PLAN_MULTI_CONTAINER.md#m2-manual-acceptance--user-only). No save deletion, migration, or reset is required for this fix.
 
 Wait for Active/reset confirmation before closing or disabling. Only the user can validate real bank event timing, profile availability and dialogs. M2 is **ready for acceptance testing**, not confirmed correct in-game. Stop here; M3 requires authorization.
 

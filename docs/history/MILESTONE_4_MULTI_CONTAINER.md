@@ -55,7 +55,7 @@ Final validation on 2026-10-21: `.\gradlew.bat clean build` **BUILD SUCCESSFUL**
 
 The existing test launcher emits an unchecked-operation note; the retained Gradle 8.10 build reports deprecations for Gradle 9. Neither is a compilation/test failure. No dependency/Wrapper update was made as part of M4.
 
-The 285 accepted-milestone cases remain; M4 adds 91 cases across six new suites (376 total). Pure reducer, observer, host-session, controller, persistence and EDT/table tests cover the requested acquisition/transfer/review boundaries. Existing 53 bank painter/state/overlay-pass cases remain unchanged. JUnit tests use synthetic data and temporary Filepath roots, with no account credentials or in-game input. See [TEST_PLAN.md](../TEST_PLAN.md) for counts and requirement mapping.
+The 285 accepted-milestone cases remain; M4 adds 91 cases across six new suites (376 total). Pure reducer, observer, host-session, controller, persistence and EDT/table tests cover the requested acquisition/transfer/review boundaries. Existing 53 bank painter/state/overlay-pass cases remain unchanged. JUnit tests use synthetic data and temporary Filepath roots, with no account credentials or in-game input. See [TEST_PLAN.md](TEST_PLAN_MULTI_CONTAINER.md) for counts and requirement mapping.
 
 No clean JVM launch, rendered screenshot, hosted CI run or live performance result is claimed. Live behavior cannot be established by Gradle or synthetic pixels.
 

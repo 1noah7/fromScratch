@@ -1,124 +1,68 @@
-# Milestone 10 — consolidated owner review
+# Milestone 10: final beta review
 
-**Status: PARTIAL — local candidate prepared; manual acceptance and hosted Ubuntu confirmation pending.** Gameplay is frozen at accepted M9.2. No production-source/save-format changes, publication, friend distribution or Milestone 11 submission occurred.
+**Status: local release candidate prepared; owner installation/login acceptance pending.** Gameplay remains the accepted Milestone 9.2 baseline. No commit, push, tag, upload, distribution or Plugin Hub submission is performed by this task. Milestone 11 remains separate.
 
-## Current polish and CI repair
+## Baseline and CI
 
-The owner subsequently committed the first M10 package as `8e252f6e9d86722b08dc494590312e7efbd099ac`. The candidate/build evidence below remains the original preparation record. This section records the current follow-up; gameplay and installer files are unchanged.
+- Canonical repository: [PilotsRKwl/fromScratch](https://github.com/PilotsRKwl/fromScratch), branch `master`.
+- Source revision: `2bb5dbd4cb7973a05b9f449be70e5adcc0101d06`.
+- Frozen `src/main` tree: `830cb55d79ef41711e5a478318b916598e0ebb09`.
+- Hosted [run 39868207087](https://github.com/PilotsRKwl/fromScratch/actions/runs/39868207087): Windows **PASS**, Ubuntu **PASS**, verified from the public GitHub API. No full gameplay suite was rerun for documentation or preview tooling.
+- Earlier Windows assertion and Ubuntu font-sensitive test failures, full prior build evidence and original candidate details remain in the [preparation archive](history/MILESTONE_10_PREPARATION.md). Old milestone tag inconsistencies remain unchanged; tags were not rewritten.
 
-Actual diagnostic ZIPs were obtained through the public nightly.link transport and accepted **only after matching GitHub's official artifact SHA-256 digest**. Only logs/JUnit reports were read; no artifact code was executed and no credentials or GitHub CLI were used. Evidence is retained locally under ignored `build/m10-polish/`.
+## Documentation and presentation
 
-| Hosted evidence | Result and meaningful error |
+The approved README prose is preserved. New screenshots show actual production Swing components with clearly disclosed **sample data**, not a player's progression. The [documentation index](README.md) separates player help, current technical guidance and historical records. Root agent files remain discoverable; license/attribution are unchanged. [Installation](INSTALLATION.md) is the single authoritative beta guide.
+
+The [screenshot guide](SCREENSHOTS.md) records capture provenance and the remaining owner gameplay shots. [Reviewer documentation](PLUGIN_HUB_REVIEW.md) exposes the precise Bank Tags/rendering APIs and local IO boundaries. Technical documents have moved into `docs/technical`; original accumulated versions and earlier milestone reports are preserved under `docs/history` with an explicit superseded-status warning.
+
+## Candidate and safety
+
+Version: **0.10.0-beta.1**, unpublished Windows x64 owner-review candidate. Build with `scripts/Build-Beta.ps1`; verify with `scripts/Test-Beta.ps1`.
+
+Local ZIP: `build/distributions/from-scratch-beta-0.10.0-beta.1-windows.zip`. Its sibling `.sha256` file records the exact checksum. `package.json`, `SOURCE.json` and `DEPENDENCIES.json` record the real source revision, dirty release worktree, unchanged gameplay tree, pinned unmodified RuneLite 1.13.3 artifacts and per-file hashes. This is a review candidate, not a published release.
+
+The installer requires official Java 11, verifies the allowlist, installs versioned files without admin rights and creates the owned desktop shortcut. Updates retain previous versions. Uninstall deletes only unchanged owned program files and an owned matching shortcut, preserving extra/modified files, other versions, progression, backups, RuneLite configuration, authentication and other plugins.
+
+The launcher uses the separate beta bootstrap and RuneLite's supported developer entry point. The current [official Jagex Accounts guide](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts) describes the in-client account panel and user-operated login. No token extraction, password collection, insecure credential export or custom authentication is included. Actual shortcut/login/gameplay remains manual; a help smoke is not evidence of authenticated play.
+
+The previous official `build=standard` compile for unchanged production source remains valid: Java 11, RuneLite 1.13.3, official template revision `034eaffd5bce7bb678d35287b547874f3dba6b3b`. Preview and beta source sets do not enter the production JAR or Hub source build.
+
+## Final checks and owner review
+
+No real player saves or authentication files were used by these checks.
+
+| Check | Result |
 | --- | --- |
-| [Previous Windows job](https://github.com/PilotsRKwl/fromScratch/actions/runs/39848151577/job/120078835150) at `a243613` | 937 tests, three failures: BankPanelTest still expected Total Value Gained; FinalCorrectionsUiTest expected three million-GP values despite an unavailable peak; GeDashboardTest expected trailing `20 GP~`. The accepted M9 behavior is Peak Progress Value, two bank-value tiles without an invented peak, and leading `~20 GP`. Those corrections are already in `8e252f6`. |
-| [Latest Windows job](https://github.com/PilotsRKwl/fromScratch/actions/runs/39863927290/job/120121288646) at `8e252f6` | **937 passed, zero failures/errors/skips**. Windows is already repaired and hosted-verified for that commit. |
-| [Latest Ubuntu job](https://github.com/PilotsRKwl/fromScratch/actions/runs/39863927290/job/120121288697) at `8e252f6` | 937 tests, **one failure**: `PostM7UiTest.statisticAndActionHeightsAreCompactButContentsStillFit`, `assertTrue` at line 23. Compilation, dependencies and the other 936 tests succeeded. The Ubuntu migration annotation is informational. |
+| Java 11 incremental production/beta build and isolated preview compilation | PASS; unchanged production/beta tasks reused their valid outputs. |
+| Standalone Swing rendering | PASS; nine new PNGs from actual components, including an overview crop and storage-category view. Images visually inspected. The item-history Details column was resized in the sample dialog to avoid clipped text. |
+| Windows installer integration | **10/10 PASS**: parsing, hashes/allowlist, production/resource/preview isolation, official authentication panel, traversal rejection, paths with spaces, real COM shortcut on fake desktop, repeat install, help launch, tamper/classpath rejection, versioned update and preserving uninstall. |
+| Actual candidate ZIP | **64 files PASS**, 63 manifest-listed payload files plus the manifest; only expected directories, no duplicate paths. Every payload length/SHA-256 and the ZIP sidecar verified. |
+| Documentation | **52 Markdown files, 244 local references and 10 total PNG assets PASS**, including local heading anchors and approved README style. Public Releases, issue and prerequisite links return HTTP 200; the repository still has zero published releases. GitHub's Markdown API rendered the README successfully. |
+| Hosted regression evidence | Windows and Ubuntu PASS at the source revision above. No full suite rerun for this preparation. New uncommitted tooling/documentation has not been pushed for hosted validation. |
 
-The Ubuntu test bundled several assertions on one line, including a font-dependent `<132px` cap on the Played Elsewhere row. The accepted UI deliberately expands to fit its host font. The test now requires the **exact 116px minimum or natural content height**, unchanged padding/gaps, equal columns, and all help text fitting. Existing 98px statistic/90px action and label-fit assertions remain. A new case checks Dialog/Monospaced fonts, larger text that legitimately exceeds the former cap, and short content that must stay exactly 116px. Distinct assertion messages identify any remaining host-specific failure. **The old report contains no pixel values or sub-assertion message**, so the cap's role is a source-based diagnosis, not a captured Ubuntu measurement. A hosted Ubuntu rerun must confirm the correction; no Linux runtime is installed locally.
-
-Incremental production/test compilation and **11/11 targeted tests** passed: PostM7UiTest (5) and FinalCorrectionsUiTest (6). No tests were disabled, no no-clipping checks removed, no arbitrary tolerance added, and no full regression repeated. The existing workflow, Java 11 and both operating systems remain intact. A new push/rerun requires owner approval and has not occurred.
-
-Official artifact digests: latest Ubuntu `d65e4a7154298d28df87e3de48374156232769cc2d72d2cfe4f687c9cc6ad600`; previous Windows `f6f88273b3fdc1fa1af7140311bc7aa1bab0cc1a398f2b3f761b7362a3b54bcb`. The latest Windows artifact was separately checked against its official digest and its JUnit totals verified. Direct REST job logs returned 403 and artifact downloads 401; the browser step endpoint returned 404, rather than providing the cause. These access failures were not treated as build errors.
-
-README now targets ordinary OSRS players: the requested hero, simple How to Play steps, gameplay examples/features, saved-progress FAQ and small More Information links. It preserves the original artwork and accurate bank-only/mobile/mixed-stack boundaries without implementation vocabulary. Public releases were checked through GitHub's REST API: **none exist**, so there is no invented installer URL or claim of a public beta. Real captures still follow [SCREENSHOTS.md](SCREENSHOTS.md); no fake screenshots were added. Preview the current README in IntelliJ or `build/m10-polish/README-preview.html` and review the test diff before approval.
-
-## Original M10 preparation record
-
-## GitHub and frozen baseline
-
-- Canonical public repository: **[PilotsRKwl/fromScratch](https://github.com/PilotsRKwl/fromScratch)**. Public API, local origin and live remote master agree. Both origin URLs already use the new owner; no remote correction was needed. Git author configuration still has the legacy username; it was not changed and no credentials were inspected.
-- Branch `master`, local/remote revision **`a2436132c9fb72cc25d015c35309628398486280`**, subject “Milestones 8-9.2: Virtual bank, GE hardening, and quantity styling”. `src/main` tree **`830cb55d79ef41711e5a478318b916598e0ebb09`** remains unchanged. M10 release inputs are deliberately uncommitted; provenance says so.
-- Local and remote `v0.7.1`, `v0.8.0`, `v0.9.0`, `v0.9.1`, `v0.9.2` resolve to **`6015727cfe768cd74f77a9c96cec027981a0adfe`**, subject “Milestone 7: Fix banked rune pouch buybacks and refine UI”. They do **not** identify their named later implementations. `v0.6.0`/`v0.7.0` also share a commit, as do `v0.3.0`/`v0.4.0`. All tags/history were preserved. Use the combined master revision to identify the frozen baseline.
-- Public [master CI run 39848151577](https://github.com/PilotsRKwl/fromScratch/actions/runs/39848151577) is **failed on both Windows and Ubuntu** at “Compile and run headless tests”; the validation job passed. Public job-log download returns **403**. No authenticated GitHub browser/connector was available, and account/token stores were not accessed. The underlying hosted error is **not confirmed**. Informational Ubuntu migration notices are not diagnosed as the cause.
-- Locally, three unchanged older UI tests still expected pre-M9 gain/fee presentation, and the version test expected the former development version. Only those assertions were corrected, preserving their coverage and accepted behavior. The three baseline failures may explain CI, but that is not a claim about unavailable hosted logs. Both CI platforms, Java 11, caching, failure artifacts and commit/tag deduplication remain enabled unchanged.
-
-## Windows beta candidate
-
-Proposed release: **From Scratch — Windows Beta 0.10.0-beta.1**. Local artifacts:
-
-| Artifact | Location |
-| --- | --- |
-| ZIP | `build/distributions/from-scratch-beta-0.10.0-beta.1-windows.zip` |
-| SHA-256 | Same path plus `.sha256` |
-| Production plugin | `build/libs/fromScratch-0.10.0-beta.1.jar` |
-| Staged distribution | `build/beta/stage/` |
-| Extracted review copy | `build/m10-review/final ZIP with spaces/` |
-| Local review index / README render | `build/m10-review/index.html` / `README-preview.html` |
-| Standard build evidence | `build/standard-check/evidence.json` |
-
-Final ZIP: **29,354,890 bytes, 64 files**. SHA-256:
+Candidate size: **29,354,938 bytes**. SHA-256:
 
 ```text
-af4afd4e1edf22ad0db703cec4968fda9d2e0f1edac7f5f5e3e717e8b1dd14e5
+af8121c131cd8b5483d7824830b4ecba64b292ce3cba80a662f3f15004e85c06
 ```
 
-This identifies this local candidate only. Regenerate provenance/checksum if any packaged file changes, or after an approved source commit. No remote asset URL has been invented. Build directories and ZIPs remain ignored by Git.
+Local GitHub-rendered preview: `build/m10-final-review/README-preview.html`. Evidence JSON and the sanitized rendered body are in the same ignored directory. This is a local viewing aid, not a published page. Final GitHub/mobile layout and actual shortcut/login/gameplay still need owner acceptance.
 
-The ZIP contains a thin production JAR, separate small bootstrap, **49 unmodified runtime dependency JARs**, scripts, notices, license and hash/provenance manifests. It excludes tests/JUnit, private profiles, authentication files and progression. All ten RuneLite-group artifacts matched official repository checksums (SHA-256 where published; older artifacts publish SHA-1). All packaged files have SHA-256 records. These are integrity checks, not publisher signatures. Embedded upstream notices stay intact; coordinates and a local JAR/POM notice inventory support redistribution review. Upstream licenses continue to apply; the From Scratch license does not relicense dependencies.
+## File organization and preservation
 
-`Install.cmd` verifies the manifest/Java 11, installs under `%LOCALAPPDATA%\FromScratchBeta\versions`, and creates **From Scratch Beta.lnk**. No admin rights, Git, Gradle or IntelliJ are required by testers. Update-by-reinstallation atomically repoints only the owned shortcut; prior versions remain. Uninstall removes only unchanged owned program files/that version's shortcut. It refuses linked paths and preserves modified/unrelated files, normal RuneLite, credentials, backups and real progression. Per-process PowerShell execution policy does not alter machine policy. The beta does not replace the normal RuneLite client installation.
+- Root `ARCHITECTURE.md`, `ACCOUNTING.md` and `TEST_PLAN.md` are replaced by current concise guides under `docs/technical/`. Full original versions are preserved as `docs/history/*_PRE_M10.md`.
+- Eighteen milestone reports moved from `docs/` to `docs/history/`: `MILESTONE_1`, `MILESTONE_2`, `MILESTONE_3`, `MILESTONE_4`, `MILESTONE_4_CORRECTIONS`, `MILESTONE_4_FILES`, `MILESTONE_4_POLISH`, `MILESTONE_4_UI_POLISH`, `MILESTONE_5`, `MILESTONE_5_FILES`, `MILESTONE_5_FINAL_CORRECTIONS`, `MILESTONE_5_POLISH`, `MILESTONE_6`, `MILESTONE_7`, `MILESTONE_8`, `MILESTONE_9`, `MILESTONE_9_1` and `MILESTONE_9_2` (all `.md`). `POST_MILESTONE_7.md` and historical `COMPATIBILITY.md` moved alongside them. No technical history was discarded.
+- Prior M10 preparation and agent scope are preserved as `MILESTONE_10_PREPARATION.md` and `AGENTS_PRE_M10.md`. Root AGENTS is current; root CLAUDE remains its discovery pointer. Historical links/anchors were repaired, without changing gameplay evidence. LICENSE and attribution remain untouched; no content was deleted outright.
+- Current root changes: README screenshot/link additions only, AGENTS current scope/paths, CONTRIBUTING focused workflow and CHANGELOG accepted-baseline status. Current doc changes: ARTWORK, BETA_TESTING, MILESTONE_10, PLUGIN_HUB_REVIEW, PUBLICATION, RELEASE_DRAFT, REPOSITORY_METADATA and SCREENSHOTS. New current indexes: `docs/README.md`, `docs/history/README.md`.
+- New owner tooling: `gradle/previews.gradle`, `scripts/Prepare-UiPreviews.ps1`, `scripts/Test-Documentation.ps1` and `src/preview/java/com/fromscratch/preview/InterfacePreviews.java`. `build.gradle` loads the isolated preview task; `gradle/beta.gradle` records that build input, and `scripts/Test-Beta.ps1` explicitly rejects preview classes in the plugin JAR.
+- New images: `dashboard.png`, `dashboard-overview.png`, `legacy-buybacks.png`, `legacy-buybacks-utility.png`, `ge-purchases.png`, `ge-sales.png`, `bank-history.png`, `item-history.png`, `setup.png`, all under `docs/media` and labeled sample UI. Native bank/gameplay images remain owner captures.
+- `src/main`, `src/beta`, `beta/windows`, CI workflow, license, actual progression and credentials are unchanged. No save migration, gameplay change, commit, staging, push, tag, release or distribution was performed.
 
-The bootstrap uses `ExternalPluginManager.loadBuiltin` and the unmodified RuneLite **1.13.3** developer-mode client with assertions. It does not use a credential helper, custom login, launcher-token/environment capture or insecure credential writing. The current official [Jagex Accounts instructions](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts) provide a user-initiated panel login. The panel is present in the resolved artifact. Java 11 is a separate official-vendor prerequisite; no runtime executable is downloaded by the installer.
+## One consolidated owner review
 
-**Verified:** packaged help outside IntelliJ; logged-out graphical client startup with an isolated empty user home; a real client window appeared and initialization logged about **7,966 ms**. The disposable process was stopped without login/game input. This does **not** verify the real desktop shortcut against the owner's normal profile, authentication, From Scratch in-game operation, or friend machines. Those remain manual checks.
-
-One local PowerShell `Start-Process` smoke failed on duplicate `Path`/`PATH` keys inherited from the tool environment. The beta launcher now uses a small direct `ProcessStartInfo` launch with inherited environment; that method successfully started the isolated client. This is installer-only code, outside the Hub plugin. No gameplay workaround was introduced.
-
-## Homepage and marketing
-
-README now has the requested title/tagline, clear challenge pitch, near-top installation, feature showcase, six-stat explanation, honest limitations, privacy and technical links. It uses original `docs/media/from-scratch-hero.svg` / `.png` (1280×640, 29,607-byte PNG), generated by `scripts/Prepare-Marketing.ps1`. The banner was visually inspected and is explicitly **title artwork, not gameplay**. No Steam assets/affiliation or Plugin Hub approval is implied.
-
-GitHub's public Markdown API rendered a local HTML preview; relative images/links are rooted at this checkout. No public page was changed. Exact GitHub theme/narrow-screen appearance still needs owner inspection. Real screenshots included: **zero**. [SCREENSHOTS.md](SCREENSHOTS.md) specifies seven genuine privacy-safe captures; README has no broken screenshot placeholders.
-
-Recommended About: “A fresh-start OSRS challenge on your existing character. Rebuild a virtual bank, reclaim legacy gear, and track your comeback with RuneLite.” Topics/social preview and release-body recommendations are in [REPOSITORY_METADATA.md](REPOSITORY_METADATA.md). No remote settings/visibility were changed.
-
-## Reviewer package and boundaries
-
-[PLUGIN_HUB_REVIEW.md](PLUGIN_HUB_REVIEW.md) maps all 18 requested systems to verified source paths, including public native-bank callbacks, scoped quantity-display flags and restored title, cached Examine/chat behavior, finalized GE derivation/estimated tax, atomic storage buybacks, host-only playtime, Filepath persistence/export/import and public bulk prices. [FEATURES.md](FEATURES.md), [DATA_AND_PRIVACY.md](DATA_AND_PRIVACY.md), [INSTALLATION.md](INSTALLATION.md) and [BETA_TESTING.md](BETA_TESTING.md) separate player and internal behavior.
-
-Production-source inspection found no gameplay automation, synthetic clicks/keys, withdrawal interception, packet manipulation, server ownership changes, credentials, cloud backend, reflection/native-memory/custom-loader/process calls. PriceService uses RuneLite's existing bulk public feed off rendering/client/EDT/storage HTTP paths, without player holdings in the request. Normal RuneLite networking/authentication belongs to the client. Saves/exports are private and unencrypted. M10 introduces no persistence migration.
-
-Review-sensitive behavior is disclosed rather than hidden: native item quantity **display mode** is temporarily changed/restored before gray redraw; dynamic Bank Tags/native script filtering and bank title presentation are scoped public client APIs; local game messages append information. No native quantity/sprite/click region is changed. Existing anti-reentrancy, membership-cache, client-thread and full-container accounting safeguards are untouched. Human Plugin Hub approval is still required.
-
-`build=standard` was verified using the official tooling template **unchanged** at `034eaffd5bce7bb678d35287b547874f3dba6b3b`, template SHA-256 `62af0c5e207ffb0285773ecb6346ebc8f29d676691ffd919dde0cb26ab73a3a5`, and Hub client version **1.13.3** supplied externally. Local Java 11 production compilation/resources/JAR passed. This is not full hosted packaging/scanning or review. No future-commit manifest or submission PR exists. Main plugin metadata/icon/license remain appropriate; beta sources never enter the Hub build.
-
-## Validation
-
-| Check | Result / precise scope |
-| --- | --- |
-| Frozen gameplay | PASS: no `src/main` diff; exact tree above. No real progression touched. |
-| Production/test/beta incremental compilation | PASS, Java 11; class-file target 55 covered by resource tests. |
-| One full regression | **937 executed, 933 passed, 4 stale assertions failed**. No repeat full run. |
-| Follow-up | **22/22 passed** across FoundationResourcesTest, BankPanelTest, FinalCorrectionsUiTest and GeDashboardTest after assertion-only fixes. Combined full/follow-up evidence covers all 937; original full command was not green. |
-| Final extracted ZIP | **10/10** installer scenarios passed, including fake-desktop COM shortcuts, spaces, repeat/update/uninstall, preservation, malformed paths and tampered/unexpected JARs. File allowlist, exact hashes and ZIP checksum checked. |
-| Packaged startup | Help + isolated logged-out graphical initialization passed; authentication/gameplay pending. No game UI automation. |
-| Standard template | PASS local Windows production compile/resources/JAR; no beta/test code included. |
-| Unix wrapper | Executable bit `100755`, Git Bash syntax check passed; this is **not** Linux execution. |
-| Hosted Windows / Ubuntu | Both failed; raw error unavailable via public API (403); approved rerun/log inspection pending. |
-| README / links | GitHub Markdown render obtained; local link/file checks and artwork inspection performed. Final owner visual review and real captures pending. |
-
-No dependency/CI checks were disabled and no routine clean build was used. Test fixes retain checks for the new peak label, two million-GP bank values with unknown peak, leading estimated-fee tilde, and current beta metadata. Documentation-only edits do not trigger another full regression.
-
-## Changed-file inventory
-
-- Root: `.gitignore`, `README.md`, `ARCHITECTURE.md`, `ACCOUNTING.md`, `TEST_PLAN.md`, `CHANGELOG.md`, `build.gradle`, `runelite-plugin.properties`.
-- Existing docs: `docs/ARTWORK.md`, `docs/PUBLICATION.md`; issue template `.github/ISSUE_TEMPLATE/bug_report.md`.
-- New docs: `docs/FEATURES.md`, `docs/DATA_AND_PRIVACY.md`, `docs/INSTALLATION.md`, `docs/BETA_TESTING.md`, `docs/PLUGIN_HUB_REVIEW.md`, `docs/SCREENSHOTS.md`, `docs/RELEASE_DRAFT.md`, `docs/REPOSITORY_METADATA.md`, this report.
-- Art: `docs/media/from-scratch-hero.svg`, `docs/media/from-scratch-hero.png`.
-- Distribution: `gradle/beta.gradle`, `src/beta/java/com/fromscratch/beta/BetaLauncher.java`; `beta/windows/Common.ps1`, `Install.cmd`, `Install.ps1`, `Launch.cmd`, `Launch.ps1`, `Uninstall.cmd`, `Uninstall.ps1`, `README.txt`, `THIRD_PARTY_NOTICES.txt`.
-- Tools: `scripts/Build-Beta.ps1`, `Test-Beta.ps1`, `Test-StandardBuild.ps1`, `Prepare-Marketing.ps1`.
-- Assertion-only tests: `src/test/java/com/fromscratch/FoundationResourcesTest.java`, `bank/BankPanelTest.java`, `bank/FinalCorrectionsUiTest.java`, `bank/GeDashboardTest.java` (the last three under the same test package).
-
-Build artifacts/evidence remain local ignored files. Review the complete working/index diff before any commit. No real saves, exports, backups, credentials or binaries are included in Git changes apart from the original promotional PNG.
-
-## One owner review checklist
-
-1. Open `build/m10-review/index.html` and README's IntelliJ Markdown preview. Inspect branding, wording, narrow sizing and links. Review the seven missing real captures before public marketing.
-2. Inspect the actual ZIP/sidecar and extracted files. Compare SHA-256. Install on a disposable Windows user/profile first if desired; test spaces, the real **From Scratch Beta** shortcut, update and uninstall. Existing same-character progress must remain intact; export privately before real testing.
-3. Follow RuneLite's official Jagex Accounts panel login yourself. Never send tokens, credential files or passwords. If it fails, report a redacted error; do not substitute insecure credential writing. Only the owner tests gameplay.
-4. Enable/resume From Scratch, verify Full Bank before Start, complete initial snapshot, Virtual Bank/tabs, gray/bright counters, ordinary deposit/withdraw, native Examine and restart. Use safe trades for full/partial-cancel GE history; inspect buyback quotes/cancel before any optional real payment. Do not reset/import real progression for testing.
-5. Read the reviewer/privacy/installation docs and release draft. Review scoped widget/filter APIs, host-playtime/local-save limitations and upstream distribution notices.
-6. In GitHub, download the latest failed **validation-ubuntu-latest** and **validation-windows-latest** artifacts or open step logs. Supply only the first relevant Gradle failure/redacted test result. After approved commit/push, both hosted platforms need a green run; no automatic push occurs here.
-7. Inspect the staged/working diff and confirm no unrelated/private files. Give **one consolidated acceptance or correction list**. Commit, tag, public release/upload, friend distribution and Milestone 11 each remain outside this execution's approval.
-
-No gameplay design decision remains. Missing authentic screenshots, real shortcut/login/gameplay acceptance and authenticated CI failure evidence require owner participation. The candidate is ready for that review, not public launch.
+1. Preview [README](../README.md) in IntelliJ's Markdown preview. Check image size/captions and links; sample UI is disclosed beside each new image.
+2. Inspect PNGs in `docs/media` and capture the real bank/gameplay shots in [SCREENSHOTS.md](SCREENSHOTS.md) when convenient.
+3. Verify the ZIP's checksum, extract it, install and open the actual **From Scratch Beta** shortcut. Complete the official login yourself; do not share credentials or logs containing them.
+4. Follow [beta testing](BETA_TESTING.md), including restart and settings. Export privately before updates. Check uninstall safety on a disposable installation.
+5. Review `git diff`, untracked deliverables and the [technical map](PLUGIN_HUB_REVIEW.md). Approve or provide one consolidated correction list. No publication or Milestone 11 action is implied.

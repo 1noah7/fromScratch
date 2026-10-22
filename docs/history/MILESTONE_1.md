@@ -15,7 +15,7 @@ Foundation implementation and automated verification are ready for user review. 
 - Use internal name `from_scratch` for future Filepath storage; config group remains `fromscratch`.
 - Document pure multi-entry transaction accounting, pooled historical basis, per-character recoverable storage, and ambiguity handling before implementing them.
 
-See [ARCHITECTURE.md](../ARCHITECTURE.md), [ACCOUNTING.md](../ACCOUNTING.md), and [compatibility evidence](COMPATIBILITY.md) for the full plan and future decisions.
+See [ARCHITECTURE.md](../technical/ARCHITECTURE.md), [ACCOUNTING.md](../technical/ACCOUNTING.md), and [compatibility evidence](COMPATIBILITY.md) for the full plan and future decisions.
 
 ## Changed-file inventory
 
@@ -79,7 +79,7 @@ From the repository root:
 .\gradlew.bat run
 ```
 
-The agent can launch this command on request, but must never control the game. Follow [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts) for login. Enable From Scratch; open the purple coin sidebar. Confirm title, placeholder warning, six zero metrics, help-toggle behavior, disable cleanup, rapid reenable without duplicates, logged-out/logged-in preview, restart, and UI scaling/scroll readability. See [TEST_PLAN.md](../TEST_PLAN.md) for exact cases. A clean JVM launch alone does not pass acceptance.
+The agent can launch this command on request, but must never control the game. Follow [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts) for login. Enable From Scratch; open the purple coin sidebar. Confirm title, placeholder warning, six zero metrics, help-toggle behavior, disable cleanup, rapid reenable without duplicates, logged-out/logged-in preview, restart, and UI scaling/scroll readability. See [TEST_PLAN.md](../technical/TEST_PLAN.md) for exact cases. A clean JVM launch alone does not pass acceptance.
 
 ## Git review state
 

@@ -1,0 +1,17 @@
+// Maintainer-only UI captures. No game client, player profile, or preview classes enter the plugin JAR.
+sourceSets {
+	preview {
+		compileClasspath += sourceSets.main.output + configurations.testRuntimeClasspath
+		runtimeClasspath += sourceSets.main.output + configurations.testRuntimeClasspath
+	}
+}
+['previewIconIds': 'icons', 'renderUiPreviews': 'render'].each { taskName, operation ->
+	tasks.register(taskName, JavaExec) {
+		dependsOn tasks.named('previewClasses')
+		classpath = sourceSets.preview.runtimeClasspath
+		mainClass = 'com.fromscratch.preview.InterfacePreviews'
+		args operation, layout.buildDirectory.dir('marketing').get().asFile.absolutePath, file('docs/media').absolutePath
+		systemProperty 'user.home', layout.buildDirectory.dir('marketing/empty-home').get().asFile.absolutePath
+		systemProperty 'java.awt.headless', 'false'
+	}
+}

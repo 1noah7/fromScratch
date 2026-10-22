@@ -57,6 +57,10 @@ See your bank wealth, available GP, unlocked items and time played in one panel.
 
 Set a target for your next upgrade or look back at how far you've come. Item values use estimated prices, and Time Played counts gameplay on this computer.
 
+<p align="center"><img src="docs/media/dashboard-overview.png" alt="From Scratch dashboard showing six progress tiles with sample values" width="360" /></p>
+
+<p align="center"><em>The current dashboard, shown with sample progress.</em></p>
+
 ### Earn Back Your Favorite Gear
 
 Save challenge GP to unlock selected legacy equipment in the **Legacy Buybacks** shop. A Fire Cape costs **1,000,000 GP**. Browse combat gear, complete skilling outfits and useful storage items as you plan your next goal.
@@ -65,17 +69,27 @@ One **1,000,000 GP** Rune Pouch purchase covers both the normal and Divine versi
 
 Buybacks spend your challenge GP and leave your real coins and equipment untouched. Equipment you earn normally during the challenge is available without a buyback.
 
+![The current Legacy Buybacks catalog showing combat gear, prices and availability with sample progress](docs/media/legacy-buybacks.png)
+
+*Browse your next goal. This interface preview uses sample progress.*
+
 ### Trade, Earn, and Explore
 
 Keep using the Grand Exchange to sell your loot and buy your next upgrade. From Scratch records completed trades that it observes on this computer, including offers that partly fill before you cancel the rest.
 
 Review what you bought or sold, how much traded and the reported GP. You can also look through your bank history or Examine an item to check its exact virtual bank quantity.
 
+![Grand Exchange Purchases showing completed and partly filled purchases with sample trade data](docs/media/ge-purchases.png)
+
+*Completed trades in one place. This interface preview uses sample trades.*
+
 ### Keep Your Adventure Going
 
 Your challenge saves on this computer and returns when you reopen RuneLite. Each character keeps its own progress.
 
 Use **Export Progress** to make a private backup. **Import Progress** lets you restore that backup for the same character, including when moving to another computer.
+
+[See more interface previews](docs/SCREENSHOTS.md), including Sales, Bank History and setup. All previews use sample data. Gameplay captures will follow separately.
 
 ## Your Next Session
 
@@ -123,7 +137,7 @@ We're preparing it for publication. It has not been submitted, reviewed or appro
 
 ## More Information
 
-[Feature guide](docs/FEATURES.md) · [Installation help](docs/INSTALLATION.md) · [Beta testing guide](docs/BETA_TESTING.md) · [Privacy and data](docs/DATA_AND_PRIVACY.md) · [Technical reviewer guide](docs/PLUGIN_HUB_REVIEW.md) · [Report a bug](https://github.com/PilotsRKwl/fromScratch/issues/new/choose)
+[Feature guide](docs/FEATURES.md) · [Installation help](docs/INSTALLATION.md) · [Beta testing guide](docs/BETA_TESTING.md) · [Privacy and data](docs/DATA_AND_PRIVACY.md) · [Technical reviewer guide](docs/PLUGIN_HUB_REVIEW.md) · [Documentation index](docs/README.md) · [Report a bug](https://github.com/PilotsRKwl/fromScratch/issues/new/choose)
 
 Created by **Pilots r kwl**. [BSD 2-Clause license](LICENSE) · [Artwork credits](docs/ARTWORK.md).
 

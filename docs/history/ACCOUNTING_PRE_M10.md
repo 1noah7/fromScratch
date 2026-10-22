@@ -1,10 +1,10 @@
 # Bank accounting policy
 
-**Current contract: M1–M9.2 accepted; M10 preserves economic behavior and save formats.** The original multi-container ownership policy is historical and lives in [the archived specification](docs/history/ACCOUNTING_MULTI_CONTAINER.md). It is not a source for current acquisition, transfer or session-gate behavior.
+**Current contract: M1–M9.2 accepted; M10 preserves economic behavior and save formats.** The original multi-container ownership policy is historical and lives in [the archived specification](ACCOUNTING_MULTI_CONTAINER.md). It is not a source for current acquisition, transfer or session-gate behavior.
 
-M9 retains the signed bank equation and existing economic history. Restored native filtering never owns quantities; complete bank-container observations remain authoritative. Peak Progress Value replaces only the dashboard gain metric. Explicit local import/recovery never merges or replays histories and preserves prior evidence. See [M9](docs/MILESTONE_9.md).
+M9 retains the signed bank equation and existing economic history. Restored native filtering never owns quantities; complete bank-container observations remain authoritative. Peak Progress Value replaces only the dashboard gain metric. Explicit local import/recovery never merges or replays histories and preserves prior evidence. See [M9](MILESTONE_9.md).
 
-M8 does not alter the equations below, GP, gains, GE classification, buybacks or pouch offsets. Examine and the native Virtual Bank filter read acknowledged effective bank balances (including paid-copy projections); neither owns quantities or creates transactions. Item History shows physical movements and signed adjustments separately, labels observed GE executions without inventing collection provenance, and never calls a withdrawal consumption/spending. Time Played is a separate host-only logged-in GameTick counter, not an economic event or wall-clock run duration. Its first baseline does not reconstruct earlier gameplay or mobile time. See [M8](docs/MILESTONE_8.md).
+M8 does not alter the equations below, GP, gains, GE classification, buybacks or pouch offsets. Examine and the native Virtual Bank filter read acknowledged effective bank balances (including paid-copy projections); neither owns quantities or creates transactions. Item History shows physical movements and signed adjustments separately, labels observed GE executions without inventing collection provenance, and never calls a withdrawal consumption/spending. Time Played is a separate host-only logged-in GameTick counter, not an economic event or wall-clock run duration. Its first baseline does not reconstruct earlier gameplay or mobile time. See [M8](MILESTONE_8.md).
 
 ## Quantities and equation
 
@@ -83,9 +83,9 @@ Imported active runs have no bank-only comparison anchor until one player-confir
 11. **No automation:** observations/rendering/storage never send normal game actions.
 12. **Corrections persist:** B-P changes only through explicit confirmed correction/anchor policy, not ordinary bank movement.
 
-See [TEST_PLAN.md](TEST_PLAN.md) for current integration, persistence, UI and accepted M3 regression coverage. Synthetic tests are not manual in-game acceptance.
+See [TEST_PLAN.md](../technical/TEST_PLAN.md) for current integration, persistence, UI and accepted M3 regression coverage. Synthetic tests are not manual in-game acceptance.
 
-UI/performance polish changes scheduling, queueing and presentation, not the signed equation or save format. Complete snapshots commit FIFO on the worker; no speculative balances appear as committed. See [the polish report](docs/MILESTONE_4_POLISH.md).
+UI/performance polish changes scheduling, queueing and presentation, not the signed equation or save format. Complete snapshots commit FIFO on the worker; no speculative balances appear as committed. See [the polish report](MILESTONE_4_POLISH.md).
 
 ## M5 market and currency equations
 
@@ -168,7 +168,7 @@ Eligibility requires a current complete bank, a real untradeable definition and 
 
 Items Unlocked counts other effective positive bank IDs plus each durable paid role once. Natural and paid variants inside that role are not counted twice. The existing bank-only data cannot reconstruct a natural lifetime-acquisition count; no such history is invented. Corrections continue to edit raw B and preserve S, paid permissions, L and history. They never refund spending or create a second allowance.
 
-Payment, entitlement and purchase history share one BUYBACK audit/checkpoint commit with no raw P/B delta or financial gain event. Repository validation recomputes price, funds, eligibility and state; stale CAS, duplicate purchase IDs and mismatched state reject the entire operation. Only acknowledged saves update projections. Format 8 archives all verified M6 bytes before adding empty buyback state; no previous payment is inferred. See [M7 catalog/IDs, limitations and acceptance](docs/MILESTONE_7.md).
+Payment, entitlement and purchase history share one BUYBACK audit/checkpoint commit with no raw P/B delta or financial gain event. Repository validation recomputes price, funds, eligibility and state; stale CAS, duplicate purchase IDs and mismatched state reject the entire operation. Only acknowledged saves update projections. Format 8 archives all verified M6 bytes before adding empty buyback state; no previous payment is inferred. See [M7 catalog/IDs, limitations and acceptance](MILESTONE_7.md).
 
 ## Post-M7 — One-time legacy pouch transfer preparation (format 9)
 
@@ -189,7 +189,7 @@ Identical banked runes have no provable physical provenance. The player records 
 
 Recorded = remaining + held + retired, per ID, using checked longs. All state is immutable and source-allowlisted; every registration, release, finish and held transfer is journaled. Pouch permission, raw coins, committed buyback GP and other entitlements retain their M7 rules. Pouch purchase is blocked until READY; old purchases are never revoked or charged again.
 
-If contents were moved before recording, quantity and source are unknown. Do not infer a debit. The relevant dialog links Manual Bank Corrections and requires explicit acknowledgment of prior corrections and empty contents. Manual corrections fix known bank counts; this workflow cannot reconstruct or automatically erase old historical gain prices. Preserve that history and disclose the uncertainty. No continuous personal-container accounting or automatic game actions are introduced. See [review procedure and limitations](docs/POST_MILESTONE_7.md).
+If contents were moved before recording, quantity and source are unknown. Do not infer a debit. The relevant dialog links Manual Bank Corrections and requires explicit acknowledgment of prior corrections and empty contents. Manual corrections fix known bank counts; this workflow cannot reconstruct or automatically erase old historical gain prices. Preserve that history and disclose the uncertainty. No continuous personal-container accounting or automatic game actions are introduced. See [review procedure and limitations](POST_MILESTONE_7.md).
 
 ## M9.1 — Completed GE history is presentation only
 

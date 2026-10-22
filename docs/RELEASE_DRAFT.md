@@ -34,7 +34,7 @@ This is an independent, voluntary, unreviewed challenge. It does not prevent wit
 
 **Progress is local to this computer.** Exports contain private, unencrypted progression. Back up before updates, keep exports private, and avoid concurrent clients on the same run. No cloud/device sync. Uninstalling the beta preserves challenge saves, settings, credentials and backups. Update by reinstalling the newer approved ZIP; uninstall with the installed version's **Uninstall.cmd**.
 
-Packaged help, an isolated logged-out client window, safe install/update/uninstall and the standard build were checked locally. Owner shortcut/authentication/gameplay acceptance and hosted CI diagnosis remain release gates; see [Milestone 10](MILESTONE_10.md). Do not present these as passed until verified.
+Packaged help, an isolated logged-out client window, safe install/update/uninstall and the standard build were checked locally. Windows and Ubuntu CI passed for the frozen source. Owner shortcut/authentication/gameplay acceptance remains a release gate; see [Milestone 10](MILESTONE_10.md). Do not present these as passed until verified.
 
 ## Reporting a problem
 

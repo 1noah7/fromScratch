@@ -25,7 +25,7 @@ Pass-Beta 'Manifest hashes, allowlist and pinned RuneLite'
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $plugin = [IO.Compression.ZipFile]::OpenRead((Get-BetaPath $PackageDirectory $manifest.pluginJar))
-try { Assert-Beta (-not @($plugin.Entries | Where-Object {$_.FullName -match '(^org/junit/|Test.class$|^com/fromscratch/beta/|META-INF/services/net.runelite.client.plugins.Plugin)'}).Count) 'Tests/bootstrap/service registration entered the plugin JAR.';Assert-Beta ($null -ne $plugin.GetEntry('com/fromscratch/icon.png')) 'Missing plugin resource.' } finally {$plugin.Dispose()}
+try { Assert-Beta (-not @($plugin.Entries | Where-Object {$_.FullName -match '(^org/junit/|Test.class$|^com/fromscratch/(beta|preview)/|META-INF/services/net.runelite.client.plugins.Plugin)'}).Count) 'Tests/bootstrap/previews/service registration entered the plugin JAR.';Assert-Beta ($null -ne $plugin.GetEntry('com/fromscratch/icon.png')) 'Missing plugin resource.' } finally {$plugin.Dispose()}
 $client=[IO.Compression.ZipFile]::OpenRead((Get-BetaPath $PackageDirectory 'lib/client-1.13.3.jar'))
 try { Assert-Beta ($null -ne $client.GetEntry('net/runelite/client/plugins/jagexauth/JagexAuthPlugin.class')) 'Official Jagex Accounts panel missing.' } finally {$client.Dispose()}
 Pass-Beta 'Production JAR/resource isolation and official authentication panel'

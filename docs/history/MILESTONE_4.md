@@ -4,7 +4,7 @@
 
 By **Pilots r kwl**. **Automated validation passed; user-run manual acceptance pending.** M1–M3 remain accepted. M5 has not begun. No commit, push, tag, publication, game interaction, real-save inspection or private progression reset was performed.
 
-The [earlier M4 report](history/MILESTONE_4_MULTI_CONTAINER.md) and [correction pass](MILESTONE_4_CORRECTIONS.md) are historical. Their multi-container acquisition rules, Update Progress wizard and session gates are superseded by this bank-only contract.
+The [earlier M4 report](MILESTONE_4_MULTI_CONTAINER.md) and [correction pass](MILESTONE_4_CORRECTIONS.md) are historical. Their multi-container acquisition rules, Update Progress wizard and session gates are superseded by this bank-only contract.
 
 ## Architectural change
 
@@ -88,7 +88,7 @@ The production JAR was inspected: **zero retired SetupController/ItemTrackingSes
 6. Open Account Tools → Bank Corrections with no differences. Search Wooden shield, inspect counts, preview/set an allowed signed balance and confirm. Check purple counter after save. Withdraw/redeposit: correction offset remains. Try Cancel, excessive positive input and a bank change while the editor is open; no unintended/stale write. Check negative absent items remain searchable.
 7. Restart/disable/re-enable and open bank alone: balances persist, no recurring migration/review gate. After playing elsewhere with the host client closed, deposit desired items and open bank here: automatic net changes and retained On return summary. Ordinary later changes should not erase it.
 8. Recheck accepted M3 visuals: first/middle/top/bottom partial rows, fast scrolling, tabs/search/empty results, resize/scaling, placeholders/fillers, tooltips/right-click/drag. Negative/zero dim, positive normal; original quantities remain readable. Nothing paints outside the bank viewport or after closure/disable.
-9. Verify concise dashboard, no legacy/lifetime claims, bottom collapsed Bank History and separate automatic/manual history. Full checklist and safe recovery testing are in [TEST_PLAN.md](../TEST_PLAN.md).
+9. Verify concise dashboard, no legacy/lifetime claims, bottom collapsed Bank History and separate automatic/manual history. Full checklist and safe recovery testing are in [TEST_PLAN.md](../technical/TEST_PLAN.md).
 
 Only the user can confirm live-client timing, UI usability, visuals and performance. A build or clean JVM launch is not acceptance.
 

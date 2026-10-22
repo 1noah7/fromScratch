@@ -34,7 +34,7 @@ Verified directly against the resolved RuneLite **1.13.3** `net.runelite.api.gam
 
 BankIcons requests each sprite once through ItemManager.getImage, retaining AsyncBufferedImage.addTo for supported asynchronous completion/repaint. All icon labels reserve centered 36x32 bounds. Missing/failed sprites use the bundled icon; null results are also cached, preventing repeated lookup on bank updates. No external assets are downloaded or item sprites stored in the repository.
 
-Navigation uses a newly generated transparent purple pixel-art coin stack without numbers. Exports remain 24x24 (706 bytes) and Hub 48x48 (2,246 bytes), with nearest-neighbor fitting. See [artwork provenance and exact prompt](ARTWORK.md). Other purple/gold branding is preserved.
+Navigation uses a newly generated transparent purple pixel-art coin stack without numbers. Exports remain 24x24 (706 bytes) and Hub 48x48 (2,246 bytes), with nearest-neighbor fitting. See [artwork provenance and exact prompt](../ARTWORK.md). Other purple/gold branding is preserved.
 
 ## Sidebar interactions
 

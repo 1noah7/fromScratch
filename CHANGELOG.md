@@ -1,5 +1,7 @@
 # Changelog
 
+Current status: gameplay through Milestone 9.2 is owner-accepted and frozen. Milestone 10 prepares an unpublished beta. Older entries preserve development chronology, including superseded experiments; use [current documentation](docs/README.md) for behavior and installation.
+
 ## Milestone 10 — Windows beta and publication preparation (owner review pending)
 
 - Freeze accepted M9.2 gameplay; verify canonical PilotsRKwl repository/master and disclose inaccurate historical tags without rewriting them.
@@ -7,18 +9,18 @@
 - Replace the early README with a promotional homepage and original title/social artwork. Genuine gameplay screenshots remain explicitly pending; no beta asset URL is invented.
 - Add reviewer/source map, feature/privacy/install/test guides, release draft and metadata recommendations. Verify production with the official standard build template. Hosted CI failures remain separately disclosed; no release or Hub submission occurs.
 
-## Milestone 9.2 — Subdued physical bank counters (manual acceptance pending)
+## Milestone 9.2 — Subdued physical bank counters (owner-accepted baseline)
 
 - Draw physical bank quantities in #A0A0A0 after locked-item shading. Use the public quantity-display mode to suppress the original counter before native drawing and restore it when inactive; no sprite masks, quantity changes or new setting. Keep virtual counters and their configurable color unchanged.
 - Preserve native physical stack thresholds, clipping, Full Bank/Virtual Bank behavior and native counters during dragging. Incremental compilation and 61 focused tests passed, including seven new visual cases; live font/scaling acceptance remains required. See `docs/MILESTONE_9_2.md`.
 
-## Milestone 9.1 — Native tabs and finalized GE history (manual acceptance pending)
+## Milestone 9.1 — Native tabs and finalized GE history (owner-accepted baseline)
 
 - Intersect native item tabs with cached positive virtual eligibility through RuneLite's bank-build/filter callbacks; preserve native banking and lifecycle guards. Native search and other user tags explicitly return to Full Bank.
 - Derive one completed/partial-cancelled GE row per durable offer generation, using cumulative execution quantities/GP. Hide active, zero-fill and lifecycle rows without rewriting audit evidence or replaying accounting. Paginate finalized trades with bounded background reads.
 - Incremental compilation and 63 distinct focused tests passed; full regression and live-client acceptance remain separate. See `docs/MILESTONE_9_1.md`.
 
-## Milestone 9 — Hardening (manual acceptance pending)
+## Milestone 9 — Hardening (owner-accepted baseline)
 
 - Hide zero-value GE slot-clears without deleting lifecycle evidence; center numeric columns and group average GP amounts.
 - Replace the gain tile with durable Peak Progress Value; preserve old gains. New-run spending starts at 0 GP and estimated fees use a leading tilde.
@@ -29,7 +31,7 @@
 - Add local checksummed Export/Import Progress, explicit verified previous-save recovery, stale-preview rejection, retained pre-import files and a single atomic restore selector for bank/history/playtime. Keep schemas 9/1; fail safely when atomic replacement is unsupported.
 - Preserve both CI platforms/Java 11/cache; avoid redundant successful exact-commit tag builds and retain detailed failure artifacts. Ubuntu root cause remains blocked on authenticated logs, not attributed to migration notices or permissions.
 
-## Milestone 8 — Native information and playtime (manual acceptance pending)
+## Milestone 8 — Native information and playtime (owner-accepted baseline)
 
 - Fix disappearing Examine prefixes: native game chat treats the first pipe as a name/body delimiter. Use semicolons, balanced numeric highlights, compact GE/HA labels and whole optional-field limits; retain required name/quantity/status/payment. Add final-payload/native-split regression checks for all five reported items. No economic or persistence changes.
 - Examine polish: queue after RuneLite's optional price line; use the item-price style with signed virtual bank counts, GE/HA totals, live quantity-color numerical highlights and normal-color escaped words/names. Catalog receipts distinguish locked prices from paid/shared/set/upgrade entitlements, without new accounting.
@@ -42,14 +44,14 @@
 - Replace wall-clock Active Run Duration with Time Played: logged-in host GameTicks, truncated minutes/hours/days, independent checked/Filepath checkpoints and conservative concurrent-client CAS. Existing run start, quantities, entitlements and financial records are unchanged.
 - Twenty focused feature tests plus directly affected bank/sidebar/persistence regressions; full release regression and live acceptance remain separate.
 
-## Rune Pouch simplification and sidebar rename (manual acceptance pending)
+## Rune Pouch simplification and sidebar rename (owner-accepted baseline)
 
 - Replace manual pouch preparation UI with fresh opened-pouch/display/varbit verification and one atomic 1M family purchase plus signed legacy-rune deficits. Ordinary bank deposits restore balances without repeating gains; failed/stale/duplicate purchases cannot partially charge or unlock.
 - Reuse format9 with optional purchase receipt evidence; preserve old entitlements, payments, signed adjustments and historical pending reservations. No inferred old contents or repeat charge.
 - Add purchase-linked Automatic — Legacy Rune Pouch history and a brief acknowledged-success dialog. Rename only the Grand Exchange heading to Grand Exchange History.
 - Validate with incremental compile and directly affected test filters only; full checkpoint regression is deferred as requested.
 
-## Post-Milestone 7 — Compact layout and legacy pouch runes (manual acceptance pending)
+## Post-Milestone 7 — Compact layout and legacy pouch runes (owner-accepted baseline)
 
 - Reduce standard statistic tiles from 112 to 98 pixels, action rows from 102 to 90, and Played Elsewhere from 132 to a 116-pixel minimum. Natural content/font size can expand them. Retain both columns, all icons, text, actions and existing render geometry.
 - Order sections: From Scratch/statistics, Legacy Buybacks, Played Elsewhere?, Grand Exchange, Bank History, Reset Progress.
@@ -57,10 +59,10 @@
 - Atomically hold matching new bank arrivals out of virtual progress, high-water gains, market worth and unlock counts. Preserve pre-existing earned runes. Explicitly restore unrelated earnings or retire unarrived contents; no blanket deductions or permanent phantom debts.
 - Require an empty-pouch confirmation before a new 1M family payment. Keep standard/Divine/Trouver single-copy and upgrade/revert rules. Existing purchases retain payments and entitlements and receive review without inferred historical debits.
 - Format 9 archives complete verified format-8 checkpoints/journals exactly before migration; pending/completed preparation and audit evidence use the existing worker/FIFO/CAS/recovery protocol.
-- See [API evidence, accounting, tests, limitations and user-only acceptance](docs/POST_MILESTONE_7.md). No M8, commits, cloud or gameplay automation.
+- See [API evidence, accounting, tests, limitations and user-only acceptance](docs/history/POST_MILESTONE_7.md). No M8, commits, cloud or gameplay automation.
 
 
-## Milestone 7 — Legacy Buybacks (unreleased; manual acceptance pending)
+## Milestone 7 — Legacy Buybacks (historical development record)
 
 - Add the curated Combat & Utility, Void Knight and complete Skilling Outfit shop, verified RuneLite item IDs, explicit one-copy equipment roles and cached OSRS sprites. No generic untradeable purchases or real game actions.
 - Rune Pouch / Divine Rune Pouch is one permanent 1M family entitlement across standard/Divine/Trouver forms, with one payment/history record and bounded physical-copy allocation. Notes and minigame substitutes do not qualify; pouch contents are untouched.
@@ -68,9 +70,9 @@
 - Support exact-price/insufficient/duplicate/stale safeguards, atomic complete outfits, Elite Void 1.8M outright or 1M after paid base, failed-write recovery, withdrawal/return and variant substitution without a second grant.
 - Format 8 verifies/archives M6 files byte-for-byte before migration, retaining identity/start/immutable baseline/raw bank/financial/GE history and corrections. No new bank anchor, reset, cloud or personal-container gate.
 - Add Legacy Buybacks shop/history tiles below GE; compact explicit confirmations and separate readable purchase history. Preserve M3 geometry, custom colors, quantity formatting, setup/reset and serial background persistence.
-- See [catalog, verified IDs, tests, measurements and manual acceptance](docs/MILESTONE_7.md). No commit, publication or M8.
+- See [catalog, verified IDs, tests, measurements and manual acceptance](docs/history/MILESTONE_7.md). No commit, publication or M8.
 
-## Milestone 6 — Grand Exchange integration (unreleased; manual acceptance pending)
+## Milestone 6 — Grand Exchange integration (historical development record)
 
 - Preserve accepted M5 checkpoint v0.5.0-wealth and bank-only P/B authority. GE events never independently debit/credit bank coins/items or include uncollected offers in bank worth.
 - Add passive RuneLite 1.13.3 offer observation, local slot generations, incremental quantity/reported-GP records, partial fills, completion/cancellation and uncertainty for initial/offline/reused offers. Ignore login-time EMPTY clears; refresh connection context without replaying fills.
@@ -78,25 +80,25 @@
 - Record clearly estimated seller fees once, using 2% average-price flooring, per-item 5M cap and published tool/bond/Mind exemptions. Keep estimated fees separate from manual expenses and physical Bank GP; unsupported exemptions/rates/gross-net semantics remain disclosed.
 - Add Purchases/Sales tiles and read-only searched/sorted/filtered paginated histories, with reported GP/average, estimated tax, observed time and provenance. Retain accepted dashboard, separate Diary/partyhat manual icons and overlays.
 - Extend forced local journal/checkpoint/CAS recovery to format 7; verify and archive original M5 files byte-for-byte before migration, keeping run/start/legacy bank/P/B/financial history unchanged. Preserve the latest per-slot totals under extreme event bursts and reuse unchanged overlay labels.
-- See [M6 implementation, limits, tests and manual procedure](docs/MILESTONE_6.md). No M7, commit, publication, reset, cloud or personal-container ownership.
+- See [M6 implementation, limits, tests and manual procedure](docs/history/MILESTONE_6.md). No M7, commit, publication, reset, cloud or personal-container ownership.
 
-## Milestone 5 — Final withdrawal and UI corrections (unreleased; manual acceptance pending)
+## Milestone 5 — Final withdrawal and UI corrections (historical development record)
 
 - Fix native placeholder counters resolving the placeholder variant rather than the original item's saved balance. Final withdrawals retain/render the full signed deficit; absent slots keep their saved balance in valuation and Manual Bank Corrections. Physical aggregation, signed arithmetic, historical values and format 6 are unchanged.
 - Share integer K/M formatting between item counters and all compact GP tiles: 1,000,000 is 1000K GP, 9,999,999 is 9999K GP and 10,000,000 is 10M GP. No decimals or rounding up; grouped exact tooltips remain.
 - Use the verified Purple partyhat (1046) for both manual-history and correction-action sprites, cached once per item ID.
 - Clarify the optional GE/other-storage legacy limitation without observing or gating GE. Keep attestation near step 2 and add a 14-pixel gap before the green Start action. Played Elsewhere explicitly says progress updates automatically.
-- See [the final correction report](docs/MILESTONE_5_FINAL_CORRECTIONS.md) for regression evidence and manual tests. No saves were reset or schema changed; M6 remains unauthorized.
+- See [the final correction report](docs/history/MILESTONE_5_FINAL_CORRECTIONS.md) for regression evidence and manual tests. No saves were reset or schema changed; M6 remains unauthorized.
 
-## Milestone 5 — Final UI/quantity corrections (unreleased; manual acceptance pending)
+## Milestone 5 — Final UI/quantity corrections (historical development record)
 
 - Replace wide financial debug tooltips with escaped, wrapped Swing HTML, exact GP and correct singular/plural text. Hide technical timestamps/migration diagnostics from ordinary tooltips; underlying measurement data is unchanged.
 - Center Played Elsewhere instructions and reset/Start actions. Remove ordinary Active/Not Started subtitles while retaining actionable notices. Compact setup spacing, adapt checkbox height and size the setup card without reserving the hidden dashboard.
 - Make Start From Scratch solid green/white with distinct hover, pressed and disabled styling. Preserve attestation, complete-bank gating and the original confirmation; reset still requires typed RESET and its existing archive safeguards.
 - Correct item-only formatting: 0–9,999 exact, 10,000–9,999,999 uppercase K, ten million+ uppercase M. Thus 1,000,000 is 1000K, 1,740,000 is 1740K and 10,000,000 is 10M. Truncate, preserve signs/long bounds and fit exceptional wide labels inside the existing slot/viewport.
-- Preserve monetary formatting, signed accounting, valuations, historical quotes, price cache, format 6 and all existing local saves. See [polish evidence](docs/MILESTONE_5_POLISH.md).
+- Preserve monetary formatting, signed accounting, valuations, historical quotes, price cache, format 6 and all existing local saves. See [polish evidence](docs/history/MILESTONE_5_POLISH.md).
 
-## Milestone 5 — Bank wealth and UI corrections (unreleased; manual acceptance pending)
+## Milestone 5 — Bank wealth and UI corrections (historical development record)
 
 - M4 and its polished UI are user accepted. Preserve bank-only signed deltas, local saves, responsiveness, draw-only clipping, custom colors, navigation artwork and setup/reset safeguards.
 - Use OSRS integer stack labels: exact below 10,000, truncated lowercase k below one million, truncated lowercase m thereafter; preserve signs and long bounds. Money has a separate compact/exact formatter.
@@ -105,9 +107,9 @@
 - Value signed bank balances with exact one-GP coins, negative contributions, priced-subtotal/stale indicators and exact tooltips. Replace Spendable GP with Bank GP, without inventing a wallet.
 - Add durable conservative per-ID high-water gains with fixed historical quotes/unpriced evidence. Transfers and corrections do not repeatedly generate gains. Record only explicitly confirmed statistical losses/expenses; no records means Not tracked.
 - Add format 6 with exact-byte verified pre-migration archives, preserved bank state/history and an explicit imported financial baseline. Atomic commits/recovery/idempotency/character isolation remain mandatory.
-- See [M5 report](docs/MILESTONE_5.md) for validation, timing, known estimation limits and manual acceptance steps. No M6, GE transactions, buybacks, cloud or personal-container accounting.
+- See [M5 report](docs/history/MILESTONE_5.md) for validation, timing, known estimation limits and manual acceptance steps. No M6, GE transactions, buybacks, cloud or personal-container accounting.
 
-## Milestone 4 — UI polish pass (unreleased; manual acceptance pending)
+## Milestone 4 — UI polish pass (historical development record)
 
 - Default quantity text to #1DFF00 and locked shading to #333333 / 50%; retain existing custom settings and apply edits live.
 - Replace bundled navigation/Hub artwork with transparent purple pixel-art coins, without quantity labels. Keep 24x24/48x48 dimensions and optimized PNGs.
@@ -115,9 +117,9 @@
 - Replace Played Elsewhere text/button with equal-width information and correction tiles; retain six statistic tiles and Coming soon financial placeholders.
 - Make setup attestation clearly outlined with a bright checked state, hover/focus feedback and normal label/Space activation. Keep Start gated by bank readiness and active attestation.
 - Paint the reset action solid red with centered white text and distinct hover/pressed states; retain typed RESET, revision checks and archive safeguards.
-- Preserve bank-only accounting, local saves, history, scheduling and accepted overlay geometry. Full build evidence and manual steps: [UI polish report](docs/MILESTONE_4_UI_POLISH.md).
+- Preserve bank-only accounting, local saves, history, scheduling and accepted overlay geometry. Full build evidence and manual steps: [UI polish report](docs/history/MILESTONE_4_UI_POLISH.md).
 
-## Milestone 4 — Final UI/performance polish (unreleased; manual acceptance pending)
+## Milestone 4 — Final UI/performance polish (historical development record)
 
 - Remove a debugger-confirmed first-scan/two-extra-tick wait; capture complete banks at the next GameTick, cache until invalidation, and move automatic accounting to the storage worker. Queue complete snapshots FIFO during writes; publish only durable acknowledgments.
 - Reuse/coalesce sidebar presentation and committed overlay projections. Add opt-in sampled monotonic phase timing without account contents. Native bank lag still needs user enabled/disabled comparison.
@@ -126,7 +128,7 @@
 - Final clean build: 524 passed, 0 failures/errors/skipped in 36 suites, including 1,200-item/FIFO/durability and 1,240-entry history coverage. Retain bank-only equation, local format-5 saves/history/migration and Java 11/Wrapper. No M5, external service or new dependency. Current measurements, tests and manual procedure: docs/MILESTONE_4_POLISH.md.
 
 
-## Milestone 4 — Bank-only rearchitecture (unreleased; manual acceptance pending)
+## Milestone 4 — Bank-only rearchitecture (historical development record)
 
 - Replace live inventory/equipment acquisition attribution, multi-container correlation, review/session gates and Update Progress with a single complete-bank authority. Retired controllers/readers/editor/reducer are test-only historical fixtures, preserving earlier regression evidence without shipping their gameplay path.
 - Add checked signed progress B' = B + (P' - P), immutable initial bank, automatic complete/quiet bank observation and atomic cursor/balance/audit publication. Null/partial/PIN is unknown; verified empty is valid. No lifetime acquisition, consumption, spending or wealth inference.
@@ -136,7 +138,7 @@
 - Keep storage local-only, Java 11, existing Gradle Wrapper/CI, metadata, author, license and artwork. Existing Lombok also processes historical test fixtures; no production dependency or external service was introduced. No M5, commit, push, tag, reset of private data or publication.
 
 
-## Milestone 4 correction pass — Unreleased; live retest pending
+## Milestone 4 correction pass — Historical development record
 
 The initial 376-test implementation failed live acceptance. This correction does not claim the user's exact shield path is proven without a live trace.
 
@@ -148,7 +150,7 @@ The initial 376-test implementation failed live acceptance. This correction does
 - Add opt-in rate-limited local DEBUG tracing for one selected item (default wooden shield 1171): observed before/after, gate/context, classification, review, durable commit and actual renderer value. No whole-bank/identity logging or player-data transmission.
 - Add 41 regressions across four suites, retaining the earlier 376 cases with intended-rule assertion updates. Final clean build: 417 passed, 0 failed/errors/skipped. Current evidence/manual procedure: docs/MILESTONE_4_CORRECTIONS.md. No M5, commit, push, tag, reset or publication.
 
-## Milestone 4 — Unreleased; manual acceptance pending
+## Milestone 4 — Historical development record
 
 M1–M3 passed user acceptance; M3 was committed by the user as `5b7c49f`. M4 has automated evidence only. No agent commit, push, tag, publication or progression reset was performed.
 

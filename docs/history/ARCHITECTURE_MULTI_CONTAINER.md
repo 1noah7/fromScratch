@@ -6,9 +6,9 @@
 
 M1–M3 passed user-run acceptance. M3 is committed as `5b7c49f`. The first M4 implementation passed 376 tests but failed live acceptance. The correction pass adds real-collector pipeline coverage, retained pre-bank acquisition evidence, independent legacy withdrawal deficits and the difference-focused Update Progress workflow. It awaits live retesting. GP/GE/valuation/buybacks remain unimplemented. No code was taken from purpleCounter. Accepted M3 geometry, clipping and tint are preserved; only signed values and the nonpositive lock predicate change.
 
-Current correction evidence and the user-only procedure are in [MILESTONE_4_CORRECTIONS.md](docs/MILESTONE_4_CORRECTIONS.md). Historical M3/M4 descriptions below are qualified by this correction: storage now uses format 4; unchanged/transfer-only sessions reopen automatically; unresolved review lives in Account Tools.
+Current correction evidence and the user-only procedure are in [MILESTONE_4_CORRECTIONS.md](MILESTONE_4_CORRECTIONS.md). Historical M3/M4 descriptions below are qualified by this correction: storage now uses format 4; unchanged/transfer-only sessions reopen automatically; unresolved review lives in Account Tools.
 
-The M2 checkout was clean on `master` at the user-created foundation commit. AGENTS.md and CLAUDE.md were reread. Java 11, the existing Gradle 8.10 Wrapper and dependency layout remain. `latest.release` resolves to RuneLite 1.13.3; actual identity/container/Filepath sources were checked. See [compatibility evidence](docs/COMPATIBILITY.md).
+The M2 checkout was clean on `master` at the user-created foundation commit. AGENTS.md and CLAUDE.md were reread. Java 11, the existing Gradle 8.10 Wrapper and dependency layout remain. `latest.release` resolves to RuneLite 1.13.3; actual identity/container/Filepath sources were checked. See [compatibility evidence](COMPATIBILITY.md).
 
 ## Packages and responsibilities
 

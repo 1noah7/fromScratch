@@ -1,6 +1,6 @@
 # Friend-and-family beta testing
 
-This is an unpublished, unreviewed candidate until the owner approves distribution. Install only the approved owner-provided ZIP from the [canonical repository](https://github.com/PilotsRKwl/fromScratch). [Installation and login](INSTALLATION.md) explains Java 11 and the desktop shortcut. No coding tools are needed to play.
+This is an unpublished, unreviewed candidate until the owner approves distribution. Install only the approved owner-provided ZIP from the [canonical repository](https://github.com/PilotsRKwl/fromScratch). [Installation and login](INSTALLATION.md) is the authoritative guide for prerequisites, setup, login, updates and uninstall. No coding tools are needed to play.
 
 ## Your first session
 

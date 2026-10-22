@@ -15,13 +15,13 @@ All 376 prior cases remain; assertions change only for the deliberately requeste
 | LegacyDeficitPersistenceTest | 7 | Restart/isolation, audited resolution, delta validation, exact verified format-3 migration/history, corrupt chain preservation, interrupted retry, required format-4 fields |
 | UpdateProgressEditorTest | 15 | 1,000 unchanged plus three changes, filters/name search/numeric sorting/selected-row bulk mapping, immutable proposals, location-correct earning, one-copy missed-acquisition correction, returned deficit once, vanished legacy types, no changes, secondary tools/collapsed history, absent deficit display, default-off single-item trace, preserved Elsewhere, invalid bulk atomicity |
 
-Run `.\gradlew.bat clean build`. Final totals and warnings are recorded in [the correction report](docs/MILESTONE_4_CORRECTIONS.md). Follow its exact user-only retest before acceptance. Retain all accepted M3 pixel/clipping/lifecycle tests; no agent may interact with RuneScape. Manual testing must cover same-run migration, actual acquisition provenance, -1/-2/0, mixed earned/legacy returns, meaningful-only startup review, editor bulk/cancel/stale behavior and real performance. Diagnostics are opt-in, per-stage throttled DEBUG for one item only. No account credentials, real snapshots or production grant command are used by tests.
+Run `.\gradlew.bat clean build`. Final totals and warnings are recorded in [the correction report](MILESTONE_4_CORRECTIONS.md). Follow its exact user-only retest before acceptance. Retain all accepted M3 pixel/clipping/lifecycle tests; no agent may interact with RuneScape. Manual testing must cover same-run migration, actual acquisition provenance, -1/-2/0, mixed earned/legacy returns, meaningful-only startup review, editor bulk/cancel/stale behavior and real performance. Diagnostics are opt-in, per-stage throttled DEBUG for one item only. No account credentials, real snapshots or production grant command are used by tests.
 
 ## Milestone 4 evidence — manual acceptance pending
 
 Historical first-implementation evidence follows. Its unconditional approval workflow and format 3 are superseded by the correction gate above, and the original 376-test build did not establish live acceptance.
 
-All **285** M1–M3 tests are retained. Two existing suites update assertions for the intentional guided checklist, elapsed timer and current envelope version. M4 adds **91** cases, for **376 tests** across 24 suites. Final clean-build results are recorded in [MILESTONE_4.md](docs/MILESTONE_4.md). Tests use pure fixtures, fake client/container boundaries, EDT Swing and temporary Filepath roots; no OSRS account, game input, private inventory or production grant command is used.
+All **285** M1–M3 tests are retained. Two existing suites update assertions for the intentional guided checklist, elapsed timer and current envelope version. M4 adds **91** cases, for **376 tests** across 24 suites. Final clean-build results are recorded in [MILESTONE_4.md](MILESTONE_4.md). Tests use pure fixtures, fake client/container boundaries, EDT Swing and temporary Filepath roots; no OSRS account, game input, private inventory or production grant command is used.
 
 | New suite | Tests | Evidence |
 | --- | ---: | --- |
@@ -53,7 +53,7 @@ All **285** M1–M3 tests are retained. Two existing suites update assertions fo
 
 ### M4 manual acceptance — user only
 
-Use the detailed sequence in [docs/MILESTONE_4.md](docs/MILESTONE_4.md#manual-acceptance-procedure). Preserve the existing run; **do not reset it** to test M4. Close RuneLite and privately back up the entire plugin directory before the first development launch. Do not attach private saves to bug reports. Launch `.\gradlew.bat run` and follow [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts). Agents must never operate RuneScape.
+Use the detailed sequence in [docs/MILESTONE_4.md](MILESTONE_4_MULTI_CONTAINER.md#manual-acceptance-procedure). Preserve the existing run; **do not reset it** to test M4. Close RuneLite and privately back up the entire plugin directory before the first development launch. Do not attach private saves to bug reports. Launch `.\gradlew.bat run` and follow [Using Jagex Accounts](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts). Agents must never operate RuneScape.
 
 Verify login comparison and cancellation, observed empty tabs, ordinary acquisition, mixed/legacy transfers, equipment/notes, Eat/Drop return, ambiguous loss/crafting/source correction, durable history and host-offline net comparison. Repeat M3 scrolling/search/tabs/partial edges/resizing/configuration/disable checks using positive and zero counts. Financial values must remain explicitly unimplemented zeros. Net snapshots cannot prove gross offline history or every source. Stop after M4 and report live results before acceptance; a build or clean JVM launch is insufficient.
 

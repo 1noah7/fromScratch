@@ -4,7 +4,7 @@ Milestones 1–9.2 are owner-accepted; gameplay is frozen. Milestone 10 prepares
 
 ## Prepared locally
 
-- Canonical repository [PilotsRKwl/fromScratch](https://github.com/PilotsRKwl/fromScratch); `master` baseline `a2436132c9fb72cc25d015c35309628398486280`, matching remote master at verification. Older milestone tags have not been moved.
+- Canonical repository [PilotsRKwl/fromScratch](https://github.com/PilotsRKwl/fromScratch); `master` revision `2bb5dbd4cb7973a05b9f449be70e5adcc0101d06`, with the accepted M9.2 production tree unchanged. Older milestone tags have not been moved.
 - From Scratch / **Pilots r kwl** / `com.fromscratch` / `fromscratch` / `from_scratch`, Java 11, BSD-2-Clause, existing small PNG icons.
 - Version `0.10.0-beta.1`, separate bootstrap and unmodified RuneLite 1.13.3 runtime JARs, manifest/checksums/provenance, installer/desktop shortcut/update/safe uninstall. See [installation](INSTALLATION.md).
 - Promotional [README](../README.md), original title/social artwork, pending real-screenshot list, [release draft](RELEASE_DRAFT.md) and [metadata recommendations](REPOSITORY_METADATA.md).
@@ -14,8 +14,8 @@ Milestones 1–9.2 are owner-accepted; gameplay is frozen. Milestone 10 prepares
 ## Owner release gates
 
 1. Review [Milestone 10 evidence](MILESTONE_10.md); test actual beta graphical launch, official Jagex authentication and gameplay, preserving real progression. A help smoke alone is insufficient.
-2. Hosted Windows at `8e252f6` passed all 937 tests. Actual Ubuntu diagnostics identified one layout-test failure; confirm the focused portability correction with an approved push/rerun. Do not claim hosted Ubuntu success from local Windows tests or blame the informational Ubuntu notice. See [current CI evidence](MILESTONE_10.md#current-polish-and-ci-repair).
-3. Capture/redact/approve genuine [screenshots](SCREENSHOTS.md), then insert actual links. Review the rendered README/social preview.
+2. Both Windows and Ubuntu passed [hosted run 39868207087](https://github.com/PilotsRKwl/fromScratch/actions/runs/39868207087) at the current source revision. Gameplay is unchanged; documentation/preview tooling does not require another full gameplay regression. See [current evidence](MILESTONE_10.md#baseline-and-ci).
+3. Review the new actual-component sample previews and rendered README. Capture/redact the remaining genuine [bank/gameplay images](SCREENSHOTS.md#owner-gameplay-capture-checklist).
 4. Review the diff and private-data exclusions. After explicit approval to commit, record the real resulting revision, rebuild provenance/checksum and run only validation invalidated by changes. No tag rewriting.
 5. Approve the GitHub Release/assets and About/topics separately. Use actual download links only after publication. A checksum is not a publisher signature. Friend distribution remains unauthorized until approved.
 6. In Milestone 11, recheck current [Hub rules](https://github.com/runelite/plugin-hub), [review process](https://github.com/runelite/runelite/wiki/Plugin-Hub-Review) and [rejected features](https://github.com/runelite/runelite/wiki/Rejected-or-Rolled-Back-Features), then obtain approval for the publishing PR.
