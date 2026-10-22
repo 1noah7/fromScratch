@@ -4,7 +4,7 @@ import java.awt.*;
 import javax.swing.*;
 import net.runelite.client.ui.FontManager;
 
-/** Fixed-height two-column statistic card; no inner scrolling and no per-event component reconstruction. */
+/** Compact two-column card that grows with larger fonts/captions; no inner scrolling or rebuilding. */
 public final class BankTile extends JPanel
 {
 	private final JLabel value = new JLabel("Coming soon", SwingConstants.CENTER);
@@ -13,9 +13,8 @@ public final class BankTile extends JPanel
 	private final JLabel label;
 	public BankTile(String title, String wrappedTitle, int itemId, BankIcons icons)
 	{
-		setLayout(new BorderLayout(0, 3)); setBackground(new Color(43, 39, 33));
-		setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(75, 62, 85)), BorderFactory.createEmptyBorder(6, 3, 6, 3)));
-		setPreferredSize(new Dimension(100, 112)); setMinimumSize(new Dimension(92, 112));
+		setLayout(new BorderLayout(0, 2)); setBackground(new Color(43, 39, 33));
+		setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(75, 62, 85)), BorderFactory.createEmptyBorder(4, 3, 4, 3)));
 		icon.setHorizontalAlignment(SwingConstants.CENTER); icons.apply(icon, itemId); add(icon, BorderLayout.NORTH);
 		label = new JLabel("<html><center>" + wrappedTitle + "</center></html>", SwingConstants.CENTER);
 		label.setFont(FontManager.getRunescapeSmallFont()); label.setForeground(new Color(216, 205, 181)); label.setToolTipText(title); add(label, BorderLayout.CENTER);
@@ -25,6 +24,8 @@ public final class BankTile extends JPanel
 		detail.setFont(new Font(Font.DIALOG,Font.PLAIN,10));detail.setForeground(new Color(216,205,181));detail.setVisible(false);numbers.add(detail,BorderLayout.SOUTH);add(numbers,BorderLayout.SOUTH);
 		getAccessibleContext().setAccessibleName(title);
 	}
+	@Override public Dimension getPreferredSize(){Dimension natural=super.getPreferredSize();return new Dimension(Math.max(100,natural.width),Math.max(98,natural.height));}
+	@Override public Dimension getMinimumSize(){return new Dimension(92,getPreferredSize().height);}
 	public void value(String text, String explanation) { value(text,explanation,null); }
 	public void value(String text,String explanation,String caption)
 	{

@@ -189,8 +189,33 @@ public final class BankController implements BankActions
 	}
 	public void reset(UUID revision)
 	{ act(() -> { requireRevision(revision); save(BankEngine.reset(run, UUID.randomUUID(), Instant.now())); }); }
+	public void buyback(UUID revision,String catalogId,UUID purchaseId)
+	{buyback(revision,catalogId,purchaseId,null,p->{});}
+	public void buyback(UUID revision,String catalogId,UUID purchaseId,com.fromscratch.pouch.PouchObservation preview,Consumer<com.fromscratch.buyback.BuybackPurchase> committed)
+	{
+		act(()->
+		{
+			requireRevision(revision);BankObservation fresh=requireBank();
+			if(!run.getPhysical().equals(fresh.getBank().getQuantities())){throw new IllegalArgumentException("Your bank changed. Wait for the automatic update, then reopen Legacy Buybacks.");}
+			com.fromscratch.buyback.BuybackEntry entry=com.fromscratch.buyback.BuybackCatalog.entry(catalogId);
+			for(Map.Entry<String,Integer> role:entry.getRoles().entrySet())
+			{
+				boolean verified=com.fromscratch.buyback.BuybackCatalog.variants(role.getKey()).entrySet().stream().anyMatch(v->v.getValue().equals(role.getValue())&&run.physical(v.getKey())>0&&source.buybackDefinition(v.getKey()));
+				if(!verified){throw new IllegalArgumentException("A required item definition is unavailable or is not qualifying untradeable equipment. No GP was spent.");}
+			}
+			com.fromscratch.pouch.PouchObservation contents=entry.getId().equals("rune_pouch_family")?source.pouch():com.fromscratch.pouch.PouchObservation.unknown();
+			if(preview!=null&&(!contents.verified()||!preview.getQuantities().equals(contents.getQuantities())||preview.getPouchId()!=contents.getPouchId())){throw new IllegalArgumentException(contents.verified()?"Rune Pouch contents changed. Review them again with the bank open.":contents.getProblem());}
+			BankRun candidate=BankEngine.buyback(run,catalogId,purchaseId,fresh.getSession(),Instant.now(),contents);
+			save(candidate,()->committed.accept(candidate.getBuybacks().getPurchases().get(candidate.getBuybacks().getPurchases().size()-1)));
+		});
+	}
 	public void recordExpense(UUID revision,long gp,String reason)
 	{ act(()->{requireRevision(revision);save(BankEngine.expense(run,gp,reason,UUID.randomUUID(),Instant.now()));}); }
+	/** Read varbits only on a relevant user request, never a personal-container observation loop. */
+	public void pouchPreview(Consumer<com.fromscratch.pouch.PouchObservation> callback)
+	{
+		dispatch.accept(()->{callback.accept(enabled&&Objects.equals(character,source.characterKey())?source.pouch():com.fromscratch.pouch.PouchObservation.unknown());});
+	}
 	public void retry() { dispatch.accept(() -> { if (enabled && !busy && character != null) { error = false; load(); } }); }
 	public void history(boolean manual, BankHistory.Cursor cursor, Consumer<BankHistory.Page> callback)
 	{
@@ -208,7 +233,7 @@ public final class BankController implements BankActions
 				{
 					if (!enabled || epoch.get() != token || context != capturedContext || run == null || !Objects.equals(run.getRunId(), captured.getRunId()) || !captured.getCharacter().equals(source.characterKey())) { callback.accept(new BankHistory.Page(Collections.emptyList(), null, "Character or run changed. Reopen Bank History.")); return; }
 					List<BankHistory.Row> rows = new ArrayList<>();
-					for (BankHistory.Row row : result.getRows()) { String name = names.computeIfAbsent(row.getItemId(), source::itemName); rows.add(new BankHistory.Row(row.getAt(), row.getItemId(), name == null ? "Unknown item" : name, row.getChange())); }
+					for (BankHistory.Row row : result.getRows()) { String name = names.computeIfAbsent(row.getItemId(), source::itemName); rows.add(new BankHistory.Row(row.getAt(), row.getItemId(), name == null ? "Unknown item" : name, row.getChange(),row.getCategory(),row.getPurchase())); }
 					callback.accept(new BankHistory.Page(rows, result.getNext(), result.getMessage()));
 				});
 			}); }
@@ -240,11 +265,12 @@ public final class BankController implements BankActions
 		if (character == null || !character.equals(source.characterKey())) { throw new IllegalArgumentException("Character changed. Wait for local progress to reload."); }
 		BankObservation fresh = source.observe(); if (!fresh.isReady()) { throw new IllegalArgumentException(fresh.getInstruction()); } return fresh;
 	}
-	private void save(BankRun next)
+	private void save(BankRun next){save(next,()->{});}
+	private void save(BankRun next,Runnable acknowledged)
 	{
 		if (next == run) { publish(); return; }
 		BankRun expected = run; busy = true; automatic = false; message = "Saving bank progress…"; publish();
-		submit(root -> repository.save(root, expected, next), saved -> { run = saved; busy = false; notice = null; message = "Bank progress saved."; publish(); flushExchangeBaseline();drain(); });
+		submit(root -> repository.save(root, expected, next), saved -> { run = saved; busy = false; notice = null; message = "Bank progress saved."; publish();acknowledged.run(); flushExchangeBaseline();drain(); });
 	}
 	private void act(Runnable action)
 	{
@@ -258,7 +284,7 @@ public final class BankController implements BankActions
 	}
 	private void publish()
 	{
-		if(run!=null){prices.register(run.getBalances().keySet(),source::priceId);}if(observation!=null&&observation.isReady()){prices.register(observation.getBank().getQuantities().keySet(),source::priceId);}
+		if(run!=null){prices.register(com.fromscratch.buyback.BuybackEngine.balances(run).keySet(),source::priceId);}if(observation!=null&&observation.isReady()){prices.register(observation.getBank().getQuantities().keySet(),source::priceId);}
 		refreshValuation();
 		String visibleMessage = notice == null ? message : notice;
 		boolean ready = !busy && !error && observation != null && observation.isReady();
@@ -280,7 +306,7 @@ public final class BankController implements BankActions
 	{
 		if(busy||error||run==null||!run.isActive()||!run.isAnchored()||valuationQueued||(run.getRevision().equals(valuedRevision)&&prices.version()==valuedPrices)){return;}
 		BankRun captured=run;long priceVersion=prices.version(),token=epoch.get(),capturedContext=context;valuationQueued=true;
-		try{worker.execute(()->{BankValuation result=BankValuation.calculate(captured,prices.snapshot(captured.getBalances().keySet()));dispatch.accept(()->{
+		try{worker.execute(()->{BankValuation result=BankValuation.calculate(captured,prices.snapshot(com.fromscratch.buyback.BuybackEngine.balances(captured).keySet()));dispatch.accept(()->{
 			if(!enabled||epoch.get()!=token||context!=capturedContext){return;}valuationQueued=false;
 			if(run!=null&&run.getRevision().equals(captured.getRevision())&&captured.getCharacter().equals(source.characterKey())){valuation=result;valuedRevision=captured.getRevision();valuedPrices=priceVersion;publish();}
 		});});}catch(RejectedExecutionException ex){valuationQueued=false;}

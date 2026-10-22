@@ -1,6 +1,6 @@
 # Bank accounting policy
 
-**Current contract: M1–M5 accepted; M6 passive GE records/attribution await manual acceptance.** The original multi-container ownership policy is historical and lives in [the archived specification](docs/history/ACCOUNTING_MULTI_CONTAINER.md). It is not a source for current acquisition, transfer or session-gate behavior.
+**Current contract: M1–M6 accepted; M7 curated legacy buybacks await manual acceptance.** The original multi-container ownership policy is historical and lives in [the archived specification](docs/history/ACCOUNTING_MULTI_CONTAINER.md). It is not a source for current acquisition, transfer or session-gate behavior.
 
 ## Quantities and equation
 
@@ -71,7 +71,7 @@ Imported active runs have no bank-only comparison anchor until one player-confir
 3. **Baseline isolation:** L and the original imported document never change during an active run.
 4. **Atomic authority:** P, B and audit publish together after storage acknowledgment.
 5. **Signed progress:** P >= 0, B <= P, absent IDs are zero, negative B remains valid/searchable.
-6. **No wallet/debt inference:** Bank GP is B(COINS); withdrawing coins does not prove spending. No unobserved inventory/GE wallet exists.
+6. **No wallet/debt inference:** raw bank GP is B(COINS); available GP subtracts durable buyback commitments once. Withdrawing coins does not prove spending. No unobserved inventory/GE wallet exists.
 7. **Fixed historical valuation:** current prices cannot alter B or previously recognized gain values.
 8. **Character isolation:** verified identity namespaces and CAS isolate runs.
 9. **Restart equivalence:** committed P/B survive reload; first next comparison applies only its net difference.
@@ -142,3 +142,53 @@ Only the remaining gain units receive fixed historical quotes. Possible conversi
 Seller fee estimate for a newly observed executed increment is `quantity * min(5,000,000, floor(floor(reportedGP / quantity) / 50))`, except explicitly published exempt tools/bonds/Mind runes. Sub-50 average prices yield zero. This is not verified per-fill tax: other exemptions, varying unit executions, old rates and the API's undocumented seller gross/net basis may differ. Record method/source/amount once with the trade identity; never charge buyers. Legacy snapshots do not invent earlier fees. Display explicit expenses + estimated GE fees with an estimate marker, without reducing Bank GP a second time. Native settlement is counted only when physically observed in the bank.
 
 Known pre-start offers are identified by actual setup lifecycle observations, not a fabricated initial GE baseline or clock ordering. Their compatible returns are excluded from estimated gains; signed bank balances still obey the bank equation. A concise Manual Bank Corrections notice addresses any legacy quantity offset the player wants corrected. No initial GE screen or normal review/session gate is introduced. Schema-7 migration preserves every prior financial total and quote; only future observations use this classifier.
+
+## M7 paid legacy allowances
+
+Raw P/B/L and the bank delta equation remain authoritative and unchanged. A buyback is a separate, explicit payment/permission event, never an observed bank deposit or new gain:
+
+```text
+S = sum(unique buyback GP payments)
+A = B(COINS) - S
+```
+
+Available GP A funds purchases; reject a price greater than A. The dashboard/coin counter show A, while saved B(COINS) remains raw. Physical coins are untouched. Current worth sums effective item balances at current verified market prices with coins=A once. Do not deduct S again. Shop prices never become market quotes. Confirmed spending adds S once to existing explicit expenses and independently estimated GE fees; historic gains/quotes and GE records do not change on purchase.
+
+Each approved equipment role has explicit quantity one, permission tier and nonpositive bank floor f. Raw family progress R is the sum of B over its allowlisted variants. At first purchase set f=min(0,R); each later bank/correction operation advances f=max(f,min(0,R)). A paid allowance is 1 when R>=f, otherwise 1+(R-f). Allocate positive natural aggregate progress and at most one paid unit only to physical bank capacity; nonpositive remainder remains signed. Natural positive units allocate first; the paid allowance can use only the purchased tier or lower. A Void upgrade preserves the existing floor/one copy and favors an Elite form. It cannot refill a withdrawn paid copy. Negative remainder uses a present or previously negative variant; absence never creates a widget. Other item IDs keep raw B.
+
+The floor prevents earlier unrelated legacy withdrawals from absorbing a new purchase: legacy4/current1/raw-3, then buy one banked copy, displays1 with f=-3. Returning the other three advances f to0 and still displays1. Withdrawing one now displays0. It never grants four copies from one payment. Floors and quantity observations commit together, with repository recomputation and restart equivalence.
+
+Rune Pouch / Divine Rune Pouch and their two verified Trouver forms share one `rune_pouch_family` role/payment, not one entitlement per ID. A withdrawn paid legacy pouch has R=-1 and zero banked availability; banking either form restores R=0 plus one paid allowance. Multiple forms cannot multiply that allowance. A genuinely positive additional aggregate bank unit remains separate. The pouch note, runes, minigame substitutes and unlisted variants do not participate.
+
+Eligibility requires a current complete bank, a real untradeable definition and still-locked stock (`physical family total > max(0, raw family progress)`), plus the required physical permission tier. This is aggregate honor-system evidence, not proof of identical-copy provenance. A naturally positive copy alone needs no payment and cannot qualify as locked stock. Every outfit role must qualify together. Base-to-Elite pricing gives credit only for its already-paid base. One role cannot be purchased repeatedly.
+
+Items Unlocked counts other effective positive bank IDs plus each durable paid role once. Natural and paid variants inside that role are not counted twice. The existing bank-only data cannot reconstruct a natural lifetime-acquisition count; no such history is invented. Corrections continue to edit raw B and preserve S, paid permissions, L and history. They never refund spending or create a second allowance.
+
+Payment, entitlement and purchase history share one BUYBACK audit/checkpoint commit with no raw P/B delta or financial gain event. Repository validation recomputes price, funds, eligibility and state; stale CAS, duplicate purchase IDs and mismatched state reject the entire operation. Only acknowledged saves update projections. Format 8 archives all verified M6 bytes before adding empty buyback state; no previous payment is inferred. See [M7 catalog/IDs, limitations and acceptance](docs/MILESTONE_7.md).
+
+## Post-M7 — One-time legacy pouch transfer preparation (format 9)
+
+The shared 1M entitlement covers the pouch, never its contents. `PouchState` is character/run-scoped through the existing BuybackState, with UNREVIEWED → PREPARED → READY phases. A direct UNREVIEWED → READY transition needs explicit empty-pouch and prior-deposits-accounted player confirmations. Reported zero varbits alone never qualify.
+
+For each rune ID during PREPARED, let D=P'-P and R be the still-expected player-verified legacy quantity:
+
+```
+held now = min(max(D, 0), R)
+B'       = B + D - held now
+R'       = R - held now
+held'    = held + held now
+```
+
+P always advances to the full complete bank observation. Only new matching positive arrivals consume this finite source plan. Existing B is never blanket-debited. With P100/B100 and a recorded 500 legacy nature runes, P600 remains B100; no high-water gain, added worth or rune unlock is created. Other IDs and any excess above the finite plan follow ordinary bank rules. This explicit legacy transfer exception and its evidence share the same atomic journal/checkpoint as P/B/financial/GE updates. The immutable initial bank is unchanged. GE conversion matching receives the actual progress delta, excluding these legacy transfers.
+
+Identical banked runes have no provable physical provenance. The player records contents before moving them, banks them next, and verifies held amounts on finishing. Keep unrelated same-ID deposits separate until review. A confirmed RESTORE_EARNED releases a misidentified held amount back to B, replenishes the pending legacy plan and recognizes only legitimate current high-water progress with the quote at release; no earlier quote is fabricated. The normal positive-B<=P check still applies. Missing/consumed/unarrived runes can be explicitly retired on an empty-pouch confirmation, with no bank debit or phantom debt. READY stops reservations permanently. Repeated observations/reopens cannot apply a budget twice.
+
+Recorded = remaining + held + retired, per ID, using checked longs. All state is immutable and source-allowlisted; every registration, release, finish and held transfer is journaled. Pouch permission, raw coins, committed buyback GP and other entitlements retain their M7 rules. Pouch purchase is blocked until READY; old purchases are never revoked or charged again.
+
+If contents were moved before recording, quantity and source are unknown. Do not infer a debit. The relevant dialog links Manual Bank Corrections and requires explicit acknowledgment of prior corrections and empty contents. Manual corrections fix known bank counts; this workflow cannot reconstruct or automatically erase old historical gain prices. Preserve that history and disclose the uncertainty. No continuous personal-container accounting or automatic game actions are introduced. See [review procedure and limitations](docs/POST_MILESTONE_7.md).
+
+## Automatic Rune Pouch buyback adjustments (current workflow)
+
+This supersedes the manual preparation workflow above for new purchases. After a current banked-pouch client/server varbit read and explicit purchase confirmation, the one BUYBACK audit applies B(rune)' = B(rune) - observed pouch quantity while P and the immutable initial bank stay unchanged. It simultaneously records the shared entitlement and exact 1M commitment. Rune debits are purchase-linked **Automatic — Legacy Rune Pouch** adjustments, never consumption/expense or new gains. H is unchanged; ordinary bank deposits restore B toward its prior value without repeat historical gains. Existing earned100 minus legacy500 becomes -400; depositing500 restores100.
+
+New receipts persist the verified pouch form and positive legacy rune quantities; repository validation recomputes all negative deltas from that evidence. Receipt IDs, shared entitlement uniqueness, CAS and atomic acknowledgment prevent replay. Deficits remain signed through restart/refills; no automatic forgiveness or extra GP charge occurs. Current worth includes the signed rune amounts using the existing valuation formula. Existing receipts, entitlements and legitimate old preparation adjustments are preserved without invented historical quantities. Format9 remains in use; old preparation models are retained only for compatibility. Normal UI no longer exposes a preparation action.

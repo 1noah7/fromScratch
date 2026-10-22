@@ -39,6 +39,22 @@ public final class BankRepository
 			try { version = Math.toIntExact(BankRunCodec.number(new JsonParser().parse(text).getAsJsonObject().get("formatVersion"))); }
 			catch (RuntimeException ex) { throw new SaveException("Save header is unreadable. Existing files were preserved."); }
 			if (version == BankRunCodec.FORMAT) { BankRun run = codec.decode(text, character); verify(d, run, true); return Optional.of(run); }
+			if(version==8)
+			{
+				BankRun old=codec.decode(text,character);verify(d,old,true);String archived=archive(d);
+				BankAudit audit=new BankAudit(UUID.randomUUID(),UUID.randomUUID(),Instant.now(),BankAudit.Kind.POUCH_BASELINE,Collections.emptyMap(),Collections.emptyMap(),"M7 files archived exactly. Existing pouch payment and adjustments retained; no original contents inferred.");
+				List<BankAudit> recent=new ArrayList<>(old.getRecent());recent.add(0,audit);if(recent.size()>30){recent.remove(30);}
+				BankRun next=new BankRun(old.getCharacter(),old.getRunId(),old.getPreviousRunId(),old.getStartedAt(),audit.getId(),Math.incrementExact(old.getSequence()),old.getInitialBank(),old.getPhysical(),old.getBalances(),old.isAnchored(),old.getLegacyDocument(),old.getMigrationArchive(),recent,old.getHostSummary(),old.getFinancial(),old.getExchange(),old.getBuybacks().withPouch(com.fromscratch.pouch.PouchState.unreviewed(archived)));
+				commit(d,old,next);return Optional.of(next);
+			}
+			if(version==7)
+			{
+				BankRun old=codec.decode(text,character);verify(d,old,true);String archived=archive(d);
+				BankAudit audit=new BankAudit(UUID.randomUUID(),UUID.randomUUID(),Instant.now(),BankAudit.Kind.BUYBACK_BASELINE,Collections.emptyMap(),Collections.emptyMap(),"M6 checkpoint and journals archived exactly. No previous buybacks were inferred.");
+				List<BankAudit> recent=new ArrayList<>(old.getRecent());recent.add(0,audit);if(recent.size()>30){recent.remove(30);}
+				BankRun upgraded=new BankRun(old.getCharacter(),old.getRunId(),old.getPreviousRunId(),old.getStartedAt(),audit.getId(),Math.incrementExact(old.getSequence()),old.getInitialBank(),old.getPhysical(),old.getBalances(),old.isAnchored(),old.getLegacyDocument(),old.getMigrationArchive(),recent,old.getHostSummary(),old.getFinancial(),old.getExchange(),com.fromscratch.buyback.BuybackState.empty(archived));
+				commit(d,old,upgraded);return Optional.of(upgraded);
+			}
 			if(version==6)
 			{
 				BankRun old=codec.decode(text,character);verify(d,old,true);String archived=archive(d);
@@ -107,14 +123,32 @@ public final class BankRepository
 			|| !Objects.equals(before.getMigrationArchive(), after.getMigrationArchive())) { throw new SaveException("Immutable run baseline changed."); }
 		if (audit.getKind() == BankAudit.Kind.ANCHOR)
 		{ if (before.isAnchored() || !after.isAnchored() || before.getLegacyDocument() == null) { throw new SaveException("Invalid migration anchor transition."); } }
-		else if(audit.getKind()==BankAudit.Kind.EXCHANGE)
-		{if(!before.isActive()||before.isAnchored()!=after.isAnchored()||!audit.getPhysicalChanges().isEmpty()||!audit.getBalanceChanges().isEmpty()){throw new SaveException("GE cannot change bank holdings.");}}
+		else if(audit.getKind()==BankAudit.Kind.EXCHANGE||audit.getKind()==BankAudit.Kind.BUYBACK)
+		{if(!before.isActive()||before.isAnchored()!=after.isAnchored()||!audit.getPhysicalChanges().isEmpty()||audit.getKind()==BankAudit.Kind.EXCHANGE&&!audit.getBalanceChanges().isEmpty()){throw new SaveException("Invalid observation/purchase bank change.");}}
 		else if (!before.isActive() || !before.isAnchored() || !after.isAnchored()
-			|| (audit.getKind() != BankAudit.Kind.AUTOMATIC && audit.getKind() != BankAudit.Kind.SESSION_CHECK && audit.getKind() != BankAudit.Kind.CORRECTION && audit.getKind()!=BankAudit.Kind.EXPENSE))
+			|| (audit.getKind() != BankAudit.Kind.AUTOMATIC && audit.getKind() != BankAudit.Kind.SESSION_CHECK && audit.getKind() != BankAudit.Kind.CORRECTION && audit.getKind()!=BankAudit.Kind.EXPENSE && audit.getKind()!=BankAudit.Kind.POUCH))
 		{ throw new SaveException("Invalid bank accounting transition."); }
 		if (!BankEngine.differences(before.getBalances(), after.getBalances()).equals(audit.getBalanceChanges())) { throw new SaveException("Bank balance audit does not match checkpoint."); }
 		if (audit.getKind() != BankAudit.Kind.ANCHOR && !BankEngine.differences(before.getPhysical(), after.getPhysical()).equals(audit.getPhysicalChanges())) { throw new SaveException("Bank observation audit does not match checkpoint."); }
-		if ((audit.getKind() == BankAudit.Kind.AUTOMATIC || audit.getKind() == BankAudit.Kind.SESSION_CHECK) && !audit.getBalanceChanges().equals(audit.getPhysicalChanges())) { throw new SaveException("Automatic bank movement does not conserve the progress offset."); }
+		if(audit.getKind()==BankAudit.Kind.BUYBACK)
+		{
+			Map<Integer,Long> expected=new TreeMap<>();audit.getBuyback().getLegacyRunes().forEach((id,n)->expected.put(id,Math.negateExact(n)));
+			if(!expected.equals(audit.getBalanceChanges())){throw new SaveException("Legacy pouch adjustments do not match their purchase.");}
+			if(audit.getBuyback().getPouchItemId()>0)
+			{
+				long count=0;for(int id:com.fromscratch.buyback.BuybackCatalog.variants("rune_pouch_family").keySet()){count=Math.addExact(count,before.physical(id));}
+				if(count!=1||before.physical(audit.getBuyback().getPouchItemId())!=1){throw new SaveException("Purchased pouch is ambiguous or absent.");}
+			}
+		}
+		Map<Integer,Long> pouchTransfers=com.fromscratch.pouch.PouchEngine.transfers(before.getBuybacks().getPouch(),audit.getPhysicalChanges());
+		Map<Integer,Long> bankProgress=new TreeMap<>(audit.getPhysicalChanges());pouchTransfers.forEach((id,n)->bankProgress.put(id,Math.subtractExact(bankProgress.get(id),n)));bankProgress.values().removeIf(n->n==0);
+		if ((audit.getKind() == BankAudit.Kind.AUTOMATIC || audit.getKind() == BankAudit.Kind.SESSION_CHECK) && (!audit.getBalanceChanges().equals(bankProgress)||!audit.getPouchTransfers().equals(pouchTransfers))) { throw new SaveException("Bank progress does not match its legacy pouch transfer evidence."); }
+		if(audit.getKind()==BankAudit.Kind.POUCH)
+		{
+			boolean present=com.fromscratch.buyback.BuybackCatalog.variants("rune_pouch_family").keySet().stream().anyMatch(id->before.physical(id)>0);
+			Map<Integer,Long> expected=audit.getPouch().getKind()==com.fromscratch.pouch.PouchAction.Kind.RESTORE_EARNED?audit.getPouch().getQuantities():Collections.emptyMap();
+			if(!present||!audit.getPhysicalChanges().isEmpty()||!audit.getBalanceChanges().equals(expected)){throw new SaveException("Invalid pouch review bank adjustment.");}
+		}
 		if (audit.getKind() == BankAudit.Kind.CORRECTION && !audit.getPhysicalChanges().isEmpty()) { throw new SaveException("A correction cannot change the physical bank anchor."); }
 		if(audit.getKind()==BankAudit.Kind.EXPENSE&&(!audit.getPhysicalChanges().isEmpty()||!audit.getBalanceChanges().isEmpty())){throw new SaveException("Expenses cannot change bank holdings.");}
 		if(!FinancialEngine.advance(before.getFinancial(),after.getBalances(),audit).equals(after.getFinancial())){throw new SaveException("Financial checkpoint does not match durable event evidence.");}
@@ -124,8 +158,15 @@ public final class BankRepository
 			if(audit.getExchange().getObservation()==null){throw new SaveException("Missing GE observation evidence.");}
 			GeEngine.Result result=GeEngine.observe(exchange,audit.getExchange().getObservation(),before.getRunId());exchange=result.getState();evidence=result.getEvidence();
 		}
-		else if(audit.getKind()==BankAudit.Kind.AUTOMATIC){GeEngine.Result result=GeEngine.bank(exchange,audit.getId(),audit.getPhysicalChanges(),audit.getAt());exchange=result.getState();evidence=result.getEvidence();}
+		else if(audit.getKind()==BankAudit.Kind.AUTOMATIC){GeEngine.Result result=GeEngine.bank(exchange,audit.getId(),audit.getBalanceChanges(),audit.getAt());exchange=result.getState();evidence=result.getEvidence();}
 		if(!exchange.equals(after.getExchange())||!evidence.equals(audit.getExchange())){throw new SaveException("GE checkpoint does not match its durable observations/attributions.");}
+		com.fromscratch.buyback.BuybackState buybacks=audit.getBuyback()==null?com.fromscratch.buyback.BuybackEngine.progress(before.getBuybacks(),after.getBalances()):com.fromscratch.buyback.BuybackEngine.purchase(before,audit.getBuyback());
+		com.fromscratch.pouch.PouchState pouch=before.getBuybacks().getPouch();
+		if(audit.getKind()==BankAudit.Kind.AUTOMATIC){pouch=com.fromscratch.pouch.PouchEngine.bank(pouch,audit.getPhysicalChanges());}
+		else if(audit.getKind()==BankAudit.Kind.POUCH){pouch=com.fromscratch.pouch.PouchEngine.apply(pouch,audit.getPouch(),audit.getId());}
+		else if(audit.getBuyback()!=null&&audit.getBuyback().getPouchItemId()>0){pouch=com.fromscratch.pouch.PouchEngine.purchased(pouch,audit.getBuyback().getLegacyRunes());}
+		buybacks=buybacks.withPouch(pouch);
+		if(!buybacks.equals(after.getBuybacks())){throw new SaveException("Buyback payment and entitlement evidence do not match.");}
 	}
 	/** Read only enough immutable segments for one page; never run from the EDT/client thread. */
 	public GeHistory.Page exchangeHistory(Filepath root,BankRun run,BankHistory.Cursor cursor,boolean buy) throws IOException
@@ -162,14 +203,15 @@ public final class BankRepository
 				if (!run.getCharacter().equals(BankRunCodec.str(batch, "character")) || !Objects.equals(run.getRunId().toString(), BankRunCodec.nullable(batch, "run"))) { head = null; break; }
 				BankAudit audit = codec.readAudit(batch.getAsJsonObject("audit"));
 				if (!head.equals(audit.getId())) { throw new SaveException("Bank history page failed validation."); }
-				boolean include = manual ? audit.getKind() == BankAudit.Kind.CORRECTION || audit.getKind() == BankAudit.Kind.ANCHOR : audit.getKind() == BankAudit.Kind.AUTOMATIC;
+					boolean legacyPouch=audit.getKind()==BankAudit.Kind.BUYBACK&&!audit.getBuyback().getLegacyRunes().isEmpty();
+					boolean include = manual ? audit.getKind() == BankAudit.Kind.CORRECTION || audit.getKind() == BankAudit.Kind.ANCHOR : audit.getKind() == BankAudit.Kind.AUTOMATIC||legacyPouch;
 				if (include)
 				{
 					int index = 0;
 					for (Map.Entry<Integer, Long> entry : audit.getBalanceChanges().entrySet())
 					{
 						if (index++ < offset) { continue; }
-						rows.add(new BankHistory.Row(audit.getAt(), entry.getKey(), "", entry.getValue())); offset = index;
+							rows.add(new BankHistory.Row(audit.getAt(), entry.getKey(), "", entry.getValue(),legacyPouch?"Automatic — Legacy Rune Pouch":manual?"Manual":"Automatic",legacyPouch?audit.getId():null)); offset = index;
 						if (rows.size() == 25) { return new BankHistory.Page(rows, new BankHistory.Cursor(head, offset), ""); }
 					}
 				}
@@ -182,7 +224,7 @@ public final class BankRepository
 	{
 		if (!run.isActive() || !run.isAnchored() || !run.getBalances().isEmpty() || !run.getInitialBank().getQuantities().equals(run.getPhysical())
 			|| !run.getRecent().get(0).getBalanceChanges().isEmpty() || !run.getRecent().get(0).getPhysicalChanges().isEmpty()
-			|| !run.getRecent().get(0).getValuations().isEmpty() || !FinancialState.baseline(Collections.emptyMap(),run.getStartedAt(),false).equals(run.getFinancial()) || !run.getExchange().equals(GeState.empty()))
+			|| !run.getRecent().get(0).getValuations().isEmpty() || !FinancialState.baseline(Collections.emptyMap(),run.getStartedAt(),false).equals(run.getFinancial()) || !run.getExchange().equals(GeState.empty()) || !run.getBuybacks().equals(com.fromscratch.buyback.BuybackState.empty()))
 		{ throw new SaveException("A new run must start from its complete bank with zero progress."); }
 	}
 	private void commit(Filepath d, BankRun before, BankRun after) throws IOException
@@ -218,6 +260,8 @@ public final class BankRepository
 			if (run.getMigrationArchive() != null) { verifyArchive(d.joinSegment(run.getMigrationArchive())); }
 			if(run.getFinancial().getImportArchive()!=null){verifyArchive(d.joinSegment(run.getFinancial().getImportArchive()));}
 			if(run.getExchange().getArchive()!=null){verifyArchive(d.joinSegment(run.getExchange().getArchive()));}
+			if(run.getBuybacks().getArchive()!=null){verifyArchive(d.joinSegment(run.getBuybacks().getArchive()));}
+			if(run.getBuybacks().getPouch().getArchive()!=null){verifyArchive(d.joinSegment(run.getBuybacks().getPouch().getArchive()));}
 		}
 		catch (RuntimeException ex) { throw new SaveException("Bank history or migration archive is incomplete or corrupt. Files were preserved; restore the matching checkpoint and journals."); }
 	}

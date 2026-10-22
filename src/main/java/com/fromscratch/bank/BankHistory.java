@@ -9,7 +9,12 @@ public final class BankHistory
 {
 	private BankHistory() { }
 	@Value public static class Cursor { UUID revision; int offset; }
-	@Value public static class Row { Instant at; int itemId; String name; long change; }
+	@Value public static class Row
+	{
+		Instant at; int itemId; String name; long change; String category; UUID purchase;
+		public Row(Instant at,int itemId,String name,long change){this(at,itemId,name,change,"",null);}
+		public Row(Instant at,int itemId,String name,long change,String category,UUID purchase){this.at=at;this.itemId=itemId;this.name=name;this.change=change;this.category=category;this.purchase=purchase;}
+	}
 	@Value public static class Page
 	{
 		List<Row> rows;

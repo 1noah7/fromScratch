@@ -35,7 +35,7 @@ public final class BankPanel extends PluginPanel
 	private final JCheckBox attested = new BankAttestation();
 	private final JButton start = new BankPrimaryButton("Start From Scratch"), corrections = new JButton(), reset = new BankDangerButton("Reset Progress"), retry = new JButton("Retry Loading"), anchor = new JButton("Review Bank Anchor");
 	private final JPanel upgrade = vertical();
-	private final JPanel stats = new JPanel(new GridLayout(0, 2, 6, 6));
+	private final JPanel stats = tileRow(0, 98);
 	private final BankTile unlocked;
 	private final BankTile duration;
 	private final BankTile gained;
@@ -81,20 +81,23 @@ public final class BankPanel extends PluginPanel
 		duration = new BankTile("Active Run Duration", "Active Run<br>Duration", ItemID.GIANT_STOPWATCH, icons); stats.add(duration);
 		lost=new BankTile("Total Value Lost / Spent", "Total Value<br>Lost / Spent", ItemID.ASHES, icons);stats.add(lost);
 		lost.onActivate(this::recordExpense);
-		stats.setMaximumSize(new Dimension(Integer.MAX_VALUE, 348)); active.add(stats);
+		active.add(stats);
 		upgrade.add(heading("Finish Bank Upgrade")); upgrade.add(description("Open your bank and confirm its comparison point. Your previous save and history are archived.")); upgrade.add(anchor); active.add(upgrade);
-		active.add(heading("Bank History")); JPanel history = new JPanel(new GridLayout(1, 2, 6, 0)); history.setAlignmentX(LEFT_ALIGNMENT); history.setOpaque(false); history.setMaximumSize(new Dimension(Integer.MAX_VALUE, 102));
-		history.add(historyTile("Automatic Changes", BankIcons.AUTOMATIC_CHANGES, automaticSummary, icons, () -> openHistory(false)));
-		history.add(historyTile("Manual Corrections", BankIcons.MANUAL_CORRECTIONS, manualSummary, icons, () -> openHistory(true))); active.add(history);
-		active.add(heading("Grand Exchange"));JPanel exchange=new JPanel(new GridLayout(1,2,6,0));exchange.setName("grandExchangeTiles");exchange.setAlignmentX(LEFT_ALIGNMENT);exchange.setOpaque(false);exchange.setMaximumSize(new Dimension(Integer.MAX_VALUE,102));
-		exchange.add(historyTile("Purchases",ItemID.COINS,purchasesSummary,icons,()->openExchange(true,icons)));
-		exchange.add(historyTile("Sales",ItemID.PLATINUM,salesSummary,icons,()->openExchange(false,icons)));active.add(exchange);
+		active.add(heading("Legacy Buybacks")); JPanel buybacks=tileRow(1,90);buybacks.setName("legacyBuybackTiles");
+		buybacks.add(historyTile("Buyback Shop",ItemID.TZHAAR_CAPE_FIRE,new JLabel("Legacy unlocks",SwingConstants.CENTER),icons,()->openBuybacks(false,icons)));
+		buybacks.add(historyTile("Buyback History",ItemID.BH_RUNE_POUCH,new JLabel("Purchases",SwingConstants.CENTER),icons,()->openBuybacks(true,icons)));active.add(buybacks);
 		JPanel elsewhere = vertical(); elsewhere.setName("playedElsewhere"); elsewhere.add(heading("Played Elsewhere?"));
-		JPanel returnTiles = new JPanel(new GridLayout(1, 2, 6, 0)); returnTiles.setName("playedElsewhereTiles"); returnTiles.setOpaque(false); returnTiles.setAlignmentX(LEFT_ALIGNMENT); returnTiles.setPreferredSize(new Dimension(200, 132)); returnTiles.setMaximumSize(new Dimension(Integer.MAX_VALUE, 132));
+		JPanel returnTiles = tileRow(1,116); returnTiles.setName("playedElsewhereTiles");
 		JPanel instructions = new JPanel(new BorderLayout()); instructions.setName("elsewhereInstructions"); decorateTile(instructions);
 		JLabel help = new JLabel("<html><div style='width:90pt;text-align:center'>Played on mobile or another PC? Bank your items and open your bank here. Your progress updates automatically.</div></html>", SwingConstants.CENTER);
 		help.setName("elsewhereHelp"); help.setFont(new Font(Font.DIALOG, Font.PLAIN, 11)); help.setForeground(new Color(216, 205, 181)); help.setVerticalAlignment(SwingConstants.CENTER); instructions.add(help, BorderLayout.CENTER); returnTiles.add(instructions);
 		fillTile(corrections, "Manual Bank Corrections", BankIcons.BANK_CORRECTIONS, new JLabel("<html><center>Fix an incorrect<br>count</center></html>", SwingConstants.CENTER), icons); returnTiles.add(corrections); elsewhere.add(returnTiles); active.add(elsewhere);
+		active.add(heading("Grand Exchange History"));JPanel exchange=tileRow(1,90);exchange.setName("grandExchangeTiles");
+		exchange.add(historyTile("Purchases",ItemID.COINS,purchasesSummary,icons,()->openExchange(true,icons)));
+		exchange.add(historyTile("Sales",ItemID.PLATINUM,salesSummary,icons,()->openExchange(false,icons)));active.add(exchange);
+		active.add(heading("Bank History")); JPanel history = tileRow(1, 90);
+		history.add(historyTile("Automatic Changes", BankIcons.AUTOMATIC_CHANGES, automaticSummary, icons, () -> openHistory(false)));
+		history.add(historyTile("Manual Corrections", BankIcons.MANUAL_CORRECTIONS, manualSummary, icons, () -> openHistory(true))); active.add(history);
 		JPanel danger = vertical(); danger.setName("resetDangerArea"); danger.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createEmptyBorder(18, 0, 0, 0), BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(121, 55, 55)), BorderFactory.createEmptyBorder(8, 8, 8, 8))));
 		JLabel dangerTitle = heading("Reset Progress"); dangerTitle.setForeground(new Color(235, 116, 116)); danger.add(dangerTitle); danger.add(description("Permanently restart your From Scratch challenge.")); Dimension resetSize=reset.getPreferredSize(); reset.setPreferredSize(new Dimension(Math.max(170,resetSize.width),resetSize.height)); danger.add(centeredAction(reset)); active.add(danger);
 		body.add(active, "active"); body.setAlignmentX(LEFT_ALIGNMENT); add(body);
@@ -115,16 +118,16 @@ public final class BankPanel extends PluginPanel
 		notice.setVisible(important); notice.setText(important ? "<html>" + escape(message) + "</html>" : ""); retry.setVisible(updated.isError());
 		if (active)
 		{
-			unlocked.value(Long.toString(run.unlocked()), "Distinct item IDs with positive bank progress; not a lifetime acquisition count."); refreshDuration();
+			unlocked.value(Long.toString(run.unlocked()), "Positive bank item types plus durable purchased equipment slots; shared families count once."); refreshDuration();
 			FinancialState financial=run.getFinancial();
 			gained.value(financial.getGainedGp()==0&&!financial.getUnpricedGains().isEmpty()?"Unpriced":GpFormatter.compact(financial.getGainedGp())+(financial.getUnpricedGains().isEmpty()?"":"*"),BankTooltips.gained(financial));
-			bankGp.value(GpFormatter.compact(run.balance(ItemID.COINS)),BankTooltips.bankGp(run.balance(ItemID.COINS)));
+			bankGp.value(GpFormatter.compact(com.fromscratch.buyback.BuybackEngine.available(run)),BankTooltips.bankGp(run));
 			BankValuation market=updated.getValuation();
 			if(market!=null&&market.getRevision().equals(run.getRevision())){netWorth.value(market.label(),BankTooltips.netWorth(market),market.getMissingTypes()>0&&market.getPricedTypes()>0?"Priced subtotal":null);}
 			else{netWorth.value(run.isAnchored()?"Updating…":"Unavailable",BankTooltips.netWorth(null));}
 			long geTax=run.getExchange().getEstimatedTaxGp();String loss;
-			try{loss=financial.getExpenseRecords()==0&&geTax==0?"Not tracked":GpFormatter.compact(Math.addExact(financial.getExpenseGp(),geTax))+(geTax>0?"~":"");}catch(ArithmeticException ex){loss="Out of range";}
-			lost.value(loss,BankTooltips.expenses(financial,run.getExchange()));
+			try{loss=financial.getExpenseRecords()==0&&geTax==0&&run.getBuybacks().getCommittedGp()==0?"Not tracked":GpFormatter.compact(Math.addExact(Math.addExact(financial.getExpenseGp(),geTax),run.getBuybacks().getCommittedGp()))+(geTax>0?"~":"");}catch(ArithmeticException ex){loss="Out of range";}
+			lost.value(loss,BankTooltips.expenses(run));
 			automaticSummary.setText(count(run, false) + " recent"); manualSummary.setText(count(run, true) + " recent");
 			purchasesSummary.setText(run.getExchange().getPurchases()+" fills");salesSummary.setText(run.getExchange().getSales()+" fills");
 		}
@@ -137,6 +140,7 @@ public final class BankPanel extends PluginPanel
 	}
 	private void openHistory(boolean manual) { if (historyNavigation != null) { historyNavigation.accept(manual); } else if (actions != null) { BankHistoryDialog.show(this, actions, manual); } }
 	private void openExchange(boolean buy,BankIcons icons){if(exchangeNavigation!=null){exchangeNavigation.accept(buy);}else if(actions!=null){com.fromscratch.ge.GeHistoryDialog.show(this,actions,buy,icons);}}
+	private void openBuybacks(boolean history,BankIcons icons){if(view!=null&&actions!=null&&!view.isBusy()&&!view.isError()){com.fromscratch.buyback.BuybackDialog.show(this,view,actions,icons,history);}}
 	private void recordExpense()
 	{
 		if(view!=null&&actions!=null&&!view.isBusy()&&!view.isError()&&view.getRun()!=null&&view.getRun().isAnchored()){BankExpenseDialog.show(this,view,actions);}
@@ -151,6 +155,14 @@ public final class BankPanel extends PluginPanel
 		if (BankDialogs.confirm(this, excess ? "Approve listed reductions and anchor?" : "Confirm bank anchor?", text.toString(), "Confirm Anchor", false)) { actions.anchor(captured.getRun().getRevision(), captured.getObservation().getBank(), excess); }
 	}
 	private static long count(BankRun run, boolean manual) { return run.getRecent().stream().filter(a -> manual ? a.getKind() == BankAudit.Kind.CORRECTION || a.getKind() == BankAudit.Kind.ANCHOR : a.getKind() == BankAudit.Kind.AUTOMATIC).mapToLong(a -> a.getBalanceChanges().size()).sum(); }
+	private static JPanel tileRow(int rows,int height)
+	{
+		JPanel panel=new JPanel(new GridLayout(rows,2,6,6))
+		{
+			@Override public Dimension getPreferredSize(){Dimension d=super.getPreferredSize();int count=((GridLayout)getLayout()).getRows()==0?(getComponentCount()+1)/2:1;return new Dimension(d.width,Math.max(d.height,count*height+Math.max(0,count-1)*6));}
+			@Override public Dimension getMaximumSize(){return new Dimension(Integer.MAX_VALUE,getPreferredSize().height);}
+		};panel.setOpaque(false);panel.setAlignmentX(LEFT_ALIGNMENT);return panel;
+	}
 	private static JPanel vertical() { JPanel p = new JPanel(); p.setBackground(BACKGROUND); p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS)); p.setAlignmentX(LEFT_ALIGNMENT); return p; }
 	private static JLabel setupCopy(String text)
 	{
@@ -173,7 +185,7 @@ public final class BankPanel extends PluginPanel
 	private static void decorateTile(JComponent tile)
 	{
 		tile.setBackground(new Color(43, 39, 33)); tile.setOpaque(true);
-		tile.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(75, 62, 85)), BorderFactory.createEmptyBorder(6, 3, 6, 3)));
+		tile.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(new Color(75, 62, 85)), BorderFactory.createEmptyBorder(4, 3, 4, 3)));
 	}
 	private static void fillTile(JButton button, String title, int id, JLabel summary, BankIcons icons)
 	{

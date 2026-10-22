@@ -13,7 +13,7 @@ public final class BankHistoryDialog
 	private BankHistoryDialog() { }
 	public static void show(Component owner, BankActions actions, boolean manual)
 	{
-		DefaultTableModel model = new DefaultTableModel(new String[]{"Time", "Item", "Change"}, 0)
+		DefaultTableModel model = new DefaultTableModel(new String[]{"Time", "Item", "Change", "Source", "Purchase"}, 0)
 		{
 			@Override public boolean isCellEditable(int r, int c) { return false; }
 			@Override public Class<?> getColumnClass(int c) { return c == 2 ? Long.class : String.class; }
@@ -34,7 +34,7 @@ public final class BankHistoryDialog
 			actions.history(manual, cursors.get(index[0]), page -> SwingUtilities.invokeLater(() ->
 			{
 				if (!dialog.isDisplayable()) { return; } model.setRowCount(0);
-				for (BankHistory.Row row : page.getRows()) { model.addRow(new Object[]{DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault()).format(row.getAt()), row.getName(), row.getChange()}); }
+				for (BankHistory.Row row : page.getRows()) { model.addRow(new Object[]{DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault()).format(row.getAt()), row.getName(), row.getChange(),row.getCategory(),row.getPurchase()==null?"":"Rune Pouch / Divine Rune Pouch"}); }
 				following[0] = page.getNext(); previous.setEnabled(index[0] > 0); next.setEnabled(following[0] != null); status.setText(page.getMessage().isEmpty() ? "Page " + (index[0] + 1) + " • up to 25 changes" : page.getMessage());
 			}));
 		};

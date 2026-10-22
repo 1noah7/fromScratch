@@ -19,12 +19,17 @@ public final class BankFixtures
 		public String character = SnapshotFixtures.CHARACTER_A;
 		public boolean open = true;
 		public boolean pin;
+		public boolean buybackDefinitions=true;
+		public com.fromscratch.pouch.PouchObservation pouchProof=com.fromscratch.pouch.PouchObservation.unknown();
+		public com.fromscratch.pouch.RuneLitePouchReader.Access pouchAccess;
+		public com.fromscratch.pouch.PouchObservation pouch(){return pouchAccess==null?pouchProof:new com.fromscratch.pouch.RuneLitePouchReader(pouchAccess).banked(observer.observe());}
 		public Item[] items = new Item[]{new Item(SHIELD, 1)};
 		public final Set<Integer> placeholders = new HashSet<>();
 		public final BankObserver observer = new BankObserver(this);
 		public boolean normalBankOpen() { return open && !pin; }
 		public ContainerSnapshot readBank() { return BankItems.aggregate(items, placeholders::contains); }
 		public String characterKey() { return character; }
+		public boolean buybackDefinition(int id){return buybackDefinitions;}
 		public BankObservation observe() { return observer.observe(); }
 		public String itemName(int id) { return id == SHIELD ? "Wooden shield" : id == OTHER ? "Coins" : "Variant #" + id; }
 		public void quantity(long n) { items = n == 0 ? new Item[0] : new Item[]{new Item(SHIELD, Math.toIntExact(n))}; observer.changed(); }

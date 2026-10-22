@@ -1,0 +1,30 @@
+package com.fromscratch.buyback;
+
+import java.time.Instant;
+import java.util.*;
+import lombok.Value;
+
+/** Immutable evidence. One ID pays once for all roles, including a complete outfit or pouch family. */
+@Value
+public class BuybackPurchase
+{
+	UUID id;
+	String catalogId;
+	long gp;
+	Instant at;
+	Map<String,Long> bankFloors;
+	int pouchItemId;
+	Map<Integer,Long> legacyRunes;
+	public BuybackPurchase(UUID id,String catalogId,long gp,Instant at,Map<String,Long> bankFloors)
+	{this(id,catalogId,gp,at,bankFloors,-1,Collections.emptyMap());}
+	public BuybackPurchase(UUID id,String catalogId,long gp,Instant at,Map<String,Long> bankFloors,int pouchItemId,Map<Integer,Long> legacyRunes)
+	{
+		this.id=Objects.requireNonNull(id);this.catalogId=Objects.requireNonNull(catalogId);
+		if(gp<=0){throw new IllegalArgumentException("Invalid buyback expenditure");}
+		this.gp=gp;this.at=Objects.requireNonNull(at);
+		if(!bankFloors.keySet().equals(BuybackCatalog.entry(catalogId).getRoles().keySet())||bankFloors.values().stream().anyMatch(n->n==null||n>0||n==Long.MIN_VALUE)){throw new IllegalArgumentException("Invalid paid-copy bank anchor");}
+		this.bankFloors=Collections.unmodifiableMap(new TreeMap<>(bankFloors));
+		this.pouchItemId=pouchItemId;this.legacyRunes=com.fromscratch.pouch.PouchState.quantities(legacyRunes);
+		if(pouchItemId!=-1&&(!catalogId.equals("rune_pouch_family")||!BuybackCatalog.variants("rune_pouch_family").containsKey(pouchItemId))||pouchItemId==-1&&!this.legacyRunes.isEmpty()){throw new IllegalArgumentException("Invalid pouch purchase evidence");}
+	}
+}

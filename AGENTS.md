@@ -3,7 +3,7 @@
 ## From Scratch project scope
 
 - Read `ARCHITECTURE.md`, `ACCOUNTING.md`, and `TEST_PLAN.md` before behavior changes.
-- M1–M5 passed user acceptance; M5 is checkpointed at v0.5.0-wealth. M6 passive GE observation/history/attribution is authorized and awaits live acceptance. Do not begin M7, commit, push, tag, publish or submit a PR without approval.
+- M1–M7 are the user-approved baseline. Only the post-M7 compact layout and legacy pouch rune safeguard are authorized and await live acceptance. Do not begin M8, commit, push, tag, publish or submit a PR without approval.
 - Identity: From Scratch, author Pilots r kwl, package `com.fromscratch`, config `fromscratch`, internal name `from_scratch`.
 - Bank is the only ongoing quantity authority. Do not read inventory/equipment or reintroduce observation/session/reconciliation gates. Setup relies on explicit player attestation that inventory and gear were banked, a complete current bank and confirmed Start.
 - Signed bank progress is B' = B + (P' - P), checked long arithmetic. It is not earned ownership or lifetime acquisition/wealth. Negative balances are valid. Corrections may set signed B but positive B must not exceed current observed physical P.
@@ -18,7 +18,9 @@
 - Native placeholder templates contribute zero physical quantity. For rendering only, resolve their getPlaceholderId() back to the original item; do not apply that bidirectional link to normal items. Keep absent negative balances and their valuations/search entries without creating widgets.
 - Schema 7 adds GE observations, durable local slot generations, bounded possible attribution budgets and independently estimated seller fees. Verify/archive all format-6 files exactly before migration; preserve P/B/initial/run/start/financial history without replay. GE events never change bank quantities/GP. Ignore initial EMPTY, keep offline/slot-reuse uncertainty and never infer collection destination or realized profit. Possible conversion exclusions raise H without creating new gains; existing historical gains are never silently rewritten.
 - GE packets and complete bank observations share the background forced FIFO/CAS path. No inventory/equipment ownership or GE review gate. Missing GE data does not block banking. Match budgets are finite, consumed once and explicitly uncertain; history remains immutable when bounded matching context expires. Initial setup stays bank-only/attested; known pre-start offers use lifecycle evidence rather than clock comparisons.
-- Development diagnostics are local, opt-in, rate-limited DEBUG availability and monotonic phase timings, disabled by default. No whole snapshots, account identifiers, credentials or private paths. Preserve existing config keys; buybacks, personal-container tracking and cloud remain outside M6.
+- Schema 8 adds catalog-versioned one-copy equipment roles, purchase evidence and cumulative committed buyback GP. Archive verified M6 files exactly before migration. Preserve raw P/B/legacy/GE/financial history. Available GP = raw B(COINS) minus committed payments; effective item/currency projections never create physical copies. One pouch-family payment covers standard/Divine/Trouver variants, not notes or runes. Purchases require fresh bank, live untradeable definition, revision/funds/legacy validation and one atomic acknowledgment. No generic grants or refunds.
+- Schema 9 retains historical pouch preparation for compatibility. New pouch purchases use current banked-pouch client/server varbit reads and atomically apply purchase-linked signed rune deficits, one 1M payment and one shared entitlement. No inventory/pouch-open prerequisite, manual preparation UI, new schema, continuous personal ownership tracking, inferred old contents or automatic debt forgiveness. Existing payments/adjustments survive. See the latest section of docs/POST_MILESTONE_7.md.
+- Development diagnostics are local, opt-in, rate-limited DEBUG availability and monotonic phase timings, disabled by default. No whole snapshots, account identifiers, credentials or private paths. Preserve existing config keys; personal-container tracking, cloud and M8 remain outside scope.
 - A successful build or synthetic fixture is not live acceptance. Do not operate RuneScape using computer-use tools; only the user tests gameplay. Offer the Gradle development launch, official Jagex Accounts instructions, and exact manual tests.
 
 ## Logging
@@ -89,6 +91,8 @@
 - Do not mix code reformatting with feature changes in the same commit — it makes diffs unreadable for reviewers.
 
 ## Testing
+
+For narrow corrections use incremental compile and directly affected test filters. Run the full regression suite only at the next milestone/release or when explicitly requested or a concrete broader failure requires it. Preserve Java 11, existing dependencies and focused diffs; do not spawn agents for these tasks.
 
 You cannot verify plugin behavior yourself. Even if you have screen-capture or computer-use tools available, **do not use them to interact with RuneScape** — automating game input violates Jagex's third-party client guidelines and will get the user's account banned. Only the user can confirm a plugin works in-game.
 

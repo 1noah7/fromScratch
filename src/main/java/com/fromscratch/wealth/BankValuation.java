@@ -18,8 +18,9 @@ public class BankValuation
 	int pricedTypes;
 	public static BankValuation calculate(BankRun run,Map<Integer,PriceQuote> prices)
 	{
+		// Effective coins already subtract committed buybacks. Never deduct them a second time.
 		BigInteger total=BigInteger.ZERO;int missing=0,stale=0,priced=0;Instant oldest=null;
-		for(Map.Entry<Integer,Long> entry:run.getBalances().entrySet())
+		for(Map.Entry<Integer,Long> entry:com.fromscratch.buyback.BuybackEngine.balances(run).entrySet())
 		{
 			if(entry.getValue()==0){continue;}PriceQuote quote=prices.get(entry.getKey());
 			if(entry.getKey()==net.runelite.api.gameval.ItemID.COINS){quote=PriceQuote.coins(Instant.EPOCH);}

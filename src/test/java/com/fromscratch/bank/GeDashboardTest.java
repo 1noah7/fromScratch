@@ -17,8 +17,8 @@ public class GeDashboardTest
 	{SwingUtilities.invokeAndWait(()->{BankPanel panel=new BankPanel();JPanel row=(JPanel)BankPolishTest.all(panel).stream().filter(c->"grandExchangeTiles".equals(c.getName())).findFirst().get();assertEquals(2,((GridLayout)row.getLayout()).getColumns());assertEquals(2,row.getComponentCount());row.setSize(208,102);row.doLayout();assertEquals(row.getComponent(0).getSize(),row.getComponent(1).getSize());assertNotNull(button(panel,"Purchases"));assertNotNull(button(panel,"Sales"));});}
 	@Test public void geNavigationDoesNotOpenBankCorrectionsOrBankHistory()throws Exception
 	{SwingUtilities.invokeAndWait(()->{java.util.List<Boolean> sides=new ArrayList<>();BankPanel panel=new BankPanel(new BankIcons(id->null),manual->{throw new AssertionError("bank history");},()->{throw new AssertionError("corrections");},sides::add);button(panel,"Purchases").doClick(0);button(panel,"Sales").doClick(0);assertEquals(Arrays.asList(true,false),sides);});}
-	@Test public void geSectionIsBetweenBankHistoryAndPlayedElsewhere()throws Exception
-	{SwingUtilities.invokeAndWait(()->{BankPanel panel=new BankPanel();java.util.List<Component> all=BankPolishTest.all(panel);int history=all.indexOf(button(panel,"Manual Corrections")),ge=all.indexOf(button(panel,"Purchases"));int elsewhere=all.indexOf(button(panel,"Manual Bank Corrections"));assertTrue(history<ge&&ge<elsewhere);});}
+	@Test public void geSectionIsBetweenPlayedElsewhereAndBankHistory()throws Exception
+	{SwingUtilities.invokeAndWait(()->{BankPanel panel=new BankPanel();java.util.List<Component> all=BankPolishTest.all(panel);int history=all.indexOf(button(panel,"Manual Corrections")),ge=all.indexOf(button(panel,"Purchases"));int elsewhere=all.indexOf(button(panel,"Manual Bank Corrections"));assertTrue(elsewhere<ge&&ge<history);});}
 	@Test public void estimatedFeesAppearOnceWithoutChangingBankGp()throws Exception
 	{
 		SwingUtilities.invokeAndWait(()->

@@ -12,7 +12,7 @@ import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.config.*;
 
-/** Supported 1.13.3 BANK container adapter. Never reads inventory/worn containers or filtered slots. */
+/** BANK quantity authority with on-request banked pouch varbits; no inventory/equipment reads. */
 @Singleton @Slf4j
 public final class RuneLiteBankSource implements BankSource
 {
@@ -68,6 +68,16 @@ public final class RuneLiteBankSource implements BankSource
 		ItemComposition item=client.getItemDefinition(id);
 		return item.getNote()!=-1?item.getLinkedNoteId():id;
 	}
+	public boolean buybackDefinition(int id)
+	{
+		try
+		{
+			ItemComposition item=client.getItemDefinition(id);
+			return item!=null&&!item.isTradeable()&&!item.isGeTradeable()&&item.getNote()==-1&&item.getPlaceholderTemplateId()==-1;
+		}
+		catch(RuntimeException ex){return false;}
+	}
+	public com.fromscratch.pouch.PouchObservation pouch(){return new com.fromscratch.pouch.RuneLitePouchReader(client).banked(observer.observe());}
 	private boolean mounted(int group)
 	{
 		HashTable<WidgetNode> components = client.getComponentTable(); if (components == null) { return false; }

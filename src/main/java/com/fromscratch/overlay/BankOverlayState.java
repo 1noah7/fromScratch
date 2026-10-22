@@ -44,7 +44,7 @@ public final class BankOverlayState
 		private Projection(com.fromscratch.bank.BankRun run, com.fromscratch.bank.BankTimings.Trace trace,Projection previous)
 		{
 			this.revision = run.getRevision(); this.trace = trace;
-			characterKey = run.getCharacter(); bankBalances = run.getBalances();
+			characterKey = run.getCharacter(); bankBalances = com.fromscratch.buyback.BuybackEngine.balances(run);
 			// A GE/history-only commit changes revision, not bank quantities. Reuse the
 			// immutable labels rather than reformatting a large bank on the client thread.
 			if(previous!=null&&characterKey.equals(previous.characterKey)&&bankBalances.equals(previous.bankBalances)){labels=previous.labels;return;}

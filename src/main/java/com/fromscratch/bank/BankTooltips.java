@@ -44,6 +44,16 @@ final class BankTooltips
 	{
 		return html("Bank GP", "Bank coin balance: " + GpFormatter.exact(gp) + ".", "Signed bank coins, not a spendable wallet.");
 	}
+	static String bankGp(BankRun run)
+	{
+		if(run.getBuybacks().getCommittedGp()==0){return bankGp(run.balance(net.runelite.api.gameval.ItemID.COINS));}
+		return html("Available Bank GP","Unspent: "+GpFormatter.exact(com.fromscratch.buyback.BuybackEngine.available(run))+".","Raw bank progress: "+GpFormatter.exact(run.balance(net.runelite.api.gameval.ItemID.COINS))+".","Committed buybacks: "+GpFormatter.exact(run.getBuybacks().getCommittedGp())+". Physical coins are untouched.");
+	}
+	static String expenses(BankRun run)
+	{
+		if(run.getBuybacks().getCommittedGp()==0){return expenses(run.getFinancial(),run.getExchange());}
+		return html("Recorded Losses / Expenses","Legacy buybacks: "+GpFormatter.exact(run.getBuybacks().getCommittedGp())+".","Other recorded expenses: "+GpFormatter.exact(run.getFinancial().getExpenseGp())+".","Estimated GE fees: "+GpFormatter.exact(run.getExchange().getEstimatedTaxGp())+".");
+	}
 
 	static String expenses(FinancialState state)
 	{

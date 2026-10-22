@@ -1,5 +1,33 @@
 # Changelog
 
+## Rune Pouch simplification and sidebar rename (manual acceptance pending)
+
+- Replace manual pouch preparation UI with fresh opened-pouch/display/varbit verification and one atomic 1M family purchase plus signed legacy-rune deficits. Ordinary bank deposits restore balances without repeating gains; failed/stale/duplicate purchases cannot partially charge or unlock.
+- Reuse format9 with optional purchase receipt evidence; preserve old entitlements, payments, signed adjustments and historical pending reservations. No inferred old contents or repeat charge.
+- Add purchase-linked Automatic — Legacy Rune Pouch history and a brief acknowledged-success dialog. Rename only the Grand Exchange heading to Grand Exchange History.
+- Validate with incremental compile and directly affected test filters only; full checkpoint regression is deferred as requested.
+
+## Post-Milestone 7 — Compact layout and legacy pouch runes (manual acceptance pending)
+
+- Reduce standard statistic tiles from 112 to 98 pixels, action rows from 102 to 90, and Played Elsewhere from 132 to a 116-pixel minimum. Natural content/font size can expand them. Retain both columns, all icons, text, actions and existing render geometry.
+- Order sections: From Scratch/statistics, Legacy Buybacks, Played Elsewhere?, Grand Exchange, Bank History, Reset Progress.
+- Add a relevant-only pouch preparation/review inside Legacy Buybacks. Read supported RuneLite 1.13.3 varbit/enum metadata on request, require player verification even for reported empty contents, and record finite legacy rune quantities before moving them.
+- Atomically hold matching new bank arrivals out of virtual progress, high-water gains, market worth and unlock counts. Preserve pre-existing earned runes. Explicitly restore unrelated earnings or retire unarrived contents; no blanket deductions or permanent phantom debts.
+- Require an empty-pouch confirmation before a new 1M family payment. Keep standard/Divine/Trouver single-copy and upgrade/revert rules. Existing purchases retain payments and entitlements and receive review without inferred historical debits.
+- Format 9 archives complete verified format-8 checkpoints/journals exactly before migration; pending/completed preparation and audit evidence use the existing worker/FIFO/CAS/recovery protocol.
+- See [API evidence, accounting, tests, limitations and user-only acceptance](docs/POST_MILESTONE_7.md). No M8, commits, cloud or gameplay automation.
+
+
+## Milestone 7 — Legacy Buybacks (unreleased; manual acceptance pending)
+
+- Add the curated Combat & Utility, Void Knight and complete Skilling Outfit shop, verified RuneLite item IDs, explicit one-copy equipment roles and cached OSRS sprites. No generic untradeable purchases or real game actions.
+- Rune Pouch / Divine Rune Pouch is one permanent 1M family entitlement across standard/Divine/Trouver forms, with one payment/history record and bounded physical-copy allocation. Notes and minigame substitutes do not qualify; pouch contents are untouched.
+- Preserve raw signed bank progress; available GP subtracts durable cumulative commitments. Bank GP and coin counters show available GP. Net worth subtracts expenditure once; confirmed spending increases once; existing historical gains and GE records stay unchanged.
+- Support exact-price/insufficient/duplicate/stale safeguards, atomic complete outfits, Elite Void 1.8M outright or 1M after paid base, failed-write recovery, withdrawal/return and variant substitution without a second grant.
+- Format 8 verifies/archives M6 files byte-for-byte before migration, retaining identity/start/immutable baseline/raw bank/financial/GE history and corrections. No new bank anchor, reset, cloud or personal-container gate.
+- Add Legacy Buybacks shop/history tiles below GE; compact explicit confirmations and separate readable purchase history. Preserve M3 geometry, custom colors, quantity formatting, setup/reset and serial background persistence.
+- See [catalog, verified IDs, tests, measurements and manual acceptance](docs/MILESTONE_7.md). No commit, publication or M8.
+
 ## Milestone 6 — Grand Exchange integration (unreleased; manual acceptance pending)
 
 - Preserve accepted M5 checkpoint v0.5.0-wealth and bank-only P/B authority. GE events never independently debit/credit bank coins/items or include uncollected offers in bank worth.

@@ -15,6 +15,7 @@ public final class BankCorrectionDialog
 		JLabel physical = new JLabel("Select an item"), balance = new JLabel(" "), preview = new JLabel(" "); JTextField input = new JTextField("0", 14); JCheckBox adjustment = new JCheckBox("Apply signed adjustment");
 		JPanel selection = new JPanel(new BorderLayout(0, 5)); selection.add(BankDialogs.text(PURPOSE,42),BorderLayout.NORTH);JPanel searchRow=new JPanel(new BorderLayout(0,5));searchRow.add(new JLabel("Search item by name"),BorderLayout.NORTH);searchRow.add(search,BorderLayout.CENTER);selection.add(searchRow,BorderLayout.CENTER);
 		JPanel fields = new JPanel(new GridLayout(0, 1, 0, 5)); fields.add(physical); fields.add(balance); fields.add(new JLabel("Desired signed bank balance")); fields.add(input); fields.add(adjustment); fields.add(preview);
+		if(!captured.getRun().getBuybacks().getPurchases().isEmpty()){fields.add(BankDialogs.text("Edits bank progress before buybacks. Paid unlocks and previous spending are kept.",42));}
 		if (!captured.ready()) { fields.add(new JLabel("Open your bank before saving a correction.")); }
 		JPanel content = new JPanel(new BorderLayout(0, 10)); content.add(selection, BorderLayout.NORTH); content.add(new JScrollPane(list), BorderLayout.CENTER); content.add(fields, BorderLayout.SOUTH);
 		JButton save = new JButton("Save Correction"), cancel = new JButton("Cancel"); save.setEnabled(false); JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT)); buttons.add(cancel); buttons.add(save);

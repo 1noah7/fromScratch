@@ -1,0 +1,34 @@
+package com.fromscratch.persistence;
+
+import com.fromscratch.buyback.*;
+import com.google.gson.*;
+import java.time.Instant;
+import java.util.*;
+import static com.fromscratch.persistence.BankRunCodec.*;
+
+/** Explicit schema-8 trees with constructor validation; no reflective domain deserialization. */
+final class BuybackCodec
+{
+	private BuybackCodec(){}
+	static JsonObject purchase(BuybackPurchase p)
+	{
+		JsonObject j=new JsonObject(),floors=new JsonObject();p.getBankFloors().forEach(floors::addProperty);j.add("floors",floors);j.addProperty("id",p.getId().toString());j.addProperty("catalog",p.getCatalogId());j.addProperty("gp",p.getGp());j.addProperty("at",p.getAt().toString());if(p.getPouchItemId()>0){JsonObject pouch=new JsonObject();pouch.addProperty("item",p.getPouchItemId());pouch.add("runes",map(p.getLegacyRunes()));j.add("pouch",pouch);}return j;
+	}
+	static BuybackPurchase purchase(JsonObject j)
+	{
+		if(j.has("pouch")){keys(j,"id","catalog","gp","at","floors","pouch");keys(j.getAsJsonObject("pouch"),"item","runes");}else{keys(j,"id","catalog","gp","at","floors");}Map<String,Long> floors=new TreeMap<>();j.getAsJsonObject("floors").entrySet().forEach(e->floors.put(e.getKey(),number(e.getValue())));return new BuybackPurchase(UUID.fromString(str(j,"id")),str(j,"catalog"),number(j.get("gp")),Instant.parse(str(j,"at")),floors,j.has("pouch")?Math.toIntExact(number(j.getAsJsonObject("pouch").get("item"))):-1,j.has("pouch")?readMap(j.getAsJsonObject("pouch").getAsJsonObject("runes")):Collections.emptyMap());
+	}
+	static JsonObject state(BuybackState s)
+	{
+		JsonObject j=new JsonObject(),roles=new JsonObject();s.getEntitlements().forEach((role,level)->{JsonObject value=new JsonObject();value.addProperty("level",level);value.addProperty("quantity",BuybackState.COPIES_PER_ROLE);value.addProperty("bankFloor",s.getBankFloors().get(role));roles.add(role,value);});j.add("roles",roles);j.addProperty("catalogVersion",s.getCatalogVersion());j.addProperty("committedGp",s.getCommittedGp());j.addProperty("archive",s.getArchive());
+		JsonArray entries=new JsonArray();s.getPurchases().forEach(p->entries.add(purchase(p)));j.add("purchases",entries);j.add("pouch",PouchCodec.state(s.getPouch()));return j;
+	}
+	static BuybackState state(JsonObject j)
+	{return state(j,false);}
+	static BuybackState state(JsonObject j,boolean historical)
+	{
+		if(historical){keys(j,"roles","catalogVersion","committedGp","archive","purchases");}else{keys(j,"roles","catalogVersion","committedGp","archive","purchases","pouch");}Map<String,Integer> roles=new TreeMap<>();Map<String,Long> floors=new TreeMap<>();j.getAsJsonObject("roles").entrySet().forEach(e->{JsonObject value=e.getValue().getAsJsonObject();keys(value,"level","quantity","bankFloor");if(number(value.get("quantity"))!=BuybackState.COPIES_PER_ROLE){throw new IllegalArgumentException("Invalid entitlement copy limit");}roles.put(e.getKey(),Math.toIntExact(number(value.get("level"))));floors.put(e.getKey(),number(value.get("bankFloor")));});
+		List<BuybackPurchase> purchases=new ArrayList<>();for(JsonElement e:j.getAsJsonArray("purchases")){purchases.add(purchase(e.getAsJsonObject()));}
+		return new BuybackState(Math.toIntExact(number(j.get("catalogVersion"))),roles,floors,number(j.get("committedGp")),purchases,nullable(j,"archive"),historical?com.fromscratch.pouch.PouchState.unreviewed():PouchCodec.state(j.getAsJsonObject("pouch")));
+	}
+}

@@ -1,6 +1,6 @@
 # Test plan
 
-M1–M4 are accepted. **M5 bank wealth and specified UI corrections await manual acceptance.** The old 417 tests remain executable, with retired controllers/readers/review code moved into test-only historical fixtures. Their old source-attribution/session-gate assertions are compatibility evidence, not the new live contract. See [fixture policy](src/test/HISTORICAL_FIXTURES.md) and [historical plan](docs/history/TEST_PLAN_MULTI_CONTAINER.md).
+M1–M6 are accepted; M7 curated buybacks await manual acceptance. The old 417 tests remain executable, with retired controllers/readers/review code moved into test-only historical fixtures. Their old source-attribution/session-gate assertions are compatibility evidence, not the new live contract. See [fixture policy](src/test/HISTORICAL_FIXTURES.md) and [historical plan](docs/history/TEST_PLAN_MULTI_CONTAINER.md).
 
 Run the full suite with Java 11 and the existing Wrapper:
 
@@ -105,3 +105,38 @@ M1–M5 are user accepted at v0.5.0-wealth. The M6 clean build passes **723 test
 | GePerformanceTest | 1 | 1,200 physical IDs and 128 forced GE commits, bounded retained state, lazy 25-row page and restart equality, worker CPU versus wall diagnostics |
 
 The historical format-5 fixture explicitly removes the new schema-7 field before encoding old bytes; this preserves meaningful older migration coverage. Current fees remain estimates with a documented incomplete exemption catalog, not verified native tax. Initial/offline identical-slot ambiguity and late bank/trade ordering cannot establish complete history or profit. The [M6 report](docs/MILESTONE_6.md) contains exact measurements, constraints and the required user-run manual procedure. No automated test or synthetic render establishes live correctness or responsiveness.
+
+## M7 legacy buyback validation
+
+Retain all 723 applicable M1–M6 tests. Added suites:
+
+| Suite | Tests | Coverage |
+| --- | ---: | --- |
+| BuybackModelTest | 39 | All fixed prices and exclusions, sufficient/exact/insufficient GP, unchanged real P/raw B/L/gains, one paid copy, natural duplicates, pouch standard/Divine/Trouver upgrade/revert/note/content isolation, one family unlock, Void tier/pricing/no duplicate copy, all six complete outfits and incomplete rejection, spending/corrections/worth, purchase after earlier legacy deficits and bounded returns |
+| BuybackPipelineTest | 23 | Actual observer/controller/Filepath/projection path; acknowledged-only purchase, available coin counter and worth, double confirmation, stale bank/shop, closure, insufficient budget, live-definition rejection, restart/withdraw/return, family substitution, six-piece one-commit overlay, error/retry, preserved GE and independent bank/manual history, character isolation, paid-copy floor progression through bank returns/restart |
+| BuybackPersistenceTest | 10 | Genuine format-7 exact-byte migration with retained identity/start/L/P/B/financial/GE data, interrupted migration/publication, missing/corrupt payload/history/archive, idempotent lost-ack retry, stale CAS, unpaid/duplicate entitlement rejection |
+| BuybackUiTest | 6 | One pouch entry through either search, categories, two matching tiles and required placement, available/spent/gain presentation, separate one-row readable history, cached sprite IDs and confirmation budget wording |
+| BuybackPerformanceTest | 1 | All 26 purchases with 1,200+ IDs, 250 derived projections, 64 ordered forced bank commits, bounded current history, restart equality and separate worker CPU/wall diagnostics |
+
+Older format-5/6 migration fixtures remove the new buyback payload before encoding genuine old bytes. No old behavior test is deleted; controller fixtures add an explicit synthetic untradeable-definition boundary. Existing full M3 clipping/settings/painter, price, GE, bank responsiveness, corruption/recovery and UI/reset regressions remain.
+
+Follow [M7 user-only acceptance](docs/MILESTONE_7.md) with the existing run: migrated data unchanged; enough GP/physical legacy item; cancel and unavailable cases; one confirmed payment with no real coin/item movement; one pouch family across forms/withdrawal/restart; outfits/Elite pricing only when intentionally buying them; normal banking/GE and custom overlay regressions. Do not reset, buy unnecessary OSRS items or automate game input for testing. Synthetic fixtures cannot confirm native definitions, visuals or gameplay performance.
+
+Final M7 clean build: **802 passed, 0 failures/errors/skips, 57 suites**, including all 723 previous tests and 79 new cases. Worker and UI diagnostic measurements, full changed-file list, exact catalog IDs and known limitations are recorded in the M7 report. Manual acceptance remains pending.
+
+## Post-M7 refinement regression coverage
+
+Retain the 802 M1–M7 tests and adapt the old pouch-purchase fixtures to explicitly attest an empty pouch. Existing section-order assertions now use the requested exact order. No production bypass or arbitrary grant command exists.
+
+New suites:
+
+- RuneLitePouchReaderTest: actual six varbit pairs and rune mapping, standard/Divine slots, repeated types/large sums, zero with retained type, unavailable session/definitions and invalid mappings. Reported empty remains unreviewed.
+- PouchPipelineTest: actual tick observer/controller/FIFO/Filepath/overlay/financial path; empty standard/Divine and unknown rejection; loaded preparation; earned100+legacy500; multiple types; finite/idempotent holds; excess/unrelated arrivals; explicit earned restoration; retirement without debt; pending/offline/restart/upgrade/revert; no duplicate payment; acknowledgment failure, stale revision and character isolation.
+- PouchPersistenceTest: genuine format-8 paid/unpaid histories; exact archives; unchanged balances/history/payment/entitlement; one-time review without repeat payment; interrupted migration/adjustment recovery; required-field corruption and archive damage.
+- PouchStateTest: confirmation, allowlist, nonnegative/conserved/overflow-safe preparation, no consumption from zero/negative bank deltas and completed-plan replay rejection.
+- PouchPerformanceTest: 1,200-ID bank, finite 500-rune plan and 64 ordered commits; only 140 of 640 arrivals remain new progress, one commit per observation.
+- PostM7UiTest: exact six-section order/reset-last, compact two-column aligned heights, unclipped labels and larger-font expansion, unchanged navigation/icon identities, unknown/reported-empty unchecked confirmations, named contents and relevant-only workflow.
+
+Run the complete `./gradlew clean build` after targeted suites. See [post-M7 validation results and exact manual procedure](docs/POST_MILESTONE_7.md). Synthetic source reports cannot establish banked varbit freshness, physical rune provenance, live responsiveness or manual acceptance.
+
+Final post-M7 validation: 850 tests / 0 failures / 0 errors / 0 skipped, 63 suites (802 baseline + 48 new tests). Final timing data and live acceptance procedure are in docs/POST_MILESTONE_7.md.
