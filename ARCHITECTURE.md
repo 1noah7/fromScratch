@@ -1,6 +1,6 @@
 # Architecture
 
-M1–M8 are user accepted. **M9 awaits manual acceptance.** Personal-container ownership and cloud remain outside scope. The previous multi-container design is preserved only in [historical documentation](docs/history/ARCHITECTURE_MULTI_CONTAINER.md) and test fixtures, not live plugin wiring.
+Milestones 1–9.2 are user accepted; gameplay is frozen. M10 is distribution/documentation preparation only. Personal-container ownership and cloud remain outside scope. The previous multi-container design is preserved only in [historical documentation](docs/history/ARCHITECTURE_MULTI_CONTAINER.md) and test fixtures, not live plugin wiring.
 
 ## M9 hardening
 
@@ -162,3 +162,11 @@ LootingBagReader reads container 516 only on the user's purchase request. A curr
 VirtualBankMode uses RuneLite 1.13.3's `bankBuildTab` and `bankSearchFilter` callbacks after core Bank Tags closes its selected tag on a native-tab click. Cached eligible IDs intersect authoritative bank-slot ranges from BANK_TAB_1–9 and BANK_CURRENTTAB. Item callbacks only deny nonmembers; native tab changes never reopen the dynamic tag. The existing dynamic tag remains the initial activation path. Search/user-tag selections explicitly exit to Full Bank; native search is incompatible with the required single-tab build mode. Physical accounting still reads the complete API container.
 
 GeHistory derives finalized rows from durable cumulative observations and generation identities. It never mutates GeState or writes financial records. Query-only cursors retain generation deduplication and one-row lookahead; reads yield the storage FIFO after 64 segments, and the controller delivers only complete finalized pages. No schema change. See [Milestone 9.1](docs/MILESTONE_9_1.md).
+
+## M10 frozen baseline and owner beta
+
+Milestones 1–9.2 are now owner-accepted. Their historical sections above describe development stages, not new release gates. Milestone 10 preserves `src/main` and all economic/save formats at `a2436132c9fb72cc25d015c35309628398486280` (gameplay tree `830cb55d79ef41711e5a478318b916598e0ebb09`). The current implementation map and scoped widget/API disclosures are in [PLUGIN_HUB_REVIEW.md](docs/PLUGIN_HUB_REVIEW.md); [FEATURES.md](docs/FEATURES.md) is the consolidated player contract.
+
+The beta distribution is separate: `src/beta/.../BetaLauncher` registers the production plugin through the normal external-plugin bootstrap, then invokes unmodified RuneLite developer mode. `gradle/beta.gradle` packages thin plugin/bootstrap JARs alongside unmodified runtime dependencies; test fixtures and JUnit never enter the ZIP. Windows scripts install immutable versioned program folders and one owned shortcut; they contain no authentication code or progression migration. The user signs in through the official RuneLite Jagex Accounts panel. The standard Plugin Hub build sees only production source and has no dependency on these installer scripts.
+
+Installer allowlists, SHA-256 manifests, bounded paths, link rejection and nonrecursive ownership-aware uninstall protect unrelated local files. Real RuneLite home/progression stays outside the program installation. See [installation](docs/INSTALLATION.md), [privacy](docs/DATA_AND_PRIVACY.md) and [M10 evidence](docs/MILESTONE_10.md). Authentication/gameplay and official review remain human acceptance steps; M11 has not begun.

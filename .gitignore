@@ -34,3 +34,7 @@ before-import-*/
 .env
 .env.*
 !.env.example
+.runelite/
+credentials.properties
+jagex-accounts.dat
+*.lnk

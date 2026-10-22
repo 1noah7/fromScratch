@@ -1,5 +1,11 @@
 # Test plan
 
+## Milestone 10 frozen release checkpoint
+
+Gameplay through M9.2 is owner-accepted; M10 changes no production source or save format. One full local Java 11 run exercised **937 cases**: 933 passed, four failed on stale assertions (old development version, former Total Value Gained label/count, trailing estimated-fee tilde). Update only those assertions to the accepted M9 behavior/current beta metadata; the four affected classes then passed **22/22**. Do not repeat the entire suite for these test/documentation-only corrections. This is combined evidence across the full run and focused follow-up, not a claim that the original full command was green.
+
+Windows installer/ZIP tests cover ten isolated scenarios, real COM shortcuts under a fake desktop, traversal/tamper/unexpected-JAR rejection, versioned update and preservation on uninstall. A separate packaged help smoke and logged-out graphical startup use empty sandbox user homes; real shortcut/authentication/gameplay remain owner tests. Official standard-template Java 11 compilation/resources/JAR passed. Hosted Windows/Ubuntu still require actual diagnostic logs and a later approved rerun. Exact evidence, candidate and manual checklist: [MILESTONE_10.md](docs/MILESTONE_10.md).
+
 ## Milestone 9.1 focused validation
 
 63 distinct targeted cases passed: VirtualBankModeTest (22), production-plugin EventBus registration (1), GePipelineTest (30), GeHistoryViewTest (8), finalized pagination/immutable history (1), and GePerformanceTest (1). The pagination case was rerun alone after adding a cross-page duplicate-terminal assertion. Production/test incremental compilation passed; no clean build or full suite. Native-tab callbacks, real controller/Filepath bank deltas, restart/slot reuse, partial cancellation, no financial replay, 41 finalized offers across two pages, and storage-worker yielding are covered. The 1,200-item/128-update worker fixture retains bounded internal state while hiding its unfinished offer.

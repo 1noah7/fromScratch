@@ -25,7 +25,7 @@ public class FoundationResourcesTest
 		assertEquals("Pilots r kwl", metadata.getProperty("author"));
 		assertEquals(FromScratchPlugin.class.getName(), metadata.getProperty("plugins"));
 		assertEquals("standard", metadata.getProperty("build"));
-		assertEquals("0.1.0-dev", metadata.getProperty("version"));
+		assertEquals("0.10.0-beta.1", metadata.getProperty("version"));
 	}
 
 	@Test

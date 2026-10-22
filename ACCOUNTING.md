@@ -1,6 +1,6 @@
 # Bank accounting policy
 
-**Current contract: M1–M8 accepted; M9 hardening awaits manual acceptance.** The original multi-container ownership policy is historical and lives in [the archived specification](docs/history/ACCOUNTING_MULTI_CONTAINER.md). It is not a source for current acquisition, transfer or session-gate behavior.
+**Current contract: M1–M9.2 accepted; M10 preserves economic behavior and save formats.** The original multi-container ownership policy is historical and lives in [the archived specification](docs/history/ACCOUNTING_MULTI_CONTAINER.md). It is not a source for current acquisition, transfer or session-gate behavior.
 
 M9 retains the signed bank equation and existing economic history. Restored native filtering never owns quantities; complete bank-container observations remain authoritative. Peak Progress Value replaces only the dashboard gain metric. Explicit local import/recovery never merges or replays histories and preserves prior evidence. See [M9](docs/MILESTONE_9.md).
 

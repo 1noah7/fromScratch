@@ -16,3 +16,9 @@ The generated RGBA artwork was mechanically fitted to its alpha bounds, resized 
 Both are genuine PNGs with visible purple pixels and transparent padding, tested through the actual classpath resource. The sidebar export was visually inspected at its output size. The 225-pixel synthetic sidebar previews use this fallback for every item icon; a live client supplies the distinct genuine OSRS sprites instead. Recognition at the user's display scale still requires manual acceptance.
 
 Supplied with the project under BSD 2-Clause to the extent applicable. There is no external artwork retrieval or image generation in the production plugin.
+
+## Milestone 10 title artwork
+
+`docs/media/from-scratch-hero.svg` and its 1280×640 PNG counterpart are original code-native title/social artwork created with `scripts/Prepare-Marketing.ps1`. Simple geometric purple chest/coins and illustrative contrasting counters communicate the brand; **they are not RuneScape screenshots**. No Steam assets, OSRS sprites, downloaded asset pack or external generation service was used for this banner. The PNG was visually inspected for legibility and framing; final GitHub/mobile rendering remains owner review. Reproduce on Windows with the script (Segoe UI text; SVG has Arial/sans-serif fallbacks). Keep original source artwork and lossless PNG together under the project's BSD-2-Clause terms to the extent applicable.
+
+Real gameplay captures are not available yet. [SCREENSHOTS.md](SCREENSHOTS.md) lists exact privacy-safe owner captures; README contains no fabricated or missing screenshot image links. Native game sprites used at runtime are supplied by RuneLite and remain Jagex property. Branding does not imply Jagex, RuneLite or Steam affiliation.

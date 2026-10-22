@@ -25,7 +25,7 @@ public class GeDashboardTest
 		{
 			BankRun run=BankFixtures.run(1);UUID session=UUID.randomUUID();run=BankEngine.exchange(run,new GeObservation(UUID.randomUUID(),session,SnapshotFixtures.TIME.plusSeconds(1),0,BankFixtures.SHIELD,"Wooden shield",GrandExchangeOfferState.SELLING,10,0,100,0,false));run=BankEngine.exchange(run,new GeObservation(UUID.randomUUID(),session,SnapshotFixtures.TIME.plusSeconds(2),0,BankFixtures.SHIELD,"Wooden shield",GrandExchangeOfferState.SOLD,10,10,100,1000,false));
 			BankPanel panel=new BankPanel();panel.render(new BankView(run,null,Collections.emptyMap(),false,false,"Bank progress saved."),null);assertEquals(0,run.balance(net.runelite.api.gameval.ItemID.COINS));
-			assertTrue(BankPolishTest.all(panel).stream().anyMatch(c->c instanceof JLabel&&"20 GP~".equals(((JLabel)c).getText())));assertTrue(BankTooltips.expenses(run.getFinancial(),run.getExchange()).contains("Estimated GE seller fees"));
+			assertTrue(BankPolishTest.all(panel).stream().anyMatch(c->c instanceof JLabel&&"~20 GP".equals(((JLabel)c).getText())));assertTrue(BankTooltips.expenses(run.getFinancial(),run.getExchange()).contains("Estimated GE seller fees"));
 		});
 	}
 }

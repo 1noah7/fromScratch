@@ -31,7 +31,7 @@ dependencies {
 }
 
 group = 'com.fromscratch'
-version = '0.1.0-dev'
+version = '0.10.0-beta.1'
 
 tasks.withType(JavaCompile).configureEach {
 	options.encoding = 'UTF-8'
@@ -83,3 +83,6 @@ tasks.register('shadowJar', Jar) {
 	archiveClassifier.set('shadow')
 	archiveFileName.set("${rootProject.name}-${project.version}-all.jar")
 }
+
+// Owner-side distribution only. The Plugin Hub standard build replaces this build file.
+apply from: 'gradle/beta.gradle'

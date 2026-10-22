@@ -104,7 +104,9 @@ public class FinalCorrectionsUiTest
 					if ("50K GP".equals(label.getText())) { expenseTiles++; assertTrue(label.getToolTipText().contains("50,840 GP")); }
 				}
 			}
-			assertEquals(3, millionTiles); assertEquals(1, expenseTiles);
+			// No persisted peak was supplied: only Bank GP and Current Bank Net Worth are 1M.
+			assertEquals(2, millionTiles); assertEquals(1, expenseTiles);
+			assertTrue(BankPolishTest.all(panel).stream().anyMatch(c -> c instanceof JLabel && "Unavailable".equals(((JLabel)c).getText())));
 		});
 	}
 }

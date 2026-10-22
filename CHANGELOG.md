@@ -1,5 +1,12 @@
 # Changelog
 
+## Milestone 10 — Windows beta and publication preparation (owner review pending)
+
+- Freeze accepted M9.2 gameplay; verify canonical PilotsRKwl repository/master and disclose inaccurate historical tags without rewriting them.
+- Prepare version 0.10.0-beta.1: thin production plugin plus separate developer bootstrap/unmodified RuneLite JARs, safe versioned Windows installer/desktop shortcut/update/uninstall, checksums and provenance. Use the official Jagex Accounts panel; no credentials or user data bundled. Graphical authentication remains manual acceptance.
+- Replace the early README with a promotional homepage and original title/social artwork. Genuine gameplay screenshots remain explicitly pending; no beta asset URL is invented.
+- Add reviewer/source map, feature/privacy/install/test guides, release draft and metadata recommendations. Verify production with the official standard build template. Hosted CI failures remain separately disclosed; no release or Hub submission occurs.
+
 ## Milestone 9.2 — Subdued physical bank counters (manual acceptance pending)
 
 - Draw physical bank quantities in #A0A0A0 after locked-item shading. Use the public quantity-display mode to suppress the original counter before native drawing and restore it when inactive; no sprite masks, quantity changes or new setting. Keep virtual counters and their configurable color unchanged.
