@@ -65,6 +65,7 @@ public class FromScratchPlugin extends Plugin
 	@Inject private com.fromscratch.playtime.PlaytimeTracker playtime;
 	@Inject private net.runelite.api.Client client;
 	@Inject private ConfigManager configManager;
+	@Inject private com.fromscratch.bank.WithdrawGuard withdrawGuard;
 
 	@Override
 	protected void startUp()
@@ -73,6 +74,7 @@ public class FromScratchPlugin extends Plugin
 		observer.configure(config.developmentItemTrace());
 		bankOverlay.start();
 		prices.start();
+		withdrawGuard.start();
 		// Queue UI work without blocking the client thread. Lifecycle operations
 		// share the EDT queue, so rapid enable/disable sequences retain their order.
 		clientThread.invokeLater(() ->
@@ -105,6 +107,7 @@ public class FromScratchPlugin extends Plugin
 		bankOverlay.stop();
 		setupController.stop();
 		prices.stop();
+		withdrawGuard.stop();
 		clientThread.invokeLater(()->{examine.stop();virtualBank.stop();playtime.stop();});
 		clientThread.invokeLater(() -> {observer.resetSession();exchangeObserver.resetSession();});
 		SwingUtilities.invokeLater(sidebar::hide);
@@ -142,6 +145,7 @@ public class FromScratchPlugin extends Plugin
 	}
 	@Subscribe public void onMenuOptionClicked(MenuOptionClicked event)
 	{
+		withdrawGuard.clicked(event);
 		examine.clicked(event);observer.bagClicked(event);
 		// invokeLater defers reconciliation until core Bank Tags has handled this same click.
 		if(event.getMenuOption().startsWith("View tab")||event.getMenuOption().equals("View all items")){virtualBank.nativeTabSelected();}else{virtualBank.viewChanged();}
@@ -221,7 +225,7 @@ public class FromScratchPlugin extends Plugin
 	{
 		if (event.getGroupId() == InterfaceID.BANKMAIN)
 		{
-			if(event.isUnload()) { virtualBank.bankClosed(); observer.bagUnavailable(); }
+			if(event.isUnload()) { virtualBank.bankClosed(); observer.bagUnavailable(); withdrawGuard.bankClosed(); }
 			observer.changed();
 		}
 		else if (event.getGroupId() == InterfaceID.BANKPIN_KEYPAD || event.getGroupId() == InterfaceID.BANKPIN_SETTINGS)

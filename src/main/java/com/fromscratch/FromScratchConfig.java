@@ -50,6 +50,10 @@ public interface FromScratchConfig extends Config
 		description = "Show only virtually owned item types in your bank. Disable to view your full bank.", position = 0)
 	default boolean virtualBankView() { return true; }
 
+	@ConfigItem(keyName = "lockLegacyWithdrawals", name = "Lock legacy withdrawals",
+		description = "Block bank withdrawals that would take more than your unlocked (earned or bought back) quantity", position = 6)
+	default boolean lockLegacyWithdrawals() { return true; }
+
 	@ConfigItem(keyName = "developmentItemTrace", name = "Development: bank diagnostics",
 		description = "Retained developer DEBUG logging preference", hidden = true, position = 100)
 	default boolean developmentItemTrace() { return false; }
