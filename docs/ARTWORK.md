@@ -25,6 +25,8 @@ Real gameplay captures are not available yet. [SCREENSHOTS.md](SCREENSHOTS.md) s
 
 ## Milestone 10 interface previews
 
+Windows installer branding reuses the original root `icon.png`. `scripts/Prepare-WindowsIcon.ps1` converts it into `beta/windows-native/FromScratch.ico` with PNG-backed 16/32/48/64/256-pixel frames using nearest-neighbor scaling. It is the same artwork, not a new logo. Setup, uninstaller, launcher and shortcuts use this asset; manual Windows scaling acceptance remains required.
+
 The dashboard, setup, catalog and history PNGs in `docs/media` are lossless 2× renders of the unchanged production Swing components, using RuneLite's look and feel/fonts and explicitly synthetic fixture progress. The dashboard overview is a crop of that same panel. They show neither a real account nor a reconstructed game interface. Source: `src/preview/java/com/fromscratch/preview/InterfacePreviews.java`; reproduction: `scripts/Prepare-UiPreviews.ps1`.
 
 Exact item sprites are retrieved from RuneLite's official `https://static.runelite.net/cache/item/icon/<itemId>.png` service into ignored `build/marketing/icons`, then supplied through the existing `BankIcons` provider. These are OSRS game assets owned by Jagex, included only as part of accurate interface illustrations; they are not original From Scratch artwork or relicensed under BSD. RuneLite application fonts/look and feel remain their respective authors' work. No download or rendering helper is added to the production plugin or release JAR.

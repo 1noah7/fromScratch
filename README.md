@@ -18,8 +18,8 @@ We're preparing From Scratch for publication on the RuneLite Plugin Hub. It has 
 
 Once the Windows beta is available:
 
-1. **Download From Scratch.** When the beta is available, download the ZIP and extract the folder.
-2. **Install the launcher.** Open the extracted folder and double-click **Install.cmd**. This creates a **From Scratch Beta** shortcut on your desktop.
+1. **Download From Scratch.** When the beta is available, download **FromScratch-Beta-Setup.exe**.
+2. **Install From Scratch.** Double-click the file and follow the installation wizard. A **From Scratch Beta** shortcut appears on your desktop.
 3. **Open From Scratch.** Double-click the shortcut and follow RuneLite's sign-in instructions.
 4. **Start your challenge.** Enable From Scratch in RuneLite, open its purple coin panel, and follow the setup instructions.
 

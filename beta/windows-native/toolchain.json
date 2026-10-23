@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "releaseVersion": "v0.10.6-friends-installer",
+  "packageVersion": "0.10.6-beta.1",
+  "windowsVersion": "0.10.6.0",
+  "runtime": {
+    "version": "11.0.32.1+1",
+    "name": "OpenJDK11U-jre_x64_windows_hotspot_11.0.32.1_1.zip",
+    "url": "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.32.1%2B1/OpenJDK11U-jre_x64_windows_hotspot_11.0.32.1_1.zip",
+    "checksumUrl": "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.32.1%2B1/OpenJDK11U-jre_x64_windows_hotspot_11.0.32.1_1.zip.sha256.txt",
+    "sha256": "f8c7da672f5dba36b6f870608820b6b598cfae91296929f1b8f21ef2f1e8a0dd"
+  },
+  "inno": {
+    "version": "6.7.3",
+    "url": "https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe",
+    "sha256": "9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732",
+    "publisher": "Pyrsys B.V."
+  }
+}

@@ -13,6 +13,7 @@ Use the [documentation index](../README.md), [current architecture](../technical
 - `AGENTS_PRE_M10.md`: prior project instructions, including superseded milestone restrictions. Root [AGENTS.md](../../AGENTS.md) remains the tooling entry point.
 - `MILESTONE_10_PREPARATION.md`: the initial beta preparation and CI investigation record. The [current M10 report](../MILESTONE_10.md) records the subsequently passing CI and final preparation.
 - `COMPATIBILITY.md`: earlier platform/build acceptance notes, not current CI status.
+- `INSTALLATION_SCRIPTS_10_5.md` and `RELEASE_DRAFT_SCRIPTS_10_5.md`: the superseded CMD/PowerShell distribution. Current installation uses the native setup EXE; the old ZIP is preserved.
 - `*_MULTI_CONTAINER.md`: retired pre-bank-only architecture and tests. Inventory/equipment ownership tracking must not be reconnected to production.
 
 In particular, the old multi-step Rune Pouch preparation wizard and earlier Virtual Bank disable/defer decisions are superseded. Current automatic contents adjustments and accepted native bank filtering remain unchanged.

@@ -1,4 +1,4 @@
-# From Scratch — Windows beta 0.10.0-beta.1
+# From Scratch: Windows beta v0.10.6-friends-installer
 
 **LOCAL DRAFT — not published, distributed or Plugin Hub approved.** Upload only after the owner's consolidated acceptance. The actual future release URL is not known yet.
 
@@ -19,22 +19,22 @@ Gameplay is frozen at the accepted M9.2 source baseline; this milestone prepares
 
 ## Installation
 
-Windows x64; install the official **Temurin 11 JDK** first. No IntelliJ, Git or Gradle is needed by testers. Download the approved ZIP/checksum, verify the SHA-256, extract everything, run **Install.cmd**, then open **From Scratch Beta** on your desktop. Sign in using RuneLite's official developer-mode **Jagex Accounts** panel; no credential file/token collection is involved. Enable From Scratch and follow Before Starting. See [installation](INSTALLATION.md) and [beta guide](BETA_TESTING.md).
+Windows 10/11 x64. Download the approved **FromScratch-Beta-Setup.exe** and checksum, double-click the setup file and follow the wizard. Java is included. Open **From Scratch Beta** from the desktop or Start Menu and use RuneLite's official **Jagex Accounts** panel to sign in. Enable From Scratch and follow Before Starting. No terminal or developer tools are needed. See [installation](INSTALLATION.md) and [beta guide](BETA_TESTING.md). This unsigned candidate still requires actual launch/login acceptance before distribution.
 
 Proposed assets (already prepared locally, not uploaded):
 
-- `from-scratch-beta-0.10.0-beta.1-windows.zip`
-- `from-scratch-beta-0.10.0-beta.1-windows.zip.sha256`
+- `FromScratch-Beta-Setup.exe`
+- `FromScratch-Beta-Setup.exe.sha256`
 
-`package.json` records exact files/hashes; `SOURCE.json` records baseline commit and frozen gameplay tree, explicitly disclosing uncommitted release inputs. Do not describe the current candidate as a fully committed release. Regenerate after any approved release changes.
+`installer-files.json` records the installed image's files/hashes; `installer-build.json` and the embedded `SOURCE.json`/`native-build.json` record the baseline commit, frozen gameplay tree and uncommitted packaging inputs. Do not describe the current candidate as a fully committed release. Regenerate after any approved release changes.
 
 ## Important limitations
 
 This is an independent, voluntary, unreviewed challenge. It does not prevent withdrawals or change real ownership. A mixed stack still exposes the full physical amount. Bank-only observation cannot reconstruct unseen activity; host Time Played excludes mobile/other clients. Price/tax values are estimates where labeled. Search/other Bank Tags may return to Full Bank. Unknown storage contents block buyback rather than being assumed empty.
 
-**Progress is local to this computer.** Exports contain private, unencrypted progression. Back up before updates, keep exports private, and avoid concurrent clients on the same run. No cloud/device sync. Uninstalling the beta preserves challenge saves, settings, credentials and backups. Update by reinstalling the newer approved ZIP; uninstall with the installed version's **Uninstall.cmd**.
+**Progress is local to this computer.** Exports contain private, unencrypted progression. Back up before updates, keep exports private, and avoid concurrent clients on the same run. No cloud/device sync. Update with the newer approved setup EXE; uninstall through Windows Settings > Installed apps. Challenge saves, settings, credentials, backups, launcher logs and unrelated files remain. The earlier v0.10.5 ZIP is not replaced or deleted.
 
-Packaged help, an isolated logged-out client window, safe install/update/uninstall and the standard build were checked locally. Windows and Ubuntu CI passed for the frozen source. Owner shortcut/authentication/gameplay acceptance remains a release gate; see [Milestone 10](MILESTONE_10.md). Do not present these as passed until verified.
+Fourteen native packaging checks passed locally, including private-runtime bootstrap help, actual isolated setup/upgrade/reinstall, shortcut/Installed apps registration and safe uninstall. These checks did not start the game or sign in. Windows and Ubuntu CI passed for the frozen source. Actual wizard visuals, normal shortcut launch and authentication remain owner acceptance gates; see [Milestone 10.6](MILESTONE_10_6.md). Do not present these as passed until verified.
 
 ## Reporting a problem
 

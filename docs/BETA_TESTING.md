@@ -1,6 +1,6 @@
 # Friend-and-family beta testing
 
-This is an unpublished, unreviewed candidate until the owner approves distribution. Install only the approved owner-provided ZIP from the [canonical repository](https://github.com/PilotsRKwl/fromScratch). [Installation and login](INSTALLATION.md) is the authoritative guide for prerequisites, setup, login, updates and uninstall. No coding tools are needed to play.
+This is an unpublished, unreviewed candidate until the owner approves distribution. Install only the approved owner-provided **FromScratch-Beta-Setup.exe** from the [canonical repository](https://github.com/PilotsRKwl/fromScratch). [Installation and login](INSTALLATION.md) is the authoritative guide for setup, login, updates and uninstall. The private runtime is included; no developer tools or Java configuration are needed to play.
 
 ## Your first session
 
@@ -17,7 +17,7 @@ This is an unpublished, unreviewed candidate until the owner approves distributi
 - Pouch/bag: buybacks unlock the equipment, not old contents. Review verified negative offsets, purchase once, then empty/bank the old contents to neutralize them. Never guess unreadable contents. Opening/closing or Rune Pouch upgrades do not require another family payment.
 - Close/reopen the bank, switch tabs/views, disable/re-enable the plugin and restart RuneLite. Counts, entitlements, offsets, history, settings, peak and Time Played should persist without freezes.
 - Export Progress through the header's Progress files menu. Keep it private. Test Import preview/cancel freely; actually replacing/resetting a run should use disposable progression. Imports replace, not merge, same-character histories.
-- Update by reinstalling an approved ZIP. Confirm the shortcut and saved challenge still work. Uninstall a disposable beta version: progression/other plugins must remain.
+- Update by running the newer approved setup EXE. Confirm the shortcut and saved challenge still work. Use Windows Settings to uninstall a disposable beta installation: progression/other plugins must remain.
 
 ## Reporting a problem
 

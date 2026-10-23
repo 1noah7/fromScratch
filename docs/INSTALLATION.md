@@ -1,43 +1,45 @@
 # Installation
 
-## Windows beta status
+## Windows beta
 
-The `0.10.0-beta.1` candidate is prepared locally for owner review; it has not been published, distributed or approved by Plugin Hub. After approval, the owner will upload the ZIP/checksum to [GitHub Releases](https://github.com/PilotsRKwl/fromScratch/releases). There is no direct public beta asset link yet.
+The **v0.10.6-friends-installer** candidate is being prepared for owner testing. It has not been published or approved by RuneLite Plugin Hub. Download links will appear on [GitHub Releases](https://github.com/PilotsRKwl/fromScratch/releases) only after release approval.
 
-Prerequisite: **Windows x64 and the official Temurin 11 JDK**, installed from [Adoptium](https://adoptium.net/temurin/releases/?version=11). Choose Java 11 / Windows / x64 / JDK. The installer can find Java through JAVA_HOME, PATH or the vendor's normal Program Files directory. It does not install Java, require admin rights, or require Git/Gradle/IntelliJ. Internet is required when RuneLite obtains game/client resources and signs in.
+The installer supports **64-bit Windows 10 and Windows 11**. Java is included. You do not need to install Java, change PATH, use a terminal or install developer software. Windows' built-in .NET Framework 4.x runs the small application launcher.
 
-1. Download the approved ZIP and its `.sha256` sidecar. Compare `Get-FileHash -Algorithm SHA256 <zip>` with the published value. A hash detects differences; it is not a publisher signature.
-2. Extract **all** ZIP contents. Do not launch from inside the ZIP.
-3. Run **Install.cmd**. It checks every packaged file, installs versioned program files and creates **From Scratch Beta** on your desktop. Paths with spaces are supported.
-4. Close other RuneLite clients and open that shortcut. No password or token is requested by the installer.
-5. In RuneLite, open **Jagex Accounts**, click **Add Jagex Account**, complete the official login window yourself, select your character, then **Play Now**. Follow the current [official developer login guide](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts).
-6. Enable **From Scratch** in the plugin list and open its purple coin sidebar. Follow Before Starting, or resume the saved run for that character.
+1. Download the approved **FromScratch-Beta-Setup.exe**. Keep its accompanying SHA-256 checksum if you want to verify the download.
+2. Double-click the EXE and follow **Welcome to From Scratch Beta**. It installs for your Windows user without administrator rights.
+3. Leave **Open From Scratch Beta** selected at the end, or use **From Scratch Beta** on your desktop or Start Menu.
+4. In RuneLite, open **Jagex Accounts**, choose **Add Jagex Account**, complete the official login window yourself, select your character and choose **Play Now**. See RuneLite's [official login instructions](https://github.com/runelite/runelite/wiki/Using-Jagex-Accounts).
+5. Enable From Scratch in RuneLite, open its purple coin panel and follow **Before Starting**, or resume that character's saved challenge.
 
-The packaged help/classpath, official panel presence and a logged-out graphical startup using an isolated empty profile are tested. **The real desktop shortcut, authentication and actual gameplay still require owner acceptance.** If the panel or supported login fails, stop and report it; do not use credential files, tokens, environment scraping or unofficial authentication helpers. The normal RuneLite launcher does not enable developer mode, so copying this JAR into a normal installation is not the beta installation path.
+The installer never asks for passwords or tokens. It does not export credentials or use insecure credential writing. Its bundled client uses RuneLite's existing developer-mode login route. Actual graphical launch and account authentication remain owner acceptance requirements; a successful install or verification check does not prove login works.
 
-## Updates and uninstall
+This candidate is **unsigned**. Windows may display an unknown publisher or reputation warning. Check the source and checksum, and stop if uncertain. Do not disable Defender, SmartScreen or antivirus software. No authenticated publisher identity is claimed.
 
-Export Progress before updating. Extract the newer approved ZIP and run its installer again. The owned desktop shortcut points to the new immutable program version; older versions remain. Repeating the same install reuses that version. Do not use an older client against a newer save without a verified compatible backup.
+## Updating
 
-To uninstall, close the beta, open its version directory under `%LOCALAPPDATA%\FromScratchBeta\versions`, and run **Uninstall.cmd**. Confirm removal. It deletes unchanged owned program files and removes the shortcut only if it still points at that version. Other versions, modified/extra files, real progression, `.fsp` exports, RuneLite settings, credentials and other plugins are preserved. Uninstall is not Reset Progress.
+Export Progress privately before updating. Close From Scratch Beta, then run the newer approved installer. It updates the same per-user application and shortcuts. Previous owned program payloads may remain until uninstall; saved progression is separate and unchanged. Do not run an older beta against a newer save without a verified compatible backup.
 
-Unsigned beta scripts may receive Windows security prompts. Review the source and origin; never disable antivirus or obtain credentials to make them run. The wrapper uses a process-only PowerShell execution policy and does not change the system policy.
+The old v0.10.5 ZIP is retained separately. Its installed program files are not deleted by this installer. A verified old From Scratch shortcut may be replaced by the new EXE shortcut; unrelated shortcuts with the same name are preserved and installation is blocked with an explanation. [Historical script instructions](history/INSTALLATION_SCRIPTS_10_5.md) are reference only.
 
-## Maintainer packaging
+## Uninstalling
 
-Use Java 11 and the existing Gradle wrapper. Run from the repository root:
+Close the application. Open **Windows Settings > Apps > Installed apps > From Scratch Beta > Uninstall** and confirm.
 
-```powershell
-.\gradlew.bat build
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\Build-Beta.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\Test-Beta.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\Test-StandardBuild.ps1
-```
+The uninstaller removes its registered program files, matching desktop/Start Menu shortcuts and Installed apps entry. It preserves unrelated files and changed shortcuts. It does not delete:
 
-Run the full regression once for the release candidate; documentation-only changes do not require repeats. Packaging itself never runs tests/installs/launches the GUI or publishes.
+- From Scratch progression under `%USERPROFILE%\.runelite\plugin-data\from_scratch`.
+- RuneLite settings, account data or other plugins under RuneLite's normal user directories.
+- Exported backups wherever you saved them.
+- Launcher diagnostics under `%LOCALAPPDATA%\FromScratchBeta\logs`.
+- Other Java installations or the earlier v0.10.5 installation.
 
-Outputs: `build/distributions/from-scratch-beta-0.10.0-beta.1-windows.zip`, its SHA-256 sidecar, production JAR in `build/libs`, and staged files in `build/beta/stage`. The ZIP contains a thin production plugin, a separate beta bootstrap and **unmodified** official RuneLite/runtime dependency JARs—not the old shadow JAR with test fixtures. It excludes JUnit, source test fixtures, credentials, profiles and progression. `package.json`, `DEPENDENCIES.json` and `SOURCE.json` record file hashes, Maven coordinates, Java/RuneLite version, exact baseline revision, frozen gameplay tree and uncommitted release-build inputs. A dirty-worktree candidate is explicitly identified, not passed off as a future committed release.
+Program files live under `%LOCALAPPDATA%\Programs\FromScratchBeta`. The bundled runtime is private to the application; no system or user environment variables are changed.
 
-The official `build=standard` check uses the current pinned tooling template verbatim, supplies the Hub's client version externally and compiles only `src/main`. Beta sources/scripts are outside the Hub plugin. Full hosted packaging/scanning/review belongs to Milestone 11.
+## If the app cannot start
 
-Installer tests use isolated `build/beta-tests` roots and a fake desktop. The actual Java help smoke uses an empty sandbox user home and never signs in or reads real progression. Owner acceptance must use the actual shortcut and official login flow.
+The launcher checks required files before opening RuneLite. A missing/damaged runtime or library produces an error dialog and a local diagnostic log. Reinstall a trusted beta if instructed. Keep logs private and redact account names, local paths and authentication-related context before sharing a short relevant excerpt. Do not send whole logs, credential files or progression exports.
+
+## For maintainers
+
+The [Milestone 10.6 implementation report](MILESTONE_10_6.md) lists the pinned runtime, developer compiler setup, reproducible packaging command and isolated tests. End users do not need those tools. [Beta acceptance](BETA_TESTING.md) covers actual gameplay and restart checks.
